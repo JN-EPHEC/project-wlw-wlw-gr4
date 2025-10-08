@@ -26,7 +26,7 @@ export default function HomeScreen() {
 
       {/* ➕ Texte ajouté ici */}
       <ThemedView style={styles.stepContainer}>
-        <ThemedText type="default">Aya Freak in the shit</ThemedText>
+        <ThemedText type="default">Hello everyone</ThemedText>
       </ThemedView>
 
       {/* Étape 1 */}
