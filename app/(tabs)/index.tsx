@@ -17,10 +17,19 @@ export default function HomeScreen() {
           style={styles.reactLogo}
         />
       }>
+      
+      {/* Section du titre */}
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Welcome!</ThemedText>
         <HelloWave />
       </ThemedView>
+
+      {/* ➕ Texte ajouté ici */}
+      <ThemedView style={styles.stepContainer}>
+        <ThemedText type="default">Aya Freak in the shit</ThemedText>
+      </ThemedView>
+
+      {/* Étape 1 */}
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Step 1: Try it</ThemedText>
         <ThemedText>
@@ -36,6 +45,8 @@ export default function HomeScreen() {
           to open developer tools.
         </ThemedText>
       </ThemedView>
+
+      {/* Étape 2 */}
       <ThemedView style={styles.stepContainer}>
         <Link href="/modal">
           <Link.Trigger>
@@ -64,6 +75,8 @@ export default function HomeScreen() {
           {`Tap the Explore tab to learn more about what's included in this starter app.`}
         </ThemedText>
       </ThemedView>
+
+      {/* Étape 3 */}
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
         <ThemedText>
