@@ -7,10 +7,16 @@ import CoucouComponent from '@/components/nathan';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { StyleSheet } from 'react-native';
+
+// test index
 
 export default function HomeScreen() {
   return (
+    <ThemedView style={styles.container}>
+      <ThemedText type="title" style={styles.title}>
+        Bienvenue sur mon application 👋
+      </ThemedText>
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
       headerImage={
@@ -64,39 +70,30 @@ export default function HomeScreen() {
           </Link.Menu>
         </Link>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      <ThemedText type="default" style={styles.description}>
+        Découvrez une nouvelle expérience mobile simple, fluide et moderne. 
+        Ici, vous pouvez explorer toutes les fonctionnalités à venir.
+      </ThemedText>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    justifyContent: 'center', // centre verticalement
+    alignItems: 'center', // centre horizontalement
+    padding: 20,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    textAlign: 'center',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  description: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: '#555',
   },
 });
