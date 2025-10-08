@@ -1,9 +1,10 @@
+import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 export default function HelloWorld() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>👋 salut les brothers !</Text>
+      <Text style={styles.title}>👋 Hello React Native!</Text>
       <Text style={styles.subtitle}>I’m ready to build cool mobile apps 🚀</Text>
     </View>
   );
