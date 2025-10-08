@@ -26,7 +26,7 @@ export default function HomeScreen() {
 
       {/* ➕ Texte ajouté ici */}
       <ThemedView style={styles.stepContainer}>
-        <ThemedText type="default">Hello everyone</ThemedText>
+        <ThemedText type="default">Hello everyone test</ThemedText>
       </ThemedView>
 
       {/* Étape 1 */}
