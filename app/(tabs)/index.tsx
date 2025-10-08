@@ -2,6 +2,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { StyleSheet } from 'react-native';
 
+// test index
+
 export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
