@@ -2,7 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { StyleSheet } from 'react-native';
 
-// test index
+// test index 2
 
 export default function HomeScreen() {
   return (
@@ -22,8 +22,8 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center', // centre verticalement
-    alignItems: 'center', // centre horizontalement
+    justifyContent: 'center', 
+    alignItems: 'center', 
     padding: 20,
   },
   title: {
