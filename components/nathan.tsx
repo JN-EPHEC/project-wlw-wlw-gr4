@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 export default function CoucouComponent() {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Coucou</Text>
+      <Text style={styles.text}>Coucou la team smartdogs !</Text>
     </View>
   );
 }
