@@ -1,99 +1,70 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import Welcome from '@/components/Matteo';
-import CoucouComponent from '@/components/nathan';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { StyleSheet } from 'react-native';
 
-// test index
+import React from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title" style={styles.title}>
-        Bienvenue sur mon application 👋
-      </ThemedText>
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-        <Welcome/>
-        <CoucouComponent/>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+ return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Choisissez la race de votre chien 🐶 :</Text>
 
-      <ThemedText type="default" style={styles.description}>
-        Découvrez une nouvelle expérience mobile simple, fluide et moderne. 
-        Ici, vous pouvez explorer toutes les fonctionnalités à venir.
-      </ThemedText>
-    </ThemedView>
+      <TouchableOpacity style={[styles.button, styles.lightBrown]}>
+        <Text style={styles.buttonText}>Labrador</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={[styles.button, styles.mediumBrown]}>
+        <Text style={styles.buttonText}>Husky</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={[styles.button, styles.coffeeBrown]}>
+        <Text style={styles.buttonText}>Berger Allemand</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={[styles.button, styles.darkBrown]}>
+        <Text style={styles.buttonText}>Chihuahua</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center', // centre verticalement
-    alignItems: 'center', // centre horizontalement
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5E8C7', // beige clair
     padding: 20,
   },
   title: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 12,
+    color: '#5C4033', // marron foncé
+    marginBottom: 30,
     textAlign: 'center',
   },
-  description: {
-    fontSize: 16,
-    textAlign: 'center',
-    color: '#555',
+  button: {
+    width: '80%',
+    paddingVertical: 15,
+    borderRadius: 10,
+    marginVertical: 8,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  lightBrown: {
+    backgroundColor: '#C4A484', // beige marron clair
+  },
+  mediumBrown: {
+    backgroundColor: '#A47148', // marron moyen
+  },
+  darkBrown: {
+    backgroundColor: '#5C4033', // marron foncé
+  },
+  coffeeBrown: {
+    backgroundColor: '#7B3F00', // brun café
   },
 });
