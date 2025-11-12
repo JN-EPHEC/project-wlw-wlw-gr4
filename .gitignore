@@ -1,9 +1,10 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
+firebase_env.js
 # dependencies
 node_modules/
 
 # Expo
+.env
 .expo/
 dist/
 web-build/
