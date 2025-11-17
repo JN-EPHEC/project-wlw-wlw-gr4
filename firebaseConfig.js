@@ -5,7 +5,7 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import firebaseConfig from "./firebase_env";
 
-// Initialiser Firebase
+// Initialiser Firebase test
 const app = initializeApp(firebaseConfig);
 
 // Exporter les instances des services pour les utiliser ailleurs dans l'app
