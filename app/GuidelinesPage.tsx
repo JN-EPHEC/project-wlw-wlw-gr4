@@ -1,19 +1,64 @@
-import React, { useState } from 'react';
-import { 
-  Copy, Check, Palette, Type, Layout, Layers, Zap, Shield, ArrowLeft,
-  Trophy, Star, Target, TrendingUp, Lock, CheckCircle, Sparkles,
-  Home, User, MessageSquare, Calendar, Settings, Search, Bell, Heart,
-  Plus, X, Eye, Send, Edit, Trash2, Phone, Mail, MapPin, Globe,
-  Users, Dog, Building2, GraduationCap, CreditCard, Camera, Upload,
-  Filter, Activity, Award, Crown, Medal, Gift, AlertCircle, XCircle,
-  ChevronRight, Clock, Euro, Tag, ThumbsUp, AlertTriangle
+import {
+  Activity,
+  AlertCircle,
+  AlertTriangle,
+  ArrowLeft,
+  Award,
+  Bell,
+  Building2,
+  Calendar,
+  Camera,
+  Check,
+  CheckCircle,
+  ChevronRight, Clock,
+  Copy,
+  CreditCard,
+  Crown,
+  Dog,
+  Edit,
+  Euro,
+  Eye,
+  Filter,
+  Gift,
+  Globe,
+  GraduationCap,
+  Heart,
+  Home,
+  Layers,
+  Layout,
+  Lock,
+  Mail, MapPin,
+  Medal,
+  MessageSquare,
+  Palette,
+  Phone,
+  Plus,
+  Search,
+  Send,
+  Settings,
+  Shield,
+  Sparkles,
+  Star,
+  Tag,
+  Target,
+  ThumbsUp,
+  Trash2,
+  TrendingUp,
+  Trophy,
+  Type,
+  Upload,
+  User,
+  Users,
+  X,
+  XCircle,
+  Zap
 } from 'lucide-react';
-import { Card } from './ui/card';
-import { Button } from './ui/button';
+import { useState } from 'react';
 import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
 import { Input } from './ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Progress } from './ui/progress';
 
 interface GuidelinesPageProps {
   onBack?: () => void;

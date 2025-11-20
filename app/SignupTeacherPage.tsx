@@ -454,7 +454,7 @@ export function SignupTeacherPage({ onSignup, onBack }: SignupTeacherPageProps) 
             className="w-full bg-[#F28B6F] hover:bg-[#e67a5f] h-12 text-white"
             disabled={!acceptTerms || isSubmitting}
           >
-            {isSubmitting ? 'Cr�ation en cours...' : 'Cr�er mon compte'}
+            {isSubmitting ? 'Création en cours...' : 'Créer mon compte'}
           </Button>
         </div>
       </div>

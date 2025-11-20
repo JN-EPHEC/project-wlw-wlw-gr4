@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { Building2, Users, Calendar, TrendingUp, AlertCircle, CheckCircle, Clock, Euro, MessageSquare, CreditCard, Zap, Star } from 'lucide-react';
-import { Card } from './ui/card';
-import { Button } from './ui/button';
+import { AlertCircle, Building2, Calendar, CheckCircle, Clock, CreditCard, Euro, MessageSquare, Star, TrendingUp, Users, Zap } from 'lucide-react';
+import { useState } from 'react';
 import { Badge } from './ui/badge';
-import { Progress } from './ui/progress';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Progress } from './ui/progress';
 
 interface ClubHomePageProps {
   onNavigate: (page: string) => void;

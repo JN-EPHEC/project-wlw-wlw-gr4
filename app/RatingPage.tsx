@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Star, CheckCircle2, ThumbsUp, Award, Clock, Smile, Heart, MapPin, Users, BookOpen, Sparkles } from 'lucide-react';
+import { ArrowLeft, Award, BookOpen, CheckCircle2, Clock, Heart, MapPin, Smile, Sparkles, Star, Users } from 'lucide-react';
+import { useState } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
-import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Textarea } from './ui/textarea';
 
 interface RatingPageProps {
   bookingId: number;

@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Trophy, Star, TrendingUp, Users, Award, Crown, Medal, Building2, Calendar, Zap } from 'lucide-react';
-import { Card } from './ui/card';
+import { ArrowLeft, Award, Calendar, Crown, Medal, Star, Trophy, Users } from 'lucide-react';
+import { useState } from 'react';
 import { Badge } from './ui/badge';
-import { Progress } from './ui/progress';
+import { Card } from './ui/card';
 
 interface ClubLeaderboardPageProps {
   onBack: () => void;
@@ -157,7 +156,7 @@ export function ClubLeaderboardPage({ onBack, onViewClub }: ClubLeaderboardPageP
       </div>
 
       {/* Category Tabs - Fixed at top */}
-      <div className="sticky top-0 bg-white z-10 border-b border-gray-200">
+      <div className="bg-white border-b border-gray-200">
         <div className="pt-4 pb-3">
           <div className="overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             <div className="flex gap-2 px-4 min-w-max">

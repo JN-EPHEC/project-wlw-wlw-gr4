@@ -1,13 +1,13 @@
+import { ArrowLeft, Calendar, Hash, MapPin, Megaphone, MoreVertical, Pin, Plus, Send, Settings, Trash2, Users as UsersIcon } from 'lucide-react';
 import { useState } from 'react';
-import { ArrowLeft, Hash, Calendar, Megaphone, Plus, Settings, Users as UsersIcon, MoreVertical, Pin, Trash2, MapPin, Clock, CheckCircle, Send, X } from 'lucide-react';
-import { Card } from './ui/card';
-import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Textarea } from './ui/textarea';
 
 interface TeacherClubCommunityPageProps {
@@ -286,21 +286,21 @@ export function TeacherClubCommunityPage({ clubId = 1, onBack, onNavigate }: Tea
                         {permissions.canPostAnnouncements && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button 
+                                <Button 
                                 variant="ghost" 
                                 size="sm" 
                                 className="h-8 w-8 p-0"
-                                onClick={(e) => e.stopPropagation()}
-                              >
+                                onClick={(e: React.MouseEvent<HTMLButtonElement>) => e.stopPropagation()}
+                                >
                                 <MoreVertical className="h-4 w-4" />
-                              </Button>
+                                </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenuItem onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}>
                                 <Pin className="h-4 w-4 mr-2" />
                                 {announcement.isPinned ? 'Détacher' : 'Épingler'}
                               </DropdownMenuItem>
-                              <DropdownMenuItem className="text-red-600" onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenuItem className="text-red-600" onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}>
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Supprimer
                               </DropdownMenuItem>
@@ -409,19 +409,19 @@ export function TeacherClubCommunityPage({ clubId = 1, onBack, onNavigate }: Tea
 
                     {permissions.canManageChannels && (
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenuTrigger asChild onClick={(e: React.MouseEvent<HTMLButtonElement>) => e.stopPropagation()}>
                           <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenuItem onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}>
                             <Settings className="h-4 w-4 mr-2" />
                             Paramètres
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             className="text-red-600"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Supprimer

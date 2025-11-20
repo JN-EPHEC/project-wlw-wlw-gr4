@@ -1,5 +1,4 @@
-import React from 'react';
-import { Home, Building2, MessageSquare, Calendar, CreditCard } from 'lucide-react';
+import { Building2, Calendar, CreditCard, Home, MessageSquare } from 'lucide-react';
 
 interface ClubBottomNavProps {
   currentPage: string;

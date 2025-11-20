@@ -1,21 +1,19 @@
+import { Building2, Calendar, CheckCircle, Clock, Dog, DollarSign, Edit, Mail, MapPin, Phone, Plus, Search, Trash2, User } from 'lucide-react';
 import { useState } from 'react';
-import { Calendar, Plus, Search, Filter, Clock, MapPin, Dog, User, Phone, Mail, Edit, Trash2, CheckCircle, XCircle, ChevronRight, DollarSign, Building2, X } from 'lucide-react';
-import { Card } from './ui/card';
-import { Button } from './ui/button';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Textarea } from './ui/textarea';
 
-interface TeacherAppointmentsPageProps {
-  onNavigate?: (page: string) => void;
-}
+interface TeacherAppointmentsPageProps {}
 
-export function TeacherAppointmentsPage({ onNavigate }: TeacherAppointmentsPageProps = {}) {
+export function TeacherAppointmentsPage({}: TeacherAppointmentsPageProps = {}) {
   const [searchQuery, setSearchQuery] = useState('');
   const [clubFilter, setClubFilter] = useState('all');
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -238,7 +236,7 @@ export function TeacherAppointmentsPage({ onNavigate }: TeacherAppointmentsPageP
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-4 pt-4 z-10">
+          <div className="bg-white border-b border-gray-200 px-4 pt-4">
             <TabsList className="w-full grid grid-cols-2">
               <TabsTrigger value="upcoming">À venir ({upcomingClasses.length})</TabsTrigger>
               <TabsTrigger value="past">Historique ({pastClasses.length})</TabsTrigger>
@@ -425,7 +423,7 @@ export function TeacherAppointmentsPage({ onNavigate }: TeacherAppointmentsPageP
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Durée (minutes)</Label>
-                <Select value={newClass.duration} onValueChange={(value) => setNewClass({ ...newClass, duration: value })}>
+                <Select value={newClass.duration} onValueChange={(value: any) => setNewClass({ ...newClass, duration: value })}>
                   <SelectTrigger className="mt-1.5">
                     <SelectValue />
                   </SelectTrigger>
@@ -451,7 +449,7 @@ export function TeacherAppointmentsPage({ onNavigate }: TeacherAppointmentsPageP
 
             <div>
               <Label>Club (optionnel)</Label>
-              <Select value={newClass.club} onValueChange={(value) => setNewClass({ ...newClass, club: value })}>
+              <Select value={newClass.club} onValueChange={(value: any) => setNewClass({ ...newClass, club: value })}>
                 <SelectTrigger className="mt-1.5">
                   <SelectValue placeholder="Aucun - Cours indépendant" />
                 </SelectTrigger>
@@ -468,7 +466,7 @@ export function TeacherAppointmentsPage({ onNavigate }: TeacherAppointmentsPageP
               <Label>Terrain</Label>
               <Select 
                 value={newClass.terrain} 
-                onValueChange={(value) => setNewClass({ ...newClass, terrain: value })}
+                onValueChange={(value: any) => setNewClass({ ...newClass, terrain: value })}
               >
                 <SelectTrigger className="mt-1.5">
                   <SelectValue placeholder="Sélectionner un terrain" />

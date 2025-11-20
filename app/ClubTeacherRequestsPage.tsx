@@ -1,9 +1,9 @@
+import { ArrowLeft, Award, Calendar, CheckCircle, Mail, Phone, Shield, Star, X } from 'lucide-react';
 import { useState } from 'react';
-import { ArrowLeft, CheckCircle, X, User, Mail, Phone, Award, Star, Calendar, Shield } from 'lucide-react';
-import { Card } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 
 interface ClubTeacherRequestsPageProps {
@@ -155,7 +155,7 @@ export function ClubTeacherRequestsPage({ onBack }: ClubTeacherRequestsPageProps
                           <Button 
                             size="sm"
                             className="flex-1 bg-[#41B6A6] hover:bg-[#359889] text-white"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e: React.MouseEvent) => e.stopPropagation()}
                           >
                             <CheckCircle className="h-4 w-4 mr-1" />
                             Accepter
@@ -186,7 +186,7 @@ export function ClubTeacherRequestsPage({ onBack }: ClubTeacherRequestsPageProps
                             variant="outline"
                             size="sm"
                             className="flex-1 text-red-600 border-red-200"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e: React.MouseEvent) => e.stopPropagation()}
                           >
                             <X className="h-4 w-4 mr-1" />
                             Refuser

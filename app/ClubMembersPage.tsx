@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Users, Search, UserPlus, UserMinus, Shield, Ban, Clock, MoreVertical, Dog } from 'lucide-react';
+import { ArrowLeft, Ban, Clock, Dog, Search, Shield, UserMinus, UserPlus, Users } from 'lucide-react';
+import { useState } from 'react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+import { Avatar } from './ui/avatar';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { Badge } from './ui/badge';
-import { Input } from './ui/input';
-import { Avatar } from './ui/avatar';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';

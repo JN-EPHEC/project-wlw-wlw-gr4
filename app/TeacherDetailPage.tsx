@@ -1,9 +1,8 @@
-import React from 'react';
-import { ArrowLeft, Star, Award, BadgeCheck, Heart, MapPin, Calendar, Clock, Trophy, Sparkles, BookOpen, Camera } from 'lucide-react';
+import { ArrowLeft, Award, BadgeCheck, BookOpen, Calendar, Camera, Heart, Sparkles, Star, Trophy } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { Card } from './ui/card';
 import { Separator } from './ui/separator';
 
 interface TeacherDetailPageProps {
@@ -13,7 +12,7 @@ interface TeacherDetailPageProps {
   onBookAppointment?: (teacherId: number) => void;
 }
 
-export function TeacherDetailPage({ teacherId, clubId, onBack, onBookAppointment }: TeacherDetailPageProps) {
+export function TeacherDetailPage({ teacherId, onBack, onBookAppointment }: TeacherDetailPageProps) {
   // Mock data - in real app, this would come from props or API based on teacherId
   const teachers: { [key: number]: any } = {
     1: {

@@ -1,16 +1,16 @@
+import { Award, Building2, Calendar, Camera, CheckCircle, ChevronRight, CreditCard, DollarSign, Download, Edit, LogOut, Mail, MapPin, Phone, Save, Shield, Star, Trash2, TrendingUp, User, X } from 'lucide-react';
 import { useState } from 'react';
-import { User, Mail, Phone, MapPin, Calendar, Shield, CreditCard, DollarSign, TrendingUp, Download, Eye, Edit, Save, X, Camera, LogOut, Trash2, ChevronRight, Building2, Star, Award, CheckCircle } from 'lucide-react';
-import { Card } from './ui/card';
-import { Button } from './ui/button';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { Switch } from './ui/switch';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Switch } from './ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Textarea } from './ui/textarea';
 
 interface TeacherAccountPageProps {
   onNavigate?: (page: string) => void;
@@ -102,7 +102,7 @@ export function TeacherAccountPage({ onNavigate, onLogout, onDeleteAccount }: Te
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         <Tabs defaultValue="profile" className="w-full">
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-4 pt-4 z-10">
+          <div className="bg-white border-b border-gray-200 px-4 pt-4">
             <TabsList className="w-full grid grid-cols-3">
               <TabsTrigger value="profile">Profil</TabsTrigger>
               <TabsTrigger value="payments">Paiements</TabsTrigger>
@@ -532,7 +532,10 @@ export function TeacherAccountPage({ onNavigate, onLogout, onDeleteAccount }: Te
 
             <div>
               <Label>Mode de paiement</Label>
-              <Select value={bankInfo.paymentMethod} onValueChange={(value) => setBankInfo({ ...bankInfo, paymentMethod: value })}>
+              <Select
+                value={bankInfo.paymentMethod}
+                onValueChange={(value: 'virement' | 'paypal') => setBankInfo({ ...bankInfo, paymentMethod: value })}
+              >
                 <SelectTrigger className="mt-1.5">
                   <SelectValue />
                 </SelectTrigger>

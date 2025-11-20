@@ -1,12 +1,12 @@
+import { AlertCircle, ArrowLeft, Calendar, CheckCircle, Clock, Dog, Edit, Home, Mail, MapPin, Phone, Send, User, XCircle } from 'lucide-react';
 import React, { useState } from 'react';
-import { ArrowLeft, Home, Calendar, Clock, MapPin, User, Dog, Mail, Phone, CheckCircle, XCircle, Edit, Send, AlertCircle } from 'lucide-react';
-import { Card } from './ui/card';
-import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 
 interface ClubHomeTrainingRequestsPageProps {
   onBack: () => void;
@@ -114,11 +114,6 @@ export function ClubHomeTrainingRequestsPage({ onBack }: ClubHomeTrainingRequest
     },
   ];
 
-  const teachers = [
-    { id: '1', name: 'Sophie Martin', specialty: 'Dressage & Obéissance' },
-    { id: '2', name: 'Pierre Martin', specialty: 'Agility & Sport' },
-    { id: '3', name: 'Sophie Leclerc', specialty: 'Comportement' },
-  ];
 
   const handleViewRequest = (request: any) => {
     setSelectedRequest(request);
@@ -222,7 +217,6 @@ export function ClubHomeTrainingRequestsPage({ onBack }: ClubHomeTrainingRequest
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
         {homeTrainingRequests.map((request) => {
           const statusInfo = getStatusInfo(request.status);
-          const StatusIcon = statusInfo.icon;
 
           return (
             <Card
@@ -281,7 +275,7 @@ export function ClubHomeTrainingRequestsPage({ onBack }: ClubHomeTrainingRequest
                 <div className="flex gap-2 pt-3 border-t border-gray-200">
                   <Button
                     size="sm"
-                    onClick={(e) => {
+                    onClick={(e: React.MouseEvent) => {
                       e.stopPropagation();
                       handleAcceptRequest(request);
                     }}
@@ -293,7 +287,7 @@ export function ClubHomeTrainingRequestsPage({ onBack }: ClubHomeTrainingRequest
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={(e) => {
+                    onClick={(e: React.MouseEvent) => {
                       e.stopPropagation();
                       handleModifyRequest(request);
                     }}
@@ -305,7 +299,7 @@ export function ClubHomeTrainingRequestsPage({ onBack }: ClubHomeTrainingRequest
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={(e) => {
+                    onClick={(e: React.MouseEvent) => {
                       e.stopPropagation();
                       handleRejectRequest(request);
                     }}

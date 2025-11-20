@@ -1,9 +1,7 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Trophy, Star, TrendingUp, Users, Award, Crown, Medal, Zap } from 'lucide-react';
-import { Card } from './ui/card';
+import { ArrowLeft, Award, Crown, Medal, Star, TrendingUp, Trophy, Users, Zap } from 'lucide-react';
+import { useState } from 'react';
 import { Badge } from './ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Avatar } from './ui/avatar';
+import { Card } from './ui/card';
 
 interface TeacherLeaderboardPageProps {
   onBack: () => void;
@@ -186,7 +184,7 @@ export function TeacherLeaderboardPage({ onBack, onViewTeacher }: TeacherLeaderb
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {/* Category Tabs */}
-        <div className="sticky top-0 bg-white z-10 pt-4 pb-3 border-b border-gray-200">
+        <div className="bg-white pt-4 pb-3 border-b border-gray-200">
           <div className="flex gap-2 overflow-x-scroll pb-2 px-4 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
             <button
               onClick={() => setActiveTab('rating')}

@@ -1,5 +1,4 @@
-import React from 'react';
-import { Home, Users, MessageCircle, Dog, UserCircle } from 'lucide-react';
+import { Dog, Home, MessageCircle, UserCircle, Users } from 'lucide-react';
 
 interface BottomNavProps {
   currentPage: string;

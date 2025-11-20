@@ -1,12 +1,11 @@
+import { ArrowLeft, Building2, Camera, Eye, EyeOff, Lock, Mail, Phone, Upload, X } from 'lucide-react';
 import React, { useState } from 'react';
-import { ArrowLeft, Building2, Mail, Lock, Phone, MapPin, Eye, EyeOff, Camera, Upload, X } from 'lucide-react';
-import { registerAccount, formatFirebaseAuthError } from '../hooks/signup';
+import { formatFirebaseAuthError, registerAccount } from '../hooks/signup';
 import { Button } from './ui/button';
+import { Card } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import { Card } from './ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 interface SignupClubPageProps {
   onSignup: () => void;
@@ -470,7 +469,7 @@ export function SignupClubPage({ onSignup, onBack }: SignupClubPageProps) {
             className="w-full bg-[#E9B782] hover:bg-[#d9a772] h-12 text-white"
             disabled={!acceptTerms || isSubmitting}
           >
-            {isSubmitting ? 'Cr�ation en cours...' : 'Cr�er mon compte club'}
+            {isSubmitting ? 'Création en cours...' : 'Créer mon compte club'}
           </Button>
         </div>
       </div>

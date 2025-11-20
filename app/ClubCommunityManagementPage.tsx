@@ -1,7 +1,6 @@
-import React from 'react';
-import { Bell, Calendar, Hash, Users, ChevronRight, MessageCircle } from 'lucide-react';
-import { Card } from './ui/card';
+import { Bell, Calendar, ChevronRight, Hash, MessageCircle, Users } from 'lucide-react';
 import { Badge } from './ui/badge';
+import { Card } from './ui/card';
 
 interface ClubCommunityManagementPageProps {
   onNavigate: (page: string) => void;

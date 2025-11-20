@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Calendar, Plus, Edit, Trash2, MapPin, Users, Clock } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Edit, MapPin, Plus, Trash2, Users } from 'lucide-react';
+import { useState } from 'react';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Textarea } from './ui/textarea';
 
 interface ClubEventsManagementPageProps {
   onBack: () => void;
@@ -90,15 +90,6 @@ export function ClubEventsManagementPage({ onBack }: ClubEventsManagementPagePro
     });
   };
 
-  const getEventTypeLabel = (type: string) => {
-    switch (type) {
-      case 'social': return 'Social';
-      case 'competition': return 'Compétition';
-      case 'training': return 'Formation';
-      case 'openday': return 'Portes ouvertes';
-      default: return type;
-    }
-  };
 
   const getEventTypeBadge = (type: string) => {
     switch (type) {
@@ -206,7 +197,7 @@ export function ClubEventsManagementPage({ onBack }: ClubEventsManagementPagePro
                   <Label>Type d'événement</Label>
                   <Select
                     value={newEvent.type}
-                    onValueChange={(value) => setNewEvent({ ...newEvent, type: value })}
+                    onValueChange={(value: string) => setNewEvent({ ...newEvent, type: value })}
                   >
                     <SelectTrigger className="mt-1.5">
                       <SelectValue placeholder="Sélectionner un type" />

@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { ArrowLeft, UserPlus, Trash2, User, Mail, Phone, BookOpen, Shield, Copy, CheckCircle, AlertCircle, Share2, Eye, EyeOff, Bell } from 'lucide-react';
-import { Card } from './ui/card';
-import { Button } from './ui/button';
+import { AlertCircle, ArrowLeft, Bell, BookOpen, CheckCircle, Copy, Eye, EyeOff, Mail, Phone, Share2, Shield, Trash2, User, UserPlus } from 'lucide-react';
+import { useState } from 'react';
+import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
-import { Alert, AlertDescription } from './ui/alert';
 
 interface Teacher {
   id: number;

@@ -1,77 +1,65 @@
+import {
+  ArrowLeft,
+  Calendar,
+  CreditCard,
+  MapPin,
+  User,
+  Users,
+} from 'lucide-react';
 import React, { useState } from 'react';
-import { ArrowLeft, Calendar, Clock, CreditCard, MapPin, User, Mail, Phone, CheckCircle2, Users } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
+import { Checkbox } from './ui/checkbox';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Separator } from './ui/separator';
-import { Badge } from './ui/badge';
-import { Checkbox } from './ui/checkbox';
 
 interface BookingPageProps {
   clubId: number;
   onBack: () => void;
 }
 
+type Step = 'datetime' | 'info' | 'payment' | 'confirmation';
+
 export function BookingPage({ clubId, onBack }: BookingPageProps) {
-  const [step, setStep] = useState<'datetime' | 'info' | 'payment' | 'confirmation'>('datetime');
+  const [step, setStep] = useState<Step>('datetime');
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
-  const [selectedTerrain, setSelectedTerrain] = useState<{name: string, address: string} | null>(null);
   const [subscribeToClub, setSubscribeToClub] = useState(true);
-  
-  // Mock data
-  const club = {
-    name: 'Canin Club Paris',
-    address: '42 Avenue des Champs-Élysées, 75008 Paris',
-  };
-
-  const terrains = [
-    { id: 1, name: 'Terrain principal', address: '123 Rue de la République, 75015 Paris' },
-    { id: 2, name: 'Terrain de dressage', address: '45 Avenue du Parc, 75015 Paris' },
-  ];
-
-  const availableDates = [
-    { date: 'Lun 25 Oct', value: '2025-10-25' },
-    { date: 'Mar 26 Oct', value: '2025-10-26' },
-    { date: 'Mer 27 Oct', value: '2025-10-27' },
-    { date: 'Jeu 28 Oct', value: '2025-10-28' },
-  ];
-
-  // Créneaux avec terrain assigné
-  const availableSlots = [
-    { date: '2025-10-25', time: '09:00', terrain: terrains[0] },
-    { date: '2025-10-25', time: '10:00', terrain: terrains[0] },
-    { date: '2025-10-25', time: '11:00', terrain: terrains[1] },
-    { date: '2025-10-25', time: '14:00', terrain: terrains[1] },
-    { date: '2025-10-26', time: '09:00', terrain: terrains[0] },
-    { date: '2025-10-26', time: '10:00', terrain: terrains[1] },
-    { date: '2025-10-26', time: '11:00', terrain: terrains[0] },
-    { date: '2025-10-26', time: '14:00', terrain: terrains[1] },
-    { date: '2025-10-27', time: '09:00', terrain: terrains[0] },
-    { date: '2025-10-27', time: '10:00', terrain: terrains[1] },
-    { date: '2025-10-27', time: '15:00', terrain: terrains[0] },
-    { date: '2025-10-27', time: '16:00', terrain: terrains[1] },
-    { date: '2025-10-28', time: '09:00', terrain: terrains[0] },
-    { date: '2025-10-28', time: '10:00', terrain: terrains[1] },
-    { date: '2025-10-28', time: '14:00', terrain: terrains[0] },
-    { date: '2025-10-28', time: '15:00', terrain: terrains[1] },
-  ];
-
-  const services = [
-    { name: 'Séance individuelle (1h)', price: 45 },
-    { name: 'Évaluation comportementale', price: 30 },
-  ];
 
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     dogName: '',
-    service: services[0].name,
   });
 
-  const handleConfirmBooking = () => {
+  // Very small set of mock data (simplified from original)
+  const club = {
+    id: clubId,
+    name: 'Canin Club Paris',
+    address: '42 Avenue des Champs-Élysées, 75008 Paris',
+  };
+
+  const dates = [
+    { label: 'Lun 25 Oct', value: '2025-10-25' },
+    { label: 'Mar 26 Oct', value: '2025-10-26' },
+  ];
+
+  const slots = [
+    { date: '2025-10-25', time: '09:00' },
+    { date: '2025-10-25', time: '10:00' },
+    { date: '2025-10-26', time: '14:00' },
+  ];
+
+  const canGoToInfo = selectedDate !== '' && selectedTime !== '';
+  const canGoToPayment =
+    formData.name.trim() &&
+    formData.email.trim() &&
+    formData.phone.trim() &&
+    formData.dogName.trim();
+
+  const handleConfirm = () => {
     setStep('confirmation');
   };
 
@@ -80,67 +68,60 @@ export function BookingPage({ clubId, onBack }: BookingPageProps) {
       <div className="flex flex-col h-full bg-white">
         {/* Header */}
         <div className="bg-gradient-to-br from-[#41B6A6] to-[#359889] px-4 pt-12 pb-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onBack}
-            className="mb-4 text-white hover:bg-white/20 rounded-full"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-white">Réservation confirmée</h1>
+          <div className="flex items-center justify-between">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onBack}
+              className="text-white hover:bg-white/20 rounded-full"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="flex-1 text-center text-white text-lg font-semibold">
+              Réservation confirmée
+            </h1>
+            <div className="w-10" />
+          </div>
         </div>
 
-        {/* Confirmation Content */}
+        {/* Content */}
         <div className="flex-1 overflow-y-auto px-4 py-8">
           <div className="flex flex-col items-center text-center mb-8">
             <div className="w-20 h-20 bg-[#41B6A6]/10 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle2 className="h-12 w-12 text-[#41B6A6]" />
+              <Calendar className="h-12 w-12 text-[#41B6A6]" />
             </div>
             <h2 className="text-gray-800 mb-2">Réservation réussie !</h2>
             <p className="text-gray-600">
-              Votre rendez-vous a été confirmé. Vous recevrez un email de confirmation.
+              Votre rendez-vous a été confirmé. Vous recevrez un email de
+              confirmation.
             </p>
           </div>
 
           <Card className="p-6 border-2 border-[#41B6A6]/20">
             <h3 className="text-gray-800 mb-4">Détails de la réservation</h3>
-            
-            <div className="space-y-4">
+            <div className="space-y-4 text-sm">
               <div className="flex items-start gap-3">
                 <Calendar className="h-5 w-5 text-[#41B6A6] mt-0.5" />
                 <div>
-                  <p className="text-sm text-gray-500">Date et heure</p>
+                  <p className="text-gray-500">Date et heure</p>
                   <p className="text-gray-800">
-                    {availableDates.find(d => d.value === selectedDate)?.date} à {selectedTime}
+                    {dates.find((d) => d.value === selectedDate)?.label} à{' '}
+                    {selectedTime}
                   </p>
                 </div>
               </div>
-
               <div className="flex items-start gap-3">
                 <MapPin className="h-5 w-5 text-[#41B6A6] mt-0.5" />
                 <div>
-                  <p className="text-sm text-gray-500">Lieu - Club</p>
+                  <p className="text-gray-500">Lieu - Club</p>
                   <p className="text-gray-800">{club.name}</p>
                   <p className="text-xs text-gray-600 mt-1">{club.address}</p>
                 </div>
               </div>
-
-              {selectedTerrain && (
-                <div className="flex items-start gap-3">
-                  <MapPin className="h-5 w-5 text-[#41B6A6] mt-0.5" />
-                  <div>
-                    <p className="text-sm text-gray-500">Terrain assigné</p>
-                    <p className="text-gray-800">{selectedTerrain.name}</p>
-                    <p className="text-xs text-gray-600 mt-1">{selectedTerrain.address}</p>
-                  </div>
-                </div>
-              )}
-
               <div className="flex items-start gap-3">
                 <User className="h-5 w-5 text-[#41B6A6] mt-0.5" />
                 <div>
-                  <p className="text-sm text-gray-500">Votre chien</p>
+                  <p className="text-gray-500">Votre chien</p>
                   <p className="text-gray-800">{formData.dogName}</p>
                 </div>
               </div>
@@ -152,13 +133,7 @@ export function BookingPage({ clubId, onBack }: BookingPageProps) {
               onClick={onBack}
               className="w-full bg-[#41B6A6] hover:bg-[#359889] rounded-2xl h-12"
             >
-              Retour à l'accueil
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full rounded-2xl h-12 border-[#41B6A6] text-[#41B6A6] hover:bg-[#41B6A6]/10"
-            >
-              Ajouter au calendrier
+              Retour à l&apos;accueil
             </Button>
           </div>
         </div>
@@ -182,41 +157,36 @@ export function BookingPage({ clubId, onBack }: BookingPageProps) {
         <p className="text-white/80 mt-2">{club.name}</p>
       </div>
 
-      {/* Progress Indicator */}
+      {/* Step indicator */}
       <div className="px-4 py-4 bg-gray-50 border-b">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-              step === 'datetime' ? 'bg-[#41B6A6] text-white' : 'bg-gray-200 text-gray-600'
-            }`}>
-              1
-            </div>
-            <span className={`text-sm ${step === 'datetime' ? 'text-[#41B6A6]' : 'text-gray-600'}`}>
-              Date & Heure
-            </span>
-          </div>
-          <div className="flex-1 h-0.5 bg-gray-200 mx-2" />
-          <div className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-              step === 'info' ? 'bg-[#41B6A6] text-white' : 'bg-gray-200 text-gray-600'
-            }`}>
-              2
-            </div>
-            <span className={`text-sm ${step === 'info' ? 'text-[#41B6A6]' : 'text-gray-600'}`}>
-              Infos
-            </span>
-          </div>
-          <div className="flex-1 h-0.5 bg-gray-200 mx-2" />
-          <div className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-              step === 'payment' ? 'bg-[#41B6A6] text-white' : 'bg-gray-200 text-gray-600'
-            }`}>
-              3
-            </div>
-            <span className={`text-sm ${step === 'payment' ? 'text-[#41B6A6]' : 'text-gray-600'}`}>
-              Paiement
-            </span>
-          </div>
+          {[
+            { id: 'datetime', label: 'Date & heure', index: 1 },
+            { id: 'info', label: 'Infos', index: 2 },
+            { id: 'payment', label: 'Paiement', index: 3 },
+          ].map((s, i) => (
+            <React.Fragment key={s.id}>
+              {i > 0 && <div className="flex-1 h-0.5 bg-gray-200 mx-2" />}
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
+                    step === s.id
+                      ? 'bg-[#41B6A6] text-white'
+                      : 'bg-gray-200 text-gray-600'
+                  }`}
+                >
+                  {s.index}
+                </div>
+                <span
+                  className={`text-sm ${
+                    step === s.id ? 'text-[#41B6A6]' : 'text-gray-600'
+                  }`}
+                >
+                  {s.label}
+                </span>
+              </div>
+            </React.Fragment>
+          ))}
         </div>
       </div>
 
@@ -227,20 +197,35 @@ export function BookingPage({ clubId, onBack }: BookingPageProps) {
             <div>
               <h2 className="text-gray-800 mb-4">Choisissez une date</h2>
               <div className="grid grid-cols-2 gap-3">
-                {availableDates.map((date) => (
+                {dates.map((date) => (
                   <Card
                     key={date.value}
-                    onClick={() => setSelectedDate(date.value)}
                     className={`p-4 cursor-pointer transition-all ${
                       selectedDate === date.value
                         ? 'border-2 border-[#41B6A6] bg-[#41B6A6]/5'
                         : 'border border-gray-200 hover:border-[#41B6A6]'
                     }`}
+                    onClick={() => {
+                      setSelectedDate(date.value);
+                      setSelectedTime('');
+                    }}
                   >
                     <div className="flex items-center gap-2">
-                      <Calendar className={`h-5 w-5 ${selectedDate === date.value ? 'text-[#41B6A6]' : 'text-gray-400'}`} />
-                      <span className={selectedDate === date.value ? 'text-[#41B6A6]' : 'text-gray-700'}>
-                        {date.date}
+                      <Calendar
+                        className={`h-5 w-5 ${
+                          selectedDate === date.value
+                            ? 'text-[#41B6A6]'
+                            : 'text-gray-400'
+                        }`}
+                      />
+                      <span
+                        className={
+                          selectedDate === date.value
+                            ? 'text-[#41B6A6]'
+                            : 'text-gray-700'
+                        }
+                      >
+                        {date.label}
                       </span>
                     </div>
                   </Card>
@@ -252,40 +237,25 @@ export function BookingPage({ clubId, onBack }: BookingPageProps) {
               <div>
                 <h2 className="text-gray-800 mb-4">Choisissez un horaire</h2>
                 <div className="grid grid-cols-3 gap-2">
-                  {availableSlots
-                    .filter(slot => slot.date === selectedDate)
+                  {slots
+                    .filter((slot) => slot.date === selectedDate)
                     .map((slot) => (
                       <Button
                         key={slot.time}
-                        variant={selectedTime === slot.time ? 'default' : 'outline'}
-                        onClick={() => {
-                          setSelectedTime(slot.time);
-                          setSelectedTerrain(slot.terrain);
-                        }}
+                        variant={
+                          selectedTime === slot.time ? 'default' : 'outline'
+                        }
                         className={`rounded-xl ${
                           selectedTime === slot.time
                             ? 'bg-[#41B6A6] hover:bg-[#359889]'
                             : 'border-gray-200 hover:border-[#41B6A6]'
                         }`}
+                        onClick={() => setSelectedTime(slot.time)}
                       >
                         {slot.time}
                       </Button>
                     ))}
                 </div>
-                
-                {/* Afficher le terrain sélectionné */}
-                {selectedTime && selectedTerrain && (
-                  <Card className="mt-4 p-4 bg-[#41B6A6]/5 border-[#41B6A6]/20">
-                    <div className="flex items-start gap-3">
-                      <MapPin className="h-5 w-5 text-[#41B6A6] mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">Terrain assigné</p>
-                        <p className="text-gray-800">{selectedTerrain.name}</p>
-                        <p className="text-xs text-gray-600 mt-1">{selectedTerrain.address}</p>
-                      </div>
-                    </div>
-                  </Card>
-                )}
               </div>
             )}
           </div>
@@ -301,7 +271,9 @@ export function BookingPage({ clubId, onBack }: BookingPageProps) {
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
                     placeholder="Nom complet"
                     className="mt-1.5 rounded-xl"
                   />
@@ -312,7 +284,9 @@ export function BookingPage({ clubId, onBack }: BookingPageProps) {
                     id="email"
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
                     placeholder="votre@email.com"
                     className="mt-1.5 rounded-xl"
                   />
@@ -323,7 +297,9 @@ export function BookingPage({ clubId, onBack }: BookingPageProps) {
                     id="phone"
                     type="tel"
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
                     placeholder="+33 6 00 00 00 00"
                     className="mt-1.5 rounded-xl"
                   />
@@ -333,8 +309,10 @@ export function BookingPage({ clubId, onBack }: BookingPageProps) {
                   <Input
                     id="dogName"
                     value={formData.dogName}
-                    onChange={(e) => setFormData({ ...formData, dogName: e.target.value })}
-                    placeholder="Rex"
+                    onChange={(e) =>
+                      setFormData({ ...formData, dogName: e.target.value })
+                    }
+                    placeholder="Max"
                     className="mt-1.5 rounded-xl"
                   />
                 </div>
@@ -344,51 +322,29 @@ export function BookingPage({ clubId, onBack }: BookingPageProps) {
             <Separator />
 
             <div>
-              <h2 className="text-gray-800 mb-4">Type de séance</h2>
-              <div className="space-y-3">
-                {services.map((service) => (
-                  <Card
-                    key={service.name}
-                    onClick={() => setFormData({ ...formData, service: service.name })}
-                    className={`p-4 cursor-pointer transition-all ${
-                      formData.service === service.name
-                        ? 'border-2 border-[#41B6A6] bg-[#41B6A6]/5'
-                        : 'border border-gray-200 hover:border-[#41B6A6]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-gray-800">{service.name}</p>
-                      </div>
-                      <Badge className="bg-[#E9B782] text-white border-0">
-                        {service.price}€
-                      </Badge>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Subscribe to club community */}
-            <div>
+              <h2 className="text-gray-800 mb-4">Communauté du club</h2>
               <Card className="p-4 bg-gradient-to-br from-[#41B6A6]/5 to-[#41B6A6]/10 border-[#41B6A6]/20">
                 <div className="flex items-start gap-3">
-                  <Checkbox 
-                    id="subscribe" 
+                  <Checkbox
+                    id="subscribe"
                     checked={subscribeToClub}
-                    onCheckedChange={(checked) => setSubscribeToClub(checked as boolean)}
+                    onCheckedChange={(checked: any) =>
+                      setSubscribeToClub(!!checked)
+                    }
                     className="mt-1 data-[state=checked]:bg-[#41B6A6] data-[state=checked]:border-[#41B6A6]"
                   />
                   <div className="flex-1">
-                    <label htmlFor="subscribe" className="text-gray-800 cursor-pointer flex items-center gap-2">
+                    <label
+                      htmlFor="subscribe"
+                      className="text-gray-800 cursor-pointer flex items-center gap-2"
+                    >
                       <Users className="h-5 w-5 text-[#41B6A6]" />
                       <span>Rejoindre la communauté du club</span>
                     </label>
                     <p className="text-sm text-gray-600 mt-2">
-                      Accédez aux salons de discussion, annonces et événements du club. 
-                      Échangez avec d'autres propriétaires et les éducateurs !
+                      Accédez aux salons de discussion, annonces et événements
+                      du club, et échangez avec d&apos;autres propriétaires et
+                      éducateurs.
                     </p>
                   </div>
                 </div>
@@ -402,36 +358,21 @@ export function BookingPage({ clubId, onBack }: BookingPageProps) {
             <div>
               <h2 className="text-gray-800 mb-4">Récapitulatif</h2>
               <Card className="p-4 border-[#41B6A6]/20 bg-[#41B6A6]/5">
-                <div className="space-y-3">
+                <div className="space-y-3 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Date</span>
                     <span className="text-gray-800">
-                      {availableDates.find(d => d.value === selectedDate)?.date}
+                      {dates.find((d) => d.value === selectedDate)?.label}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Heure</span>
                     <span className="text-gray-800">{selectedTime}</span>
                   </div>
-                  {selectedTerrain && (
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-gray-600">Terrain</span>
-                      <div className="text-right">
-                        <p className="text-gray-800">{selectedTerrain.name}</p>
-                        <p className="text-xs text-gray-600">{selectedTerrain.address}</p>
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Service</span>
-                    <span className="text-gray-800">{formData.service}</span>
-                  </div>
                   <Separator />
                   <div className="flex items-center justify-between">
                     <span className="text-gray-800">Total</span>
-                    <span className="text-[#41B6A6]">
-                      {services.find(s => s.name === formData.service)?.price}€
-                    </span>
+                    <span className="text-[#41B6A6]">45 €</span>
                   </div>
                 </div>
               </Card>
@@ -453,7 +394,7 @@ export function BookingPage({ clubId, onBack }: BookingPageProps) {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="expiry">Date d'expiration</Label>
+                    <Label htmlFor="expiry">Date d&apos;expiration</Label>
                     <Input
                       id="expiry"
                       placeholder="MM/AA"
@@ -474,7 +415,7 @@ export function BookingPage({ clubId, onBack }: BookingPageProps) {
 
             <Card className="p-4 bg-blue-50 border-blue-200">
               <p className="text-sm text-blue-800">
-                💳 Paiement sécurisé. Vos informations sont protégées.
+                Paiement sécurisé. Vos informations sont protégées.
               </p>
             </Card>
           </div>
@@ -486,12 +427,13 @@ export function BookingPage({ clubId, onBack }: BookingPageProps) {
         {step === 'datetime' && (
           <Button
             onClick={() => setStep('info')}
-            disabled={!selectedDate || !selectedTime}
+            disabled={!canGoToInfo}
             className="w-full bg-[#41B6A6] hover:bg-[#359889] rounded-2xl h-14 disabled:opacity-50"
           >
             Continuer
           </Button>
         )}
+
         {step === 'info' && (
           <div className="flex gap-3">
             <Button
@@ -503,13 +445,14 @@ export function BookingPage({ clubId, onBack }: BookingPageProps) {
             </Button>
             <Button
               onClick={() => setStep('payment')}
-              disabled={!formData.name || !formData.email || !formData.phone || !formData.dogName}
+              disabled={!canGoToPayment}
               className="flex-1 bg-[#41B6A6] hover:bg-[#359889] rounded-2xl h-14 disabled:opacity-50"
             >
               Continuer
             </Button>
           </div>
         )}
+
         {step === 'payment' && (
           <div className="flex gap-3">
             <Button
@@ -520,7 +463,7 @@ export function BookingPage({ clubId, onBack }: BookingPageProps) {
               Retour
             </Button>
             <Button
-              onClick={handleConfirmBooking}
+              onClick={handleConfirm}
               className="flex-1 bg-[#41B6A6] hover:bg-[#359889] rounded-2xl h-14"
             >
               Confirmer la réservation
@@ -531,3 +474,4 @@ export function BookingPage({ clubId, onBack }: BookingPageProps) {
     </div>
   );
 }
+

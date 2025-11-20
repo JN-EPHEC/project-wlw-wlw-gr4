@@ -1,15 +1,14 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Award, Lock, Calendar, TrendingUp } from 'lucide-react';
-import { Card } from './ui/card';
+import { ArrowLeft, Award, Calendar, Lock, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
 import { Badge } from './ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Card } from './ui/card';
 
 interface BadgesCollectionPageProps {
   dogId: number;
   onBack: () => void;
 }
 
-export function BadgesCollectionPage({ dogId, onBack }: BadgesCollectionPageProps) {
+export function BadgesCollectionPage({ onBack }: BadgesCollectionPageProps) {
   const [selectedBadge, setSelectedBadge] = useState<any>(null);
 
   // Mock data
@@ -113,7 +112,7 @@ export function BadgesCollectionPage({ dogId, onBack }: BadgesCollectionPageProp
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {/* Category Tabs */}
-        <div className="sticky top-0 bg-white z-10 px-4 pt-4 pb-3 border-b border-gray-200">
+        <div className="px-4 pt-4 pb-3 border-b border-gray-200 bg-white">
           <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
             {categories.map((category) => (
               <button

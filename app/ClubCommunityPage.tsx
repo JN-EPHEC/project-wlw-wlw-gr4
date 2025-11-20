@@ -1,8 +1,7 @@
-import React from 'react';
-import { ArrowLeft, Hash, Bell, MessageCircle, Calendar, Users, Volume2, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Bell, Calendar, ChevronRight, Hash, MessageCircle, Users, Volume2 } from 'lucide-react';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 
 interface ClubCommunityPageProps {

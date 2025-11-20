@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Sparkles, Target, Calendar, BookOpen, Zap, AlertCircle, CheckCircle2, TrendingUp, Heart, Award, Clock } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Award, BookOpen, Calendar, CheckCircle2, Clock, Heart, Sparkles, Target, TrendingUp, Zap } from 'lucide-react';
+import { useState } from 'react';
+import { DogProfile } from './DjanAIOnboardingPage';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
-import { DogProfile } from './DjanAIOnboardingPage';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 
 interface DjanAIResultsPageProps {
   profile: DogProfile;
@@ -198,7 +198,7 @@ export function DjanAIResultsPage({ profile, onBack, onRestart }: DjanAIResultsP
 
       {/* Tabs */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="flex-1 flex flex-col min-h-0">
-        <TabsList className="sticky top-0 z-10 w-full justify-start rounded-none border-b border-gray-200 bg-white px-4">
+        <TabsList className="w-full justify-start rounded-none border-b border-gray-200 bg-white px-4">
           <TabsTrigger value="program" className="data-[state=active]:border-b-2 data-[state=active]:border-[#41B6A6]">
             <Calendar className="h-4 w-4 mr-2" />
             Programme

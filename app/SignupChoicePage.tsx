@@ -1,5 +1,4 @@
-import React from 'react';
-import { ArrowLeft, User, Building2, GraduationCap, Check } from 'lucide-react';
+import { ArrowLeft, Building2, Check, GraduationCap, User } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 

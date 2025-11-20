@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Star, MapPin, BadgeCheck, Calendar, Clock, Award, Users, Phone, Mail, Heart, Euro, CheckCircle, AlertCircle, Trophy, Target } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Award, BadgeCheck, Calendar, CheckCircle, Clock, Euro, Heart, MapPin, Star, Target, Trophy, Users } from 'lucide-react';
+import { useState } from 'react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { Card } from './ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { Card } from './ui/card';
 import { Separator } from './ui/separator';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 
 interface EventDetailPageProps {
   eventId: number;
@@ -75,71 +75,71 @@ export function EventDetailPage({ eventId, onBack, onRegister }: EventDetailPage
   };
 
   const spotsRemaining = event.participants.max - event.participants.registered;
-  const percentFull = (event.participants.registered / event.participants.max) * 100;
 
   return (
     <div className="relative flex flex-col h-full bg-white">
-      {/* Header with Image */}
-      <div className="relative h-64 flex-shrink-0">
-        <ImageWithFallback
-          src={event.headerImage}
-          alt={event.name}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-        
-        {/* Back Button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onBack}
-          className="absolute top-4 left-4 bg-white/90 hover:bg-white rounded-full shadow-lg"
-        >
-          <ArrowLeft className="h-5 w-5 text-gray-800" />
-        </Button>
-
-        {/* Favorite Button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsFavorite(!isFavorite)}
-          className="absolute top-4 right-4 bg-white/90 hover:bg-white rounded-full shadow-lg"
-        >
-          <Heart
-            className={`h-5 w-5 ${
-              isFavorite ? 'fill-[#F28B6F] text-[#F28B6F]' : 'text-gray-800'
-            } transition-colors`}
+      {/* Content with scrollable header */}
+      <div className="flex-1 overflow-y-auto pb-32">
+        {/* Header with Image */}
+        <div className="relative h-64 flex-shrink-0">
+          <ImageWithFallback
+            src={event.headerImage}
+            alt={event.name}
+            className="w-full h-full object-cover"
           />
-        </Button>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          
+          {/* Back Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onBack}
+            className="absolute top-4 left-4 bg-white/90 hover:bg-white rounded-full shadow-lg"
+          >
+            <ArrowLeft className="h-5 w-5 text-gray-800" />
+          </Button>
 
-        {/* Event Badge */}
-        <Badge className="absolute top-20 left-4 bg-purple-600 text-white border-0">
-          <Calendar className="h-3 w-3 mr-1" />
-          Événement
-        </Badge>
+          {/* Favorite Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsFavorite(!isFavorite)}
+            className="absolute top-4 right-4 bg-white/90 hover:bg-white rounded-full shadow-lg"
+          >
+            <Heart
+              className={`h-5 w-5 ${
+                isFavorite ? 'fill-[#F28B6F] text-[#F28B6F]' : 'text-gray-800'
+              } transition-colors`}
+            />
+          </Button>
 
-        {/* Event Name */}
-        <div className="absolute bottom-4 left-4 right-4">
-          <h1 className="text-white mb-2">{event.name}</h1>
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-1 text-white/90">
-              <Calendar className="h-4 w-4" />
-              <span className="text-sm">{event.date}</span>
-            </div>
-            <div className="flex items-center gap-1 text-white/90">
-              <Clock className="h-4 w-4" />
-              <span className="text-sm">{event.time}</span>
-            </div>
-            <div className="flex items-center gap-1 text-white/90">
-              <MapPin className="h-4 w-4" />
-              <span className="text-sm">{event.distance}</span>
+          {/* Event Badge */}
+          <Badge className="absolute top-20 left-4 bg-purple-600 text-white border-0">
+            <Calendar className="h-3 w-3 mr-1" />
+            Événement
+          </Badge>
+
+          {/* Event Name */}
+          <div className="absolute bottom-4 left-4 right-4">
+            <h1 className="text-white mb-2">{event.name}</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-1 text-white/90">
+                <Calendar className="h-4 w-4" />
+                <span className="text-sm">{event.date}</span>
+              </div>
+              <div className="flex items-center gap-1 text-white/90">
+                <Clock className="h-4 w-4" />
+                <span className="text-sm">{event.time}</span>
+              </div>
+              <div className="flex items-center gap-1 text-white/90">
+                <MapPin className="h-4 w-4" />
+                <span className="text-sm">{event.distance}</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto pb-24">
+        {/* Content sections */}
         <div className="px-4 py-6 space-y-6">
           
           {/* Organizer Card */}
@@ -328,7 +328,7 @@ export function EventDetailPage({ eventId, onBack, onRegister }: EventDetailPage
       </div>
 
       {/* Fixed Bottom Button */}
-      <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg">
+      <div className="fixed bottom-20 left-0 right-0 max-w-[393px] mx-auto bg-white border-t border-gray-200 p-4 shadow-lg z-40">
         <Button
           onClick={() => onRegister(eventId)}
           className="w-full bg-purple-600 hover:bg-purple-700 rounded-2xl h-14"

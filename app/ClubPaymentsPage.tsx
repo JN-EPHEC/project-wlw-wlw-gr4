@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { CreditCard, TrendingUp, Download, Filter, Calendar, CheckCircle, Clock, XCircle, Euro, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import { Card } from './ui/card';
-import { Button } from './ui/button';
+import { ArrowUpRight, CheckCircle, Clock, CreditCard, Download, Euro, Filter, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
 import { Badge } from './ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
 import { Progress } from './ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 
 export function ClubPaymentsPage() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -176,7 +176,7 @@ export function ClubPaymentsPage() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="px-4 py-4 bg-white sticky top-0 z-10 shadow-sm">
+          <div className="px-4 py-4 bg-white shadow-sm">
             <TabsList className="w-full grid grid-cols-3 p-1 bg-gray-100 rounded-xl h-auto gap-1">
               <TabsTrigger 
                 value="overview" 

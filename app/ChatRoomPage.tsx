@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Send, MoreVertical, Users, Smile, Paperclip, Heart, ThumbsUp, CheckCircle } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Paperclip, Send, Smile, Users } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Avatar } from './ui/avatar';
 import { Card } from './ui/card';
+import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
 
 interface ChatRoomPageProps {
@@ -13,7 +12,7 @@ interface ChatRoomPageProps {
   onBack: () => void;
 }
 
-export function ChatRoomPage({ clubId, channelId, channelName, onBack }: ChatRoomPageProps) {
+export function ChatRoomPage({ channelId, channelName, onBack }: ChatRoomPageProps) {
   const [newMessage, setNewMessage] = useState('');
   const isAnnouncementChannel = channelId === 'announcements';
 

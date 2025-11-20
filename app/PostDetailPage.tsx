@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { ArrowLeft, ThumbsUp, MessageSquare, Eye, MoreVertical, Send } from 'lucide-react';
+import { ArrowLeft, Eye, MessageSquare, MoreVertical, Send, ThumbsUp } from 'lucide-react';
+import { useState } from 'react';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { Badge } from './ui/badge';
-import { Separator } from './ui/separator';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
+import { Separator } from './ui/separator';
 
 interface PostDetailPageProps {
   postId: number;

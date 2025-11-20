@@ -1,19 +1,19 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Calendar, Clock, CreditCard, MapPin, User, Mail, Phone, CheckCircle2, Users, Trophy, Plus, Minus, PawPrint } from 'lucide-react';
+import { ArrowLeft, Calendar, CheckCircle2, CreditCard, MapPin, Minus, PawPrint, Plus, Trophy, Users } from 'lucide-react';
+import { useState } from 'react';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Separator } from './ui/separator';
-import { Badge } from './ui/badge';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { Separator } from './ui/separator';
 
 interface EventBookingPageProps {
   eventId: number;
   onBack: () => void;
 }
 
-export function EventBookingPage({ eventId, onBack }: EventBookingPageProps) {
+export function EventBookingPage({ onBack }: EventBookingPageProps) {
   const [step, setStep] = useState<'dog' | 'spectators' | 'info' | 'payment' | 'confirmation'>('dog');
   const [selectedDog, setSelectedDog] = useState<string>('');
   const [participantType, setParticipantType] = useState<'participant' | 'spectator'>('participant');
@@ -101,7 +101,7 @@ export function EventBookingPage({ eventId, onBack }: EventBookingPageProps) {
 
   if (step === 'confirmation') {
     return (
-      <div className="flex flex-col h-full bg-white">
+      <div className="flex flex-col h-full bg-white overflow-y-auto">
         {/* Header */}
         <div className="bg-gradient-to-br from-purple-600 to-purple-700 px-4 pt-12 pb-6">
           <Button
@@ -116,7 +116,7 @@ export function EventBookingPage({ eventId, onBack }: EventBookingPageProps) {
         </div>
 
         {/* Confirmation Content */}
-        <div className="flex-1 overflow-y-auto px-4 py-8">
+        <div className="px-4 py-8">
           <div className="flex flex-col items-center text-center mb-8">
             <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mb-4">
               <CheckCircle2 className="h-12 w-12 text-purple-600" />
@@ -208,7 +208,7 @@ export function EventBookingPage({ eventId, onBack }: EventBookingPageProps) {
   }
 
   return (
-    <div className="relative flex flex-col h-full bg-white">
+    <div className="relative flex flex-col h-full bg-white overflow-y-auto">
       {/* Header */}
       <div className="bg-gradient-to-br from-purple-600 to-purple-700 px-4 pt-12 pb-6">
         <Button
@@ -273,14 +273,14 @@ export function EventBookingPage({ eventId, onBack }: EventBookingPageProps) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 pb-24">
+      <div className="px-4 py-6 pb-24">
         
         {/* Step 1: Choose participation type and dog */}
         {step === 'dog' && (
           <div className="space-y-6">
             <div>
               <h2 className="text-gray-800 mb-4">Type de participation</h2>
-              <RadioGroup value={participantType} onValueChange={(value) => setParticipantType(value as 'participant' | 'spectator')}>
+              <RadioGroup value={participantType} onValueChange={(value: string) => setParticipantType(value as 'participant' | 'spectator')}>
                 <Card className={`p-4 cursor-pointer transition-all ${
                   participantType === 'participant'
                     ? 'border-2 border-purple-600 bg-purple-600/5'

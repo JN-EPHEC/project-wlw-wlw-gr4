@@ -1,8 +1,6 @@
-import React from 'react';
-import { Users, MessageCircle, Bell, ChevronRight, BadgeCheck } from 'lucide-react';
+import { BadgeCheck, Bell, ChevronRight, MessageCircle, Users } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Card } from './ui/card';
-import { Badge } from './ui/badge';
 
 interface CommunityPageProps {
   onClubClick?: (clubId: number) => void;
@@ -44,7 +42,7 @@ export function CommunityPage({ onClubClick }: CommunityPageProps) {
   ];
 
   return (
-    <div className="flex flex-col h-full bg-white pb-20">
+    <div className="flex flex-col h-full bg-white pb-20 overflow-y-auto">
       {/* Header */}
       <div className="bg-gradient-to-br from-[#41B6A6] to-[#359889] px-4 pt-12 pb-6">
         <h1 className="text-white mb-2">Communauté</h1>
@@ -83,7 +81,7 @@ export function CommunityPage({ onClubClick }: CommunityPageProps) {
       </div>
 
       {/* Clubs List */}
-      <div className="flex-1 overflow-y-auto">
+      <div>
         {affiliatedClubs.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full px-8 text-center">
             <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">

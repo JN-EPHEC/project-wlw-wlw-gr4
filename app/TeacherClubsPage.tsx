@@ -1,22 +1,22 @@
+import { Building2, Calendar, CheckCircle, Clock, DollarSign, GraduationCap, MapPin, Plus, Search, Send, Star, Users, X } from 'lucide-react';
 import { useState } from 'react';
-import { Building2, Plus, Search, MapPin, Users, Calendar, CheckCircle, Clock, X, Send, Star, Award, ChevronRight, TrendingUp, DollarSign, GraduationCap } from 'lucide-react';
-import { Card } from './ui/card';
-import { Button } from './ui/button';
+import { TeacherBottomNav } from './TeacherBottomNav';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
-import { TeacherBottomNav } from './TeacherBottomNav';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Textarea } from './ui/textarea';
 
 interface TeacherClubsPageProps {
   onNavigate?: (page: string) => void;
   onBack?: () => void;
 }
 
-export function TeacherClubsPage({ onNavigate, onBack }: TeacherClubsPageProps = {}) {
+export function TeacherClubsPage({ onNavigate }: TeacherClubsPageProps = {}) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showRequestDialog, setShowRequestDialog] = useState(false);
   const [showSearchDialog, setShowSearchDialog] = useState(false);
@@ -170,7 +170,7 @@ export function TeacherClubsPage({ onNavigate, onBack }: TeacherClubsPageProps =
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-4 pt-4 z-10">
+          <div className="bg-white border-b border-gray-200 px-4 pt-4">
             <TabsList className="w-full grid grid-cols-2">
               <TabsTrigger value="my-clubs">
                 Mes clubs ({myClubs.length})
@@ -264,7 +264,7 @@ export function TeacherClubsPage({ onNavigate, onBack }: TeacherClubsPageProps =
                               variant="ghost" 
                               size="sm"
                               className="text-red-600 h-8"
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={(e: { stopPropagation: () => any; }) => e.stopPropagation()}
                             >
                               <X className="h-4 w-4 mr-1" />
                               Quitter

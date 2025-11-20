@@ -1,10 +1,9 @@
-import React from 'react';
-import { Search, Star, MapPin, Calendar, Bell, Zap, Sparkles, Trophy, Heart, Brain, CheckCircle, AlertCircle, Gift, Percent, TrendingUp } from 'lucide-react';
+import { Bell, Brain, Calendar, CheckCircle, Gift, Heart, MapPin, Percent, Search, Sparkles, Star, TrendingUp, Trophy, Zap } from 'lucide-react';
 import type { SignedInAccount } from '../hooks/auth';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { Card } from './ui/card';
 import { Input } from './ui/input';
 
 interface HomePageProps {
@@ -30,9 +29,9 @@ export function HomePage({ onNavigate, user }: HomePageProps) {
       .slice(0, 2)
       .toUpperCase() || 'SD';
   const city = typeof profile['city'] === 'string' ? (profile['city'] as string) : null;
-  const subtitle = city ?? user?.email ?? 'Pr�t pour une nouvelle s�ance ?';
+  const subtitle = city ?? user?.email ?? 'Prêt(e) pour une nouvelle séance ?';
   const roleLabel =
-    user?.role === 'club' ? 'Club' : user?.role === 'teacher' ? '�ducateur' : user ? 'Particulier' : null;
+    user?.role === 'club' ? 'Club' : user?.role === 'teacher' ? 'Éducateur' : user ? 'Particulier' : null;
   // Données mock - Promotions
   const promotions = [
     {
@@ -241,7 +240,7 @@ export function HomePage({ onNavigate, user }: HomePageProps) {
   ];
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-[#41B6A6]/5 to-white pb-20">
+    <div className="flex flex-col h-full bg-gradient-to-b from-[#41B6A6]/5 to-white pb-20 overflow-y-auto">
       {/* Header */}
       <div className="bg-gradient-to-br from-[#41B6A6] to-[#359889] px-4 pt-12 pb-6 rounded-b-3xl shadow-lg">
         <div className="flex items-center justify-between mb-6">
@@ -296,7 +295,7 @@ export function HomePage({ onNavigate, user }: HomePageProps) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+      <div className="px-4 py-6 space-y-6">
         
         {/* 1. Promotions - Bloc défilable */}
         <section>
@@ -417,7 +416,7 @@ export function HomePage({ onNavigate, user }: HomePageProps) {
               <h2 className="text-gray-800">Notifications</h2>
             </div>
             <button 
-              onClick={() => onNavigate('account')}
+              onClick={() => onNavigate('notifications')}
               className="text-[#41B6A6] text-sm"
             >
               Tout voir
@@ -430,7 +429,7 @@ export function HomePage({ onNavigate, user }: HomePageProps) {
                 <Card 
                   key={notif.id} 
                   className="p-4 shadow-sm border-0 hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => onNavigate('account')}
+                  onClick={() => onNavigate('notifications')}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`w-10 h-10 rounded-full ${notif.bg} flex items-center justify-center flex-shrink-0`}>
@@ -612,7 +611,7 @@ export function HomePage({ onNavigate, user }: HomePageProps) {
                       <Button 
                         size="sm" 
                         className="bg-[#41B6A6] hover:bg-[#359889] rounded-full"
-                        onClick={(e) => {
+                        onClick={(e: { stopPropagation: () => void; }) => {
                           e.stopPropagation();
                           onNavigate('djanai');
                         }}

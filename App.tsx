@@ -75,6 +75,7 @@ export default function App() {
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
+  const [ratingReturnTarget, setRatingReturnTarget] = useState<string | null>(null);
   const [dogProfile, setDogProfile] = useState<DogProfile | null>(null);
   const [previousPage, setPreviousPage] = useState<string>('home');
   const [teachersPricingData, setTeachersPricingData] = useState<{ count: number; price: number } | null>(null);
@@ -345,7 +346,7 @@ export default function App() {
         case 'teacher-home':
           return <TeacherHomePage onNavigate={handleNavigate} />;
         case 'teacher-appointments':
-          return <TeacherAppointmentsPage onNavigate={handleNavigate} />;
+          return <TeacherAppointmentsPage />;
         case 'teacher-community':
           return <TeacherCommunitySelectionPage onNavigate={(page, clubId) => {
             setSelectedClubId(clubId || null);
@@ -428,13 +429,20 @@ export default function App() {
           }
         }} />;
       case 'account':
-        return <AccountPage 
-          onNavigate={handleNavigate}
-          onShowRatingInvitation={(bookingId) => {
-            setSelectedBookingId(bookingId);
-            setCurrentPage('ratingInvitation');
-          }}
-        />;
+        return (
+          <AccountPage 
+            onNavigate={handleNavigate}
+            onShowRatingInvitation={(bookingId) => {
+              setSelectedBookingId(bookingId);
+              setCurrentPage('ratingInvitation');
+            }}
+            onLogout={() => {
+              setIsAuthenticated(false);
+              setUserType(null);
+              setCurrentPage('home');
+            }}
+          />
+        );
       case 'verified':
         return <VerifiedPage onBack={() => handleNavigate('account')} />;
       case 'clubDetail':
@@ -544,14 +552,22 @@ export default function App() {
           <RatingInvitationPage
             bookingId={selectedBookingId}
             onStartRating={handleStartRating}
-            onDismiss={() => handleNavigate('home')}
+            onDismiss={() => {
+              const target = ratingReturnTarget || 'home';
+              setRatingReturnTarget(null);
+              handleNavigate(target);
+            }}
           />
         ) : null;
       case 'rating':
         return selectedBookingId ? (
           <RatingPage
             bookingId={selectedBookingId}
-            onBack={() => handleNavigate('home')}
+            onBack={() => {
+              const target = ratingReturnTarget || 'home';
+              setRatingReturnTarget(null);
+              handleNavigate(target);
+            }}
           />
         ) : null;
       case 'reviews':
@@ -567,6 +583,7 @@ export default function App() {
             onBack={() => handleNavigate('account')}
             onNavigateToRating={(bookingId) => {
               setSelectedBookingId(bookingId);
+              setRatingReturnTarget('notifications');
               setCurrentPage('ratingInvitation');
             }}
             onNavigateToClub={(clubId) => {
@@ -739,4 +756,3 @@ export default function App() {
 function setAuthAccount(_session: SignedInAccount) {
   throw new Error('Function not implemented.');
 }
-

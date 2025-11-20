@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { Plus, ChevronRight, Heart, Activity, Calendar, Sparkles, Bell, Award, TrendingUp, Clock, Camera } from 'lucide-react';
-import { ImageWithFallback } from './figma/ImageWithFallback';
-import { Card } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Progress } from './ui/progress';
+import { Activity, Award, Bell, Calendar, Camera, ChevronRight, Clock, Plus, Sparkles, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
 import { AddDogPage } from './AddDogPage';
+import { ImageWithFallback } from './figma/ImageWithFallback';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Progress } from './ui/progress';
 
 interface Dog {
   id: number;
@@ -113,7 +113,7 @@ export function MyDogsPage({ onNavigate }: MyDogsPageProps = {}) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-[#41B6A6]/5 to-white pb-20">
+    <div className="flex flex-col h-full bg-gradient-to-b from-[#41B6A6]/5 to-white pb-20 overflow-y-auto">
       {/* Header */}
       <div className="bg-gradient-to-br from-[#41B6A6] to-[#359889] px-4 pt-12 pb-6 shadow-lg">
         <div className="flex items-center justify-between mb-2">
@@ -133,7 +133,7 @@ export function MyDogsPage({ onNavigate }: MyDogsPageProps = {}) {
       </div>
 
       {/* Dogs List */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+      <div className="px-4 py-6 space-y-4">
         {dogs.map((dog) => (
           <Card
             key={dog.id}

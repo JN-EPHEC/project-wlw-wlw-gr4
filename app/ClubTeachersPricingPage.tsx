@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Users, CheckCircle, Gift, TrendingUp } from 'lucide-react';
-import { Card } from './ui/card';
-import { Button } from './ui/button';
+import { ArrowLeft, CheckCircle, Gift, TrendingUp, Users } from 'lucide-react';
+import { useState } from 'react';
 import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
 
 interface ClubTeachersPricingPageProps {
   onBack: () => void;

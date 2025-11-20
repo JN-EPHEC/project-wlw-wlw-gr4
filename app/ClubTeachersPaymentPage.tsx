@@ -1,11 +1,10 @@
+import { AlertCircle, ArrowLeft, CheckCircle, CreditCard, Lock, Shield } from 'lucide-react';
 import React, { useState } from 'react';
-import { ArrowLeft, CreditCard, Lock, CheckCircle, AlertCircle, Shield } from 'lucide-react';
-import { Card } from './ui/card';
+import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
+import { Card } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Badge } from './ui/badge';
-import { Alert, AlertDescription } from './ui/alert';
 
 interface ClubTeachersPaymentPageProps {
   onBack: () => void;

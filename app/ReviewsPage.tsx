@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Star, ThumbsUp, Filter, Calendar } from 'lucide-react';
+import { ArrowLeft, Calendar, Star, ThumbsUp } from 'lucide-react';
+import { useState } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { Badge } from './ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Separator } from './ui/separator';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 
 interface ReviewsPageProps {
   clubId?: number;
@@ -13,7 +12,7 @@ interface ReviewsPageProps {
   onBack: () => void;
 }
 
-export function ReviewsPage({ clubId, trainerId, onBack }: ReviewsPageProps) {
+export function ReviewsPage({ onBack }: ReviewsPageProps) {
   const [filterRating, setFilterRating] = useState<number | null>(null);
 
   // Mock data

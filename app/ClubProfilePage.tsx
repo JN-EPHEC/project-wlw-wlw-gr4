@@ -1,16 +1,16 @@
-import React, { useState } from 'react';
-import { Building2, MapPin, Phone, Mail, Globe, Clock, Edit, Save, X, Camera, Shield, Star, CreditCard, CheckCircle, AlertCircle, Users, DollarSign, Percent, FileText, Zap, Image as ImageIcon, Upload, Trash2, Tag, TrendingUp, LogOut, Smartphone, Wallet, Award, ChevronRight, Trophy, Plus } from 'lucide-react';
-import { Card } from './ui/card';
+import { AlertCircle, Building2, Camera, CheckCircle, ChevronRight, Clock, CreditCard, DollarSign, Edit, FileText, Globe, Image as ImageIcon, LogOut, Mail, MapPin, Percent, Phone, Plus, Save, Shield, Smartphone, Star, Tag, Trash2, TrendingUp, Trophy, Upload, Users, Wallet, X, Zap } from 'lucide-react';
+import { useState } from 'react';
+import { ImageWithFallback } from './figma/ImageWithFallback';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { Badge } from './ui/badge';
-import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
-import { ImageWithFallback } from './figma/ImageWithFallback';
+import { Switch } from './ui/switch';
+import { Textarea } from './ui/textarea';
 
 interface ClubProfilePageProps {
   onNavigate?: (page: string) => void;
@@ -60,13 +60,13 @@ export function ClubProfilePage({ onNavigate, onLogout, onDeleteClub }: ClubProf
     bankName: '',
   });
 
-  const [images, setImages] = useState([
+  const [images] = useState([
     { id: 1, url: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=500', title: 'Terrain d\'agility' },
     { id: 2, url: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=500', title: 'Séance de groupe' },
     { id: 3, url: 'https://images.unsplash.com/photo-1558788353-f76d92427f16?w=500', title: 'Nos installations' },
   ]);
 
-  const [promotions, setPromotions] = useState([
+  const [promotions] = useState([
     { id: 1, title: '-20% sur les forfaits mensuels', code: 'OCT2025', validUntil: '31 Oct 2025', discount: '20%', isActive: true },
     { id: 2, title: 'Première séance gratuite', code: 'FIRST', validUntil: '31 Déc 2025', discount: '100%', isActive: true },
   ]);
@@ -466,7 +466,7 @@ export function ClubProfilePage({ onNavigate, onLogout, onDeleteClub }: ClubProf
                     <Label>Type de terrain</Label>
                     <Select
                       value={newTerrain.type}
-                      onValueChange={(value) => setNewTerrain({ ...newTerrain, type: value })}
+                      onValueChange={(value: string) => setNewTerrain({ ...newTerrain, type: value })}
                     >
                       <SelectTrigger className="mt-1.5">
                         <SelectValue placeholder="Sélectionner un type" />
@@ -584,7 +584,7 @@ export function ClubProfilePage({ onNavigate, onLogout, onDeleteClub }: ClubProf
               </div>
               <Switch
                 checked={settings.acceptNewMembers}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setSettings({ ...settings, acceptNewMembers: checked })
                 }
               />
@@ -597,7 +597,7 @@ export function ClubProfilePage({ onNavigate, onLogout, onDeleteClub }: ClubProf
               </div>
               <Switch
                 checked={settings.showPhonePublic}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setSettings({ ...settings, showPhonePublic: checked })
                 }
               />
@@ -610,7 +610,7 @@ export function ClubProfilePage({ onNavigate, onLogout, onDeleteClub }: ClubProf
               </div>
               <Switch
                 checked={settings.autoConfirmBookings}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setSettings({ ...settings, autoConfirmBookings: checked })
                 }
               />
@@ -623,7 +623,7 @@ export function ClubProfilePage({ onNavigate, onLogout, onDeleteClub }: ClubProf
               </div>
               <Switch
                 checked={settings.emailNotifications}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setSettings({ ...settings, emailNotifications: checked })
                 }
               />
@@ -636,7 +636,7 @@ export function ClubProfilePage({ onNavigate, onLogout, onDeleteClub }: ClubProf
               </div>
               <Switch
                 checked={settings.homeTrainingEnabled}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setSettings({ ...settings, homeTrainingEnabled: checked })
                 }
               />
@@ -647,7 +647,7 @@ export function ClubProfilePage({ onNavigate, onLogout, onDeleteClub }: ClubProf
                 <Users className="h-4 w-4 text-[#E9B782]" />
                 <Label className="text-gray-800">Taille max des groupes</Label>
               </div>
-              <Select value={settings.maxGroupSize} onValueChange={(value) => setSettings({ ...settings, maxGroupSize: value })}>
+              <Select value={settings.maxGroupSize} onValueChange={(value: string) => setSettings({ ...settings, maxGroupSize: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -666,7 +666,7 @@ export function ClubProfilePage({ onNavigate, onLogout, onDeleteClub }: ClubProf
                 <FileText className="h-4 w-4 text-[#E9B782]" />
                 <Label className="text-gray-800">Politique d'annulation</Label>
               </div>
-              <Select value={settings.cancellationPolicy} onValueChange={(value) => setSettings({ ...settings, cancellationPolicy: value })}>
+              <Select value={settings.cancellationPolicy} onValueChange={(value: string) => setSettings({ ...settings, cancellationPolicy: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -685,7 +685,7 @@ export function ClubProfilePage({ onNavigate, onLogout, onDeleteClub }: ClubProf
                 <Globe className="h-4 w-4 text-[#E9B782]" />
                 <Label className="text-gray-800">Langue</Label>
               </div>
-              <Select value={settings.language} onValueChange={(value) => setSettings({ ...settings, language: value })}>
+              <Select value={settings.language} onValueChange={(value: string) => setSettings({ ...settings, language: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -715,7 +715,7 @@ export function ClubProfilePage({ onNavigate, onLogout, onDeleteClub }: ClubProf
               </div>
               <Switch
                 checked={settings.requireDeposit}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setSettings({ ...settings, requireDeposit: checked })
                 }
               />
@@ -1434,7 +1434,7 @@ export function ClubProfilePage({ onNavigate, onLogout, onDeleteClub }: ClubProf
                       <Label>Type</Label>
                       <Select 
                         value={newPromo.discountType} 
-                        onValueChange={(value) => setNewPromo({ ...newPromo, discountType: value })}
+                        onValueChange={(value: string) => setNewPromo({ ...newPromo, discountType: value })}
                       >
                         <SelectTrigger className="mt-1.5">
                           <SelectValue />

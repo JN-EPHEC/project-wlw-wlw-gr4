@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
-import { ArrowLeft, User, Mail, Phone, BookOpen, CheckCircle, AlertCircle, Shield, Eye, EyeOff, Copy } from 'lucide-react';
-import { Card } from './ui/card';
+import { AlertCircle, ArrowLeft, BookOpen, CheckCircle, Copy, Eye, EyeOff, Mail, Phone, Shield, User } from 'lucide-react';
+import { useState } from 'react';
+import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
-import { Badge } from './ui/badge';
+import { Card } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import { Alert, AlertDescription } from './ui/alert';
 
 interface ClubAddTeacherPageProps {
   onBack: () => void;

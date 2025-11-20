@@ -1,8 +1,7 @@
-import React from 'react';
-import { BadgeCheck, Shield, FileCheck, Crown, ArrowLeft } from 'lucide-react';
-import { Card } from './ui/card';
-import { Button } from './ui/button';
+import { ArrowLeft, BadgeCheck, Crown, FileCheck, Shield } from 'lucide-react';
 import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
 
 interface VerifiedPageProps {
   onBack: () => void;

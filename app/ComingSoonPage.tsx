@@ -1,5 +1,4 @@
-import React from 'react';
-import { ArrowLeft, Calendar, Dog, Heart, Settings, Construction } from 'lucide-react';
+import { ArrowLeft, Calendar, Construction, Dog, Heart, Settings } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 

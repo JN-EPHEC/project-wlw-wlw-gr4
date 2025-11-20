@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
-import { Search, SlidersHorizontal, Star, MapPin, BadgeCheck, Heart, Zap, Calendar, Users, Euro, CheckCircle, Home, TrendingUp, Sparkles, Award, Target, Trophy } from 'lucide-react';
+import { Award, BadgeCheck, Calendar, Heart, Home, MapPin, Search, SlidersHorizontal, Sparkles, Star, Target, Trophy, Users, Zap } from 'lucide-react';
+import { useState } from 'react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { Card } from './ui/card';
 import { Badge } from './ui/badge';
-import { Input } from './ui/input';
 import { Button } from './ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from './ui/sheet';
-import { Slider } from './ui/slider';
-import { Label } from './ui/label';
+import { Card } from './ui/card';
 import { Checkbox } from './ui/checkbox';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 import { Separator } from './ui/separator';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
+import { Slider } from './ui/slider';
 
 interface ClubsPageProps {
   onClubClick?: (clubId: number) => void;
@@ -560,7 +560,7 @@ export function ClubsPage({ onClubClick, onNavigate }: ClubsPageProps) {
   );
 
   return (
-    <div className="flex flex-col h-full bg-white pb-20">
+    <div className="flex flex-col h-full bg-white pb-20 overflow-y-auto">
       {/* Header */}
       <div className="bg-gradient-to-br from-[#41B6A6] to-[#359889] px-4 pt-12 pb-6 rounded-b-3xl shadow-lg">
         <h1 className="text-white mb-6">Découvrir</h1>
@@ -750,7 +750,7 @@ export function ClubsPage({ onClubClick, onNavigate }: ClubsPageProps) {
                   </div>
                   <Checkbox
                     checked={filterVerifiedOnly}
-                    onCheckedChange={(checked) => setFilterVerifiedOnly(checked as boolean)}
+                    onCheckedChange={(checked) => setFilterVerifiedOnly(checked === true)}
                   />
                 </div>
               </div>
@@ -768,8 +768,8 @@ export function ClubsPage({ onClubClick, onNavigate }: ClubsPageProps) {
         </div>
       </div>
 
-      {/* Content - Scrollable sections */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Content sections */}
+      <div>
         
         {/* Favorites Section */}
         {favoriteItems.length > 0 && (

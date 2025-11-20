@@ -1,19 +1,19 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Calendar, Clock, MapPin, User, Mail, Phone, CheckCircle2, AlertCircle, Users, Shield, Plus, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Calendar, CheckCircle2, Clock, MapPin, Plus, Shield, User, X } from 'lucide-react';
+import { useState } from 'react';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Badge } from './ui/badge';
+import { Textarea } from './ui/textarea';
 
 interface HomeTrainingBookingPageProps {
   clubId: number;
   onBack: () => void;
 }
 
-export function HomeTrainingBookingPage({ clubId, onBack }: HomeTrainingBookingPageProps) {
+export function HomeTrainingBookingPage({ onBack }: HomeTrainingBookingPageProps) {
   const [step, setStep] = useState<'datetime' | 'address' | 'details' | 'confirmation'>('datetime');
   const [formData, setFormData] = useState({
     preferredDate: '',
@@ -485,7 +485,7 @@ export function HomeTrainingBookingPage({ clubId, onBack }: HomeTrainingBookingP
               <h2 className="text-gray-800 mb-4">Préférence d'éducateur (optionnel)</h2>
               <Select
                 value={formData.selectedTeacher}
-                onValueChange={(value) => setFormData({ ...formData, selectedTeacher: value })}
+                onValueChange={(value: string) => setFormData({ ...formData, selectedTeacher: value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Choisir un éducateur" />

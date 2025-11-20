@@ -1,24 +1,21 @@
+import { Edit, Eye, Heart, Image as ImageIcon, MessageCircle, MoreVertical, Plus, Search, Share2, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { Plus, Search, Heart, MessageCircle, Share2, MoreVertical, Edit, Trash2, Eye, TrendingUp, Users, Calendar, MapPin, Tag, Image as ImageIcon } from 'lucide-react';
-import { Card } from './ui/card';
-import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Avatar } from './ui/avatar';
-import { ImageWithFallback } from './figma/ImageWithFallback';
+import { Textarea } from './ui/textarea';
 
 interface TeacherCommunityPageProps {
   onNavigate?: (page: string) => void;
 }
 
-export function TeacherCommunityPage({ onNavigate }: TeacherCommunityPageProps = {}) {
+export function TeacherCommunityPage({ }: TeacherCommunityPageProps = {}) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [activeTab, setActiveTab] = useState('my-posts');
@@ -105,9 +102,6 @@ export function TeacherCommunityPage({ onNavigate }: TeacherCommunityPageProps =
     });
   };
 
-  const handleDeletePost = (id: number) => {
-    console.log('Deleting post:', id);
-  };
 
   return (
     <div className="flex flex-col h-full bg-white pb-20">
@@ -143,7 +137,7 @@ export function TeacherCommunityPage({ onNavigate }: TeacherCommunityPageProps =
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-4 pt-4 z-10">
+          <div className="bg-white border-b border-gray-200 px-4 pt-4">
             <TabsList className="w-full grid grid-cols-2">
               <TabsTrigger value="my-posts">Mes publications ({myPosts.length})</TabsTrigger>
               <TabsTrigger value="community">Fil d'actualité</TabsTrigger>
@@ -346,7 +340,7 @@ export function TeacherCommunityPage({ onNavigate }: TeacherCommunityPageProps =
           <div className="space-y-4 py-4">
             <div>
               <Label>Type de publication</Label>
-              <Select value={newPost.type} onValueChange={(value) => setNewPost({ ...newPost, type: value })}>
+              <Select value={newPost.type} onValueChange={(value: string) => setNewPost({ ...newPost, type: value })}>
                 <SelectTrigger className="mt-1.5">
                   <SelectValue />
                 </SelectTrigger>
@@ -361,7 +355,7 @@ export function TeacherCommunityPage({ onNavigate }: TeacherCommunityPageProps =
 
             <div>
               <Label>Catégorie</Label>
-              <Select value={newPost.category} onValueChange={(value) => setNewPost({ ...newPost, category: value })}>
+              <Select value={newPost.category} onValueChange={(value: string) => setNewPost({ ...newPost, category: value })}>
                 <SelectTrigger className="mt-1.5">
                   <SelectValue placeholder="Sélectionnez une catégorie" />
                 </SelectTrigger>

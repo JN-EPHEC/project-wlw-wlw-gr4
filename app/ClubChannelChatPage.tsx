@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Send, Smile, Paperclip, Hash, Bell } from 'lucide-react';
+import { ArrowLeft, Bell, Hash, Paperclip, Send, Smile } from 'lucide-react';
+import { useState } from 'react';
+import { Avatar } from './ui/avatar';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Avatar } from './ui/avatar';
 
 interface ClubChannelChatPageProps {
   channelId: string;

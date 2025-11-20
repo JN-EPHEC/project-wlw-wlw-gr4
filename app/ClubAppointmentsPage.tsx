@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { Calendar, Plus, Clock, User, Dog, Filter, Search, CheckCircle, XCircle, Edit, Trash2, MapPin, Home, AlertCircle, Send } from 'lucide-react';
-import { Card } from './ui/card';
+import { Calendar, CheckCircle, Clock, Dog, Edit, Filter, Home, MapPin, Plus, Search, Trash2, User, XCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Badge } from './ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Textarea } from './ui/textarea';
 
 interface ClubAppointmentsPageProps {
@@ -17,12 +17,12 @@ interface ClubAppointmentsPageProps {
 export function ClubAppointmentsPage({ onNavigate }: ClubAppointmentsPageProps = {}) {
   const [activeTab, setActiveTab] = useState('upcoming');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedHomeRequest, setSelectedHomeRequest] = useState<any>(null);
-  const [showHomeRequestDialog, setShowHomeRequestDialog] = useState(false);
-  const [showModifyDialog, setShowModifyDialog] = useState(false);
-  const [modifiedDate, setModifiedDate] = useState('');
-  const [modifiedTime, setModifiedTime] = useState('');
-  const [modificationReason, setModificationReason] = useState('');
+  const [] = useState<any>(null);
+  const [] = useState(false);
+  const [] = useState(false);
+  const [] = useState('');
+  const [] = useState('');
+  const [] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newAppointment, setNewAppointment] = useState({
     date: '',
@@ -218,7 +218,7 @@ export function ClubAppointmentsPage({ onNavigate }: ClubAppointmentsPageProps =
                   <Label>Service</Label>
                   <Select
                     value={newAppointment.service}
-                    onValueChange={(value) =>
+                    onValueChange={(value: any) =>
                       setNewAppointment({ ...newAppointment, service: value })
                     }
                   >
@@ -238,7 +238,7 @@ export function ClubAppointmentsPage({ onNavigate }: ClubAppointmentsPageProps =
                   <Label>Éducateur</Label>
                   <Select
                     value={newAppointment.trainer}
-                    onValueChange={(value) =>
+                    onValueChange={(value: any) =>
                       setNewAppointment({ ...newAppointment, trainer: value })
                     }
                   >
@@ -256,7 +256,7 @@ export function ClubAppointmentsPage({ onNavigate }: ClubAppointmentsPageProps =
                   <Label>Terrain</Label>
                   <Select
                     value={newAppointment.terrain}
-                    onValueChange={(value) =>
+                    onValueChange={(value: any) =>
                       setNewAppointment({ ...newAppointment, terrain: value })
                     }
                   >
@@ -368,7 +368,7 @@ export function ClubAppointmentsPage({ onNavigate }: ClubAppointmentsPageProps =
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="px-4 py-4 bg-white sticky top-0 z-10 shadow-sm">
+          <div className="px-4 py-4 bg-white shadow-sm">
             <TabsList className="w-full grid grid-cols-3 p-1 bg-gray-100 rounded-xl h-auto gap-1">
               <TabsTrigger 
                 value="upcoming" 

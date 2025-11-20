@@ -1,9 +1,7 @@
-import React from 'react';
-import { Star, CheckCircle2, Calendar, Clock, MapPin, ArrowRight } from 'lucide-react';
+import { ArrowRight, Calendar, CheckCircle2, Clock, MapPin, Star } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Badge } from './ui/badge';
 
 interface RatingInvitationPageProps {
   bookingId: number;

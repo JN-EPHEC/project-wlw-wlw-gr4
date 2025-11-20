@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
-import { ArrowLeft, ArrowRight, Sparkles, Dog, Calendar, Target, Heart, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Sparkles } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { Badge } from './ui/badge';
+import { Checkbox } from './ui/checkbox';
+import { Label } from './ui/label';
 import { Progress } from './ui/progress';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
-import { Label } from './ui/label';
-import { Checkbox } from './ui/checkbox';
 
 interface DjanAIOnboardingPageProps {
   dogId?: number;

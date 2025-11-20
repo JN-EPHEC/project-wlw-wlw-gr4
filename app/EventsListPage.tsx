@@ -1,15 +1,14 @@
-import React from 'react';
-import { ArrowLeft, Calendar, MapPin, Users, Clock, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Calendar, ChevronRight, Clock, MapPin, Users } from 'lucide-react';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { Badge } from './ui/badge';
 
 interface EventsListPageProps {
   clubId: number;
   onBack: () => void;
 }
 
-export function EventsListPage({ clubId, onBack }: EventsListPageProps) {
+export function EventsListPage({ onBack }: EventsListPageProps) {
   const events = [
     {
       id: 1,
@@ -71,7 +70,7 @@ export function EventsListPage({ clubId, onBack }: EventsListPageProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-white overflow-y-auto">
       {/* Header */}
       <div className="bg-gradient-to-br from-[#41B6A6] to-[#359889] px-4 pt-12 pb-6">
         <Button
@@ -87,7 +86,7 @@ export function EventsListPage({ clubId, onBack }: EventsListPageProps) {
       </div>
 
       {/* Events List */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+      <div className="px-4 py-6 space-y-4">
         {events.map((event) => (
           <Card key={event.id} className="overflow-hidden hover:shadow-lg transition-all cursor-pointer border-gray-200">
             <div className="flex gap-4 p-4">

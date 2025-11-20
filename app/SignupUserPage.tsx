@@ -307,7 +307,7 @@ export function SignupUserPage({ onSignup, onBack }: SignupUserPageProps) {
             className="w-full bg-[#41B6A6] hover:bg-[#359889] h-12"
             disabled={!acceptTerms || isSubmitting}
           >
-            {isSubmitting ? 'Cr�ation en cours...' : 'Cr�er mon compte'}
+            {isSubmitting ? 'Création en cours...' : 'Créer mon compte'}
           </Button>
         </div>
       </div>

@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Plus, MessageSquare, ThumbsUp, Eye, Clock, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Eye, MessageSquare, Plus, ThumbsUp } from 'lucide-react';
+import { useState } from 'react';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { Badge } from './ui/badge';
-import { Tabs, TabsList, TabsContent, TabsTrigger } from './ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Input } from './ui/input';
-import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Textarea } from './ui/textarea';
 
 interface ForumPageProps {
   clubId: number;
@@ -17,7 +17,7 @@ interface ForumPageProps {
   onPostClick: (postId: number) => void;
 }
 
-export function ForumPage({ clubId, channelId, channelName, onBack, onPostClick }: ForumPageProps) {
+export function ForumPage({ channelName, onBack, onPostClick }: ForumPageProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newPostTitle, setNewPostTitle] = useState('');
   const [newPostContent, setNewPostContent] = useState('');

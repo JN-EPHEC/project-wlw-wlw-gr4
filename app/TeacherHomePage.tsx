@@ -1,9 +1,8 @@
+import { Award, Bell, Calendar, ChevronRight, Dog, DollarSign, MapPin, Star, TrendingUp, Users, Zap } from 'lucide-react';
 import { useState } from 'react';
-import { Calendar, DollarSign, Users, TrendingUp, Bell, Clock, MapPin, Dog, Star, ChevronRight, Zap, Award, Building2 } from 'lucide-react';
-import { Card } from './ui/card';
-import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Avatar } from './ui/avatar';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
 
 interface TeacherHomePageProps {
   onNavigate?: (page: string) => void;

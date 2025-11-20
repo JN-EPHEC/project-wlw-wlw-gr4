@@ -1,9 +1,8 @@
-import React from 'react';
-import { ArrowLeft, Star, Trophy, Award, Zap, TrendingUp, Target, CheckCircle, Lock } from 'lucide-react';
+import { ArrowLeft, Award, CheckCircle, Lock, Star, Target, TrendingUp, Trophy, Zap } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { Card } from './ui/card';
 import { Progress } from './ui/progress';
 import { Separator } from './ui/separator';
 

@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
-import { ArrowLeft, CheckCircle, Clock, Zap, Target, Sparkles, TrendingUp, Plus } from 'lucide-react';
-import { Card } from './ui/card';
+import { ArrowLeft, CheckCircle, Clock, Plus, Sparkles, Target, TrendingUp, Zap } from 'lucide-react';
+import { useState } from 'react';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Separator } from './ui/separator';
+import { Card } from './ui/card';
 import { Progress } from './ui/progress';
+import { Separator } from './ui/separator';
 
 interface DogTasksPageProps {
   dogId: number;
   onBack: () => void;
 }
 
-export function DogTasksPage({ dogId, onBack }: DogTasksPageProps) {
+export function DogTasksPage({ onBack }: DogTasksPageProps) {
   const [completedTasks, setCompletedTasks] = useState<number[]>([]);
 
   // Mock data

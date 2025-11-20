@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Hash, Plus, Settings, Lock, Globe, Users, MessageCircle, Bell, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Bell, Hash, Lock, MessageCircle, Plus, Users } from 'lucide-react';
+import { useState } from 'react';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Textarea } from './ui/textarea';
 
 interface ClubChannelsPageProps {
   onBack: () => void;
@@ -151,10 +151,10 @@ export function ClubChannelsPage({ onBack, onChannelClick }: ClubChannelsPagePro
                 </div>
                 <div>
                   <Label>Type de salon</Label>
-                  <Select
+                    <Select
                     value={newChannel.type}
-                    onValueChange={(value) => setNewChannel({ ...newChannel, type: value })}
-                  >
+                    onValueChange={(value: string) => setNewChannel({ ...newChannel, type: value })}
+                    >
                     <SelectTrigger className="mt-1.5">
                       <SelectValue />
                     </SelectTrigger>
@@ -162,7 +162,7 @@ export function ClubChannelsPage({ onBack, onChannelClick }: ClubChannelsPagePro
                       <SelectItem value="public">Public - Tous les membres</SelectItem>
                       <SelectItem value="private">Privé - Sur invitation</SelectItem>
                     </SelectContent>
-                  </Select>
+                    </Select>
                 </div>
                 <Button
                   onClick={handleCreateChannel}

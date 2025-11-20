@@ -1,20 +1,19 @@
+import { Award, BookOpen, Building2, Calendar, CheckCircle, ChevronLeft, Clock, FileText, GraduationCap, Play, Send, Star, Users } from 'lucide-react';
 import { useState } from 'react';
-import { GraduationCap, ChevronLeft, Building2, Clock, Users, CheckCircle, Send, Calendar, BookOpen, Award, Star, Play, FileText } from 'lucide-react';
-import { Card } from './ui/card';
-import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
+import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Textarea } from './ui/textarea';
 
 interface TeacherTrainingPageProps {
   onNavigate?: (page: string) => void;
   onBack?: () => void;
 }
 
-export function TeacherTrainingPage({ onNavigate, onBack }: TeacherTrainingPageProps = {}) {
+export function TeacherTrainingPage({ onBack }: TeacherTrainingPageProps = {}) {
   const [showRequestDialog, setShowRequestDialog] = useState(false);
   const [selectedTraining, setSelectedTraining] = useState<any>(null);
   const [selectedClub, setSelectedClub] = useState('');
@@ -175,7 +174,7 @@ export function TeacherTrainingPage({ onNavigate, onBack }: TeacherTrainingPageP
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-4 pt-4 z-10">
+          <div className="bg-white border-b border-gray-200 px-4 pt-4">
             <TabsList className="w-full grid grid-cols-2">
               <TabsTrigger value="available">
                 Disponibles ({availableTrainings.length})

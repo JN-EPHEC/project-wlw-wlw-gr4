@@ -1,9 +1,8 @@
-import React from 'react';
-import { ArrowLeft, Star, MapPin, BadgeCheck, Calendar, Clock, Award, Users, Phone, Mail, Globe } from 'lucide-react';
+import { ArrowLeft, Award, BadgeCheck, Calendar, Clock, Globe, Mail, MapPin, Phone, Star, Users } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { Card } from './ui/card';
 import { Separator } from './ui/separator';
 
 interface ClubDetailPageProps {
@@ -91,7 +90,7 @@ export function ClubDetailPage({ clubId, onBack, onBookAppointment, onHomeTraini
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-white overflow-y-auto">
       {/* Header with Image */}
       <div className="relative h-64 flex-shrink-0">
         <ImageWithFallback
@@ -141,7 +140,7 @@ export function ClubDetailPage({ clubId, onBack, onBookAppointment, onHomeTraini
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto pb-24">
+      <div className="pb-24">
         <div className="px-4 py-6 space-y-6">
           {/* Verified Badge */}
           {club.verified && (

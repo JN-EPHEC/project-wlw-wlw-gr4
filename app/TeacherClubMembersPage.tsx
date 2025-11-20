@@ -1,11 +1,10 @@
+import { AlertCircle, ArrowLeft, Crown, Search, Shield, Users as UsersIcon, UserX } from 'lucide-react';
 import { useState } from 'react';
-import { ArrowLeft, Search, UserX, Shield, Users as UsersIcon, MoreVertical, Crown, AlertCircle } from 'lucide-react';
-import { Card } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Input } from './ui/input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Input } from './ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 
 interface TeacherClubMembersPageProps {
@@ -13,7 +12,7 @@ interface TeacherClubMembersPageProps {
   onBack?: () => void;
 }
 
-export function TeacherClubMembersPage({ clubId = 1, onBack }: TeacherClubMembersPageProps) {
+export function TeacherClubMembersPage({ onBack }: TeacherClubMembersPageProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('members');
 
