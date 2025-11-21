@@ -1,0 +1,170 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@700&family=Poppins:wght@400;500;600&display=swap');
+
+/* Removed unsupported @custom-variant rule — use the .dark class in selectors
+   or configure custom variants in your Tailwind/Build config instead. */
+
+:root {
+  --font-size: 16px;
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+  
+  /* Smart Dogs Color Palette */
+  --primary: #41B6A6;
+  --primary-foreground: #ffffff;
+  --secondary: #E9B782;
+  --secondary-foreground: #1a1a1a;
+  --terracotta: #F28B6F;
+  --terracotta-foreground: #ffffff;
+  
+  --muted: #f5f5f5;
+  --muted-foreground: #717182;
+  --accent: #41B6A6;
+  --accent-foreground: #ffffff;
+  --destructive: #d4183d;
+  --destructive-foreground: #ffffff;
+  --border: rgba(0, 0, 0, 0.1);
+  --input: transparent;
+  --input-background: #f3f3f5;
+  --switch-background: #cbced4;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: #41B6A6;
+  --chart-1: #41B6A6;
+  --chart-2: #E9B782;
+  --chart-3: #F28B6F;
+  --chart-4: #828282;
+  --chart-5: #1a1a1a;
+  --radius: 0.75rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1a1a1a;
+  --sidebar-primary: #41B6A6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f5f5f5;
+  --sidebar-accent-foreground: #1a1a1a;
+  --sidebar-border: rgba(0, 0, 0, 0.1);
+  --sidebar-ring: #41B6A6;
+}
+
+.dark {
+  --background: #1a1a1a;
+  --foreground: #ffffff;
+  --card: #1a1a1a;
+  --card-foreground: #ffffff;
+  --popover: #1a1a1a;
+  --popover-foreground: #ffffff;
+  --primary: #41B6A6;
+  --primary-foreground: #ffffff;
+  --secondary: #E9B782;
+  --secondary-foreground: #1a1a1a;
+  --muted: #2a2a2a;
+  --muted-foreground: #a0a0a0;
+  --accent: #41B6A6;
+  --accent-foreground: #ffffff;
+  --destructive: #d4183d;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #41B6A6;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --chart-1: #41B6A6;
+  --chart-2: #E9B782;
+  --chart-3: #F28B6F;
+  --chart-4: #828282;
+  --chart-5: #ffffff;
+  --sidebar: #2a2a2a;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #41B6A6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #3a3a3a;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #41B6A6;
+}
+
+
+
+/**
+ * Base typography. This is not applied to elements which have an ancestor with a Tailwind text class.
+ */
+@layer base {
+  :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) {
+    h1 {
+      font-size: var(--text-2xl);
+      font-weight: 700;
+      line-height: 1.3;
+      font-family: 'Baloo 2', 'Poppins', sans-serif;
+    }
+
+    h2 {
+      font-size: var(--text-xl);
+      font-weight: 700;
+      line-height: 1.3;
+      font-family: 'Baloo 2', 'Poppins', sans-serif;
+    }
+
+    h3 {
+      font-size: var(--text-lg);
+      font-weight: 700;
+      line-height: 1.3;
+      font-family: 'Baloo 2', 'Poppins', sans-serif;
+    }
+
+    h4 {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    p {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-normal);
+      line-height: 1.5;
+    }
+
+    label {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    button {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    input {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-normal);
+      line-height: 1.5;
+    }
+  }
+}
+
+html {
+  font-size: var(--font-size);
+}
+
+/* Custom styles for Smart Dogs */
+.font-baloo {
+  font-family: 'Baloo 2', sans-serif;
+}
+
+.font-poppins {
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Hide scrollbar while keeping scroll functionality */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
