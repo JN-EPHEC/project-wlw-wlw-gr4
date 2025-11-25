@@ -1,0 +1,203 @@
+// Mock data extracted from HomePage for easier maintenance and removal.
+import { Brain, Calendar, CheckCircle, Heart, Trophy } from 'lucide-react';
+
+export const promotions = [
+  {
+    id: 1,
+    title: "50% sur votre 1ère séance",
+    description: "Découvrez l'agility",
+    club: 'Agility Pro',
+    discount: '-50%',
+    image: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
+    color: 'from-purple-500 to-pink-500',
+  },
+  {
+    id: 2,
+    title: 'Mois gratuit pour les nouveaux',
+    description: 'Abonnement premium',
+    club: 'Canin Club Paris',
+    discount: 'GRATUIT',
+    image: 'https://images.unsplash.com/photo-1558788353-f76d92427f16?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
+    color: 'from-orange-500 to-red-500',
+  },
+  {
+    id: 3,
+    title: 'Pack découverte 3 séances',
+    description: 'Obéissance + Agility',
+    club: 'Dog Academy',
+    discount: '-30%',
+    image: 'https://images.unsplash.com/photo-1560807707-8cc77767d783?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
+    color: 'from-blue-500 to-cyan-500',
+  },
+];
+
+export const boostedClubs = [
+  {
+    id: 1,
+    name: 'Elite Dog Training',
+    rating: 4.9,
+    verified: true,
+    distance: '0.8 km',
+    speciality: 'Compétition',
+    image: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
+  },
+  {
+    id: 2,
+    name: 'Champions Canins',
+    rating: 4.8,
+    verified: true,
+    distance: '1.5 km',
+    speciality: 'Agility Pro',
+    image: 'https://images.unsplash.com/photo-1534361960057-19889db9621e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
+  },
+  {
+    id: 3,
+    name: 'Académie Canine Pro',
+    rating: 4.7,
+    verified: true,
+    distance: '2.1 km',
+    speciality: 'Éducation',
+    image: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
+  },
+  {
+    id: 4,
+    name: 'Agility Masters',
+    rating: 4.9,
+    verified: true,
+    distance: '3.0 km',
+    speciality: 'Agility',
+    image: 'https://images.unsplash.com/photo-1568572933382-74d440642117?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
+  },
+];
+
+export const notifications = [
+  {
+    id: 1,
+    type: 'appointment',
+    title: 'Rappel de séance demain',
+    message: 'Agility Training à 14h00',
+    time: '2h',
+    icon: Calendar,
+    color: 'text-[#41B6A6]',
+    bg: 'bg-[#41B6A6]/10',
+  },
+  {
+    id: 2,
+    type: 'achievement',
+    title: 'Nouveau badge débloqué !',
+    message: '10 séances complétées',
+    time: '5h',
+    icon: Trophy,
+    color: 'text-[#E9B782]',
+    bg: 'bg-[#E9B782]/10',
+  },
+  {
+    id: 3,
+    type: 'community',
+    title: 'Nouveau message',
+    message: 'Canin Club Paris a publié',
+    time: '1j',
+    icon: Heart,
+    color: 'text-[#F28B6F]',
+    bg: 'bg-[#F28B6F]/10',
+  },
+];
+
+export const upcomingEvents = [
+  {
+    id: 1,
+    title: 'Compétition Régionale Agility',
+    date: '15 Nov',
+    time: '09:00',
+    location: 'Paris Dog Park',
+    participants: 45,
+    image: 'https://images.unsplash.com/photo-1568572933382-74d440642117?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
+  },
+  {
+    id: 2,
+    title: 'Journée Portes Ouvertes',
+    date: '20 Nov',
+    time: '10:00',
+    location: 'Canin Club Paris',
+    participants: 120,
+    image: 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
+  },
+  {
+    id: 3,
+    title: 'Atelier Éducation Positive',
+    date: '25 Nov',
+    time: '14:30',
+    location: 'Dog Academy',
+    participants: 30,
+    image: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
+  },
+];
+
+export const upcomingTrainings = [
+  {
+    id: 1,
+    title: 'Séance Obéissance',
+    club: 'Canin Club Paris',
+    trainer: 'Coach',
+    date: '30 Oct',
+    time: '14:00',
+    dog: 'Chien',
+    status: 'confirmed',
+  },
+  {
+    id: 2,
+    title: 'Agility Training',
+    club: 'Agility Pro',
+    trainer: 'Coach',
+    date: '2 Nov',
+    time: '10:30',
+    dog: 'Chien',
+    status: 'confirmed',
+  },
+  {
+    id: 3,
+    title: 'Socialisation Chiot',
+    club: 'Dog Academy',
+    trainer: 'Coach',
+    date: '5 Nov',
+    time: '16:00',
+    dog: 'Chien',
+    status: 'pending',
+  },
+];
+
+export const dailyAITrainings = [
+  {
+    id: 1,
+    title: "Exercice du jour : Assis/Couché",
+    difficulty: 'Facile',
+    duration: '10 min',
+    completed: false,
+    description: 'Renforcement du commandement de base',
+    icon: CheckCircle,
+    color: 'text-green-600',
+    bg: 'bg-green-50',
+  },
+  {
+    id: 2,
+    title: "Jeu d'intelligence : Cherche",
+    difficulty: 'Moyen',
+    duration: '15 min',
+    completed: true,
+    description: 'Stimulation mentale et odorat',
+    icon: Brain,
+    color: 'text-purple-600',
+    bg: 'bg-purple-50',
+  },
+  {
+    id: 3,
+    title: 'Socialisation : Rencontre canine',
+    difficulty: 'Avancé',
+    duration: '20 min',
+    completed: false,
+    description: 'Interaction positive avec autres chiens',
+    icon: Heart,
+    color: 'text-pink-600',
+    bg: 'bg-pink-50',
+  },
+];

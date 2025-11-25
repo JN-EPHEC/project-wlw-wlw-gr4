@@ -32,10 +32,13 @@ export function AccountPage({ onNavigate, onShowRatingInvitation, onLogout, user
     typeof profile['profilePhoto'] === 'string' && profile['profilePhoto']
       ? (profile['profilePhoto'] as string)
       : 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop';
-  const displayName = [firstName, lastName].filter(Boolean).join(' ') || user?.displayName || 'Marie Dubois';
-  const location = city || 'Paris, France';
+  const hasUser = !!user;
+  const displayName = hasUser
+    ? ([firstName, lastName].filter(Boolean).join(' ') || user?.displayName || user?.email || 'Utilisateur')
+    : 'Utilisateur';
+  const location = city ?? undefined;
   const isVerified = profile['verified'] !== false;
-  const email = user?.email ?? 'marie.dubois@smartdogs.fr';
+  const email = user?.email ?? undefined;
   const phone = typeof profile['phone'] === 'string' ? (profile['phone'] as string) : null;
 
   // 🔹 rôles corrigés : owner | club | educator
@@ -46,10 +49,14 @@ export function AccountPage({ onNavigate, onShowRatingInvitation, onLogout, user
       ? 'Éducateur'
       : 'Particulier';
 
+  const bookingsCount = typeof profile['bookingsCount'] === 'number' ? (profile['bookingsCount'] as number) : undefined;
+  const dogsArray = Array.isArray(profile['dogs']) ? (profile['dogs'] as any[]) : undefined;
+  const followedClubsArray = Array.isArray(profile['followedClubs']) ? (profile['followedClubs'] as any[]) : undefined;
+
   const stats = [
-    { label: 'Réservations', value: '12', icon: Calendar },
-    { label: 'Chiens', value: '2', icon: Dog },
-    { label: 'Clubs suivis', value: '5', icon: Heart },
+    { label: 'Réservations', value: bookingsCount ?? '-', icon: Calendar },
+    { label: 'Chiens', value: typeof dogsArray === 'undefined' ? '-' : String(dogsArray.length), icon: Dog },
+    { label: 'Clubs suivis', value: typeof followedClubsArray === 'undefined' ? '-' : String(followedClubsArray.length), icon: Heart },
   ];
 
   const menuItems = [
@@ -191,34 +198,32 @@ export function AccountPage({ onNavigate, onShowRatingInvitation, onLogout, user
             </button>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {[
-              {
-                name: 'Max',
-                breed: 'Golden Retriever',
-                image:
-                  'https://images.unsplash.com/photo-1719292606971-0916fc62f5b0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
-              },
-              {
-                name: 'Luna',
-                breed: 'Border Collie',
-                image:
-                  'https://images.unsplash.com/photo-1631516378357-f87aa5d25769?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
-              },
-            ].map((dog) => (
-              <Card
-                key={dog.name}
-                className="overflow-hidden shadow-sm border-0 cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => onNavigate('mydog')}
-              >
-                <div className="relative h-28">
-                  <ImageWithFallback src={dog.image} alt={dog.name} className="w-full h-full object-cover" />
-                </div>
-                <div className="p-3">
-                  <h4 className="mb-0">{dog.name}</h4>
-                  <p className="text-xs text-gray-500">{dog.breed}</p>
+            {dogsArray && dogsArray.length > 0 ? (
+              dogsArray.map((dog: any, idx: number) => (
+                <Card
+                  key={dog.id ?? `${dog.name ?? 'dog'}-${idx}`}
+                  className="overflow-hidden shadow-sm border-0 cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => onNavigate('mydog')}
+                >
+                  <div className="relative h-28">
+                    <ImageWithFallback src={dog.image ?? ''} alt={dog.name ?? 'Chien'} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="p-3">
+                    <h4 className="mb-0">{dog.name ?? 'Chien'}</h4>
+                    {dog.breed && <p className="text-xs text-gray-500">{dog.breed}</p>}
+                  </div>
+                </Card>
+              ))
+            ) : (
+              <Card className="p-4 shadow-sm border-0 text-center">
+                <p className="text-sm text-gray-600">Aucun chien pour le moment.</p>
+                <div className="mt-3">
+                  <Button onClick={() => onNavigate('mydog')} className="text-[#41B6A6]">
+                    Ajouter un chien
+                  </Button>
                 </div>
               </Card>
-            ))}
+            )}
           </div>
         </section>
 
@@ -231,20 +236,26 @@ export function AccountPage({ onNavigate, onShowRatingInvitation, onLogout, user
             </button>
           </div>
           <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
-            {[
-              { name: 'Canin Club Paris', logo: '🏆' },
-              { name: 'Agility Pro', logo: '🐕' },
-              { name: 'Les Amis des Chiens', logo: '🦴' },
-              { name: 'DogSchool Expert', logo: '🎓' },
-            ].map((club) => (
-              <Card
-                key={club.name}
-                className="flex-shrink-0 p-3 shadow-sm border-0 text-center min-w-[80px] cursor-pointer hover:shadow-md transition-shadow"
-              >
-                <div className="text-2xl mb-2">{club.logo}</div>
-                <p className="text-xs text-gray-700 leading-tight">{club.name}</p>
+            {followedClubsArray && followedClubsArray.length > 0 ? (
+              followedClubsArray.map((club: any, idx: number) => (
+                <Card
+                  key={club.id ?? `${club.name ?? 'club'}-${idx}`}
+                  className="flex-shrink-0 p-3 shadow-sm border-0 text-center min-w-[80px] cursor-pointer hover:shadow-md transition-shadow"
+                >
+                  <div className="text-2xl mb-2">{club.logo ?? '🏆'}</div>
+                  <p className="text-xs text-gray-700 leading-tight">{club.name ?? 'Club'}</p>
+                </Card>
+              ))
+            ) : (
+              <Card className="p-4 shadow-sm border-0 text-center min-w-[200px]">
+                <p className="text-sm text-gray-600">Vous ne suivez encore aucun club.</p>
+                <div className="mt-2">
+                  <Button onClick={() => onNavigate('clubs')} className="text-[#41B6A6]">
+                    Découvrir des clubs
+                  </Button>
+                </div>
               </Card>
-            ))}
+            )}
           </div>
         </section>
 

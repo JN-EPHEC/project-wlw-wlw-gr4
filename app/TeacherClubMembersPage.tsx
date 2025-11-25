@@ -30,7 +30,7 @@ export function TeacherClubMembersPage({ onBack }: TeacherClubMembersPageProps) 
   const members = [
     {
       id: 1,
-      name: 'Marie Dubois',
+      name: 'Membre 1',
       role: 'Membre',
       joinDate: '2024-06-15',
       coursesAttended: 12,
@@ -38,7 +38,7 @@ export function TeacherClubMembersPage({ onBack }: TeacherClubMembersPageProps) 
     },
     {
       id: 2,
-      name: 'Thomas Laurent',
+      name: 'Membre 2',
       role: 'Membre',
       joinDate: '2024-08-20',
       coursesAttended: 8,
@@ -46,7 +46,7 @@ export function TeacherClubMembersPage({ onBack }: TeacherClubMembersPageProps) 
     },
     {
       id: 3,
-      name: 'Julie Bernard',
+      name: 'Membre 3',
       role: 'Membre',
       joinDate: '2024-05-10',
       coursesAttended: 24,
@@ -54,7 +54,7 @@ export function TeacherClubMembersPage({ onBack }: TeacherClubMembersPageProps) 
     },
     {
       id: 4,
-      name: 'Pierre Martin',
+      name: 'Membre 4',
       role: 'Membre',
       joinDate: '2024-09-05',
       coursesAttended: 3,
@@ -66,7 +66,7 @@ export function TeacherClubMembersPage({ onBack }: TeacherClubMembersPageProps) 
   const educators = [
     {
       id: 1,
-      name: 'Sophie Martin',
+      name: 'Éducatrice 1',
       role: 'Éducatrice',
       isAdmin: false,
       joinDate: '2023-05-15',
@@ -76,7 +76,7 @@ export function TeacherClubMembersPage({ onBack }: TeacherClubMembersPageProps) 
     },
     {
       id: 2,
-      name: 'Marc Dupont',
+      name: 'Éducateur 2',
       role: 'Éducateur',
       isAdmin: false,
       joinDate: '2024-01-10',
@@ -86,7 +86,7 @@ export function TeacherClubMembersPage({ onBack }: TeacherClubMembersPageProps) 
     },
     {
       id: 3,
-      name: 'Jean Directeur',
+      name: 'Admin',
       role: 'Admin',
       isAdmin: true,
       joinDate: '2020-01-01',

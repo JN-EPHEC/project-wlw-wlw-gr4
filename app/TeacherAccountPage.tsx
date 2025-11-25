@@ -24,20 +24,20 @@ export function TeacherAccountPage({ onNavigate, onLogout, onDeleteAccount }: Te
   const [showStatsDialog, setShowStatsDialog] = useState(false);
 
   const [profile, setProfile] = useState({
-    name: 'Pierre Durand',
-    email: 'pierre.durand@email.com',
-    phone: '06 12 34 56 78',
-    city: 'Lyon',
-    bio: 'Éducateur canin professionnel depuis 10 ans, spécialisé en comportement et agility.',
-    specialties: ['Éducation de base', 'Agility', 'Comportement'],
-    experience: '10 ans',
-    certifications: ['BPJEPS', 'Certificat de capacité'],
+    name: '',
+    email: '',
+    phone: '',
+    city: '',
+    bio: '',
+    specialties: [] as string[],
+    experience: '',
+    certifications: [] as string[],
   });
 
   const [bankInfo, setBankInfo] = useState({
-    accountHolder: 'Pierre Durand',
-    iban: 'FR76 1234 5678 9012 3456 7890 123',
-    bic: 'BNPAFRPP',
+    accountHolder: '',
+    iban: '',
+    bic: '',
     paymentMethod: 'virement',
   });
 
@@ -49,10 +49,10 @@ export function TeacherAccountPage({ onNavigate, onLogout, onDeleteAccount }: Te
   };
 
   const transactions = [
-    { id: 1, date: '2024-11-04', description: 'Cours - Marie Dubois', amount: 45, status: 'completed' },
-    { id: 2, date: '2024-11-03', description: 'Cours - Thomas Martin', amount: 55, status: 'completed' },
+    { id: 1, date: '2024-11-04', description: 'Cours - Client', amount: 45, status: 'completed' },
+    { id: 2, date: '2024-11-03', description: 'Cours - Client', amount: 55, status: 'completed' },
     { id: 3, date: '2024-11-02', description: 'Cours collectif (5 participants)', amount: 150, status: 'completed' },
-    { id: 4, date: '2024-11-01', description: 'Cours - Sophie Laurent', amount: 65, status: 'pending' },
+    { id: 4, date: '2024-11-01', description: 'Cours - Client', amount: 65, status: 'pending' },
   ];
 
   const stats = {

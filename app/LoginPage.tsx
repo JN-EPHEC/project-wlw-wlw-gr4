@@ -174,60 +174,7 @@ export function LoginPage({ onLogin, onNavigateToSignup }: LoginPageProps) {
           </Button>
         </div>
 
-        {/* Quick Access - Demo Only */}
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <p className="text-xs text-gray-600 mb-3 text-center">Connexion rapide (démo)</p>
-          <div className="grid grid-cols-3 gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                onLogin({
-                  uid: 'demo-user',
-                  role: 'owner',
-                  email: 'demo-owner@smartdogs.app',
-                  displayName: 'Utilisateur Démo',
-                  profile: {},
-                })
-              }
-              className="text-xs"
-            >
-              Utilisateur
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                onLogin({
-                  uid: 'demo-educator',
-                  role: 'educator',
-                  email: 'demo-educator@smartdogs.app',
-                  displayName: 'Coach Démo',
-                  profile: {},
-                })
-              }
-              className="text-xs"
-            >
-              Professeur
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                onLogin({
-                  uid: 'demo-club',
-                  role: 'club',
-                  email: 'demo-club@smartdogs.app',
-                  displayName: 'Club Démo',
-                  profile: {},
-                })
-              }
-              className="text-xs"
-            >
-              Club
-            </Button>
-          </div>
-        </div>
+        {/* Demo quick-login removed. Use real authentication (email/password). */}
 
         {/* Sign Up Link */}
         <div className="text-center mt-6">
