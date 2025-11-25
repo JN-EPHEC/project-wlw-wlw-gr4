@@ -4,7 +4,7 @@ import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 
 import { auth, db } from "../firebase";
 
-export type SignupRole = "user" | "teacher" | "club";
+export type SignupRole = "owner" | "club" | "educator";
 
 interface RegisterAccountOptions {
   email: string;

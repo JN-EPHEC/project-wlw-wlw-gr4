@@ -1,10 +1,10 @@
+import { ArrowLeft, Camera, Eye, EyeOff, Lock, Mail, MapPin, Phone, User } from 'lucide-react';
 import React, { useState } from 'react';
-import { ArrowLeft, User, Mail, Lock, Phone, MapPin, Eye, EyeOff, Camera } from 'lucide-react';
-import { registerAccount, formatFirebaseAuthError } from '../hooks/signup';
+import { formatFirebaseAuthError, registerAccount } from '../hooks/signup';
 import { Button } from './ui/button';
+import { Card } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Card } from './ui/card';
 
 interface SignupUserPageProps {
   onSignup: () => void;
@@ -59,7 +59,7 @@ export function SignupUserPage({ onSignup, onBack }: SignupUserPageProps) {
         email: formData.email,
         password: formData.password,
         displayName: `${formData.firstName} ${formData.lastName}`.trim(),
-        role: 'user',
+        role: 'owner',
         profile: {
           firstName: formData.firstName,
           lastName: formData.lastName,

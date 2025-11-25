@@ -1,12 +1,12 @@
+import { ArrowLeft, Award, Calendar, Camera, Eye, EyeOff, FileText, GraduationCap, Lock, Mail, MapPin, Phone } from 'lucide-react';
 import React, { useState } from 'react';
-import { ArrowLeft, GraduationCap, Mail, Lock, Phone, MapPin, Eye, EyeOff, Camera, FileText, Award, Calendar } from 'lucide-react';
-import { registerAccount, formatFirebaseAuthError } from '../hooks/signup';
+import { formatFirebaseAuthError, registerAccount } from '../hooks/signup';
+import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { Card } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Card } from './ui/card';
 import { Textarea } from './ui/textarea';
-import { Badge } from './ui/badge';
 
 interface SignupTeacherPageProps {
   onSignup: () => void;
@@ -90,7 +90,7 @@ export function SignupTeacherPage({ onSignup, onBack }: SignupTeacherPageProps) 
         email: formData.email,
         password: formData.password,
         displayName: `${formData.firstName} ${formData.lastName}`.trim(),
-        role: 'teacher',
+        role: 'educator',
         profile: {
           firstName: formData.firstName,
           lastName: formData.lastName,

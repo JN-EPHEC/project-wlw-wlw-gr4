@@ -1,9 +1,6 @@
 import { BadgeCheck, Bell, Calendar, ChevronRight, Dog, Heart, LogOut, Settings, Star } from 'lucide-react';
 import type { SignedInAccount } from '../hooks/auth';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { Badge } from './ui/badge';
-import { Button } from './ui/button';
-import { Card } from './ui/card';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,6 +12,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from './ui/alert-dialog';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
 
 interface AccountPageProps {
   onNavigate: (page: string) => void;
@@ -37,7 +37,14 @@ export function AccountPage({ onNavigate, onShowRatingInvitation, onLogout, user
   const isVerified = profile['verified'] !== false;
   const email = user?.email ?? 'marie.dubois@smartdogs.fr';
   const phone = typeof profile['phone'] === 'string' ? (profile['phone'] as string) : null;
-  const roleLabel = user?.role === 'club' ? 'Club' : user?.role === 'teacher' ? 'Éducateur' : 'Particulier';
+
+  // 🔹 rôles corrigés : owner | club | educator
+  const roleLabel =
+    user?.role === 'club'
+      ? 'Club'
+      : user?.role === 'educator'
+      ? 'Éducateur'
+      : 'Particulier';
 
   const stats = [
     { label: 'Réservations', value: '12', icon: Calendar },
