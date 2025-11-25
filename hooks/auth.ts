@@ -22,7 +22,7 @@ export async function signInWithRole(email: string, password: string): Promise<S
   if (!snapshot.exists()) {
     return {
       uid: credential.user.uid,
-      role: "user",
+      role: "owner",
       email: credential.user.email ?? normalizedEmail,
       displayName: credential.user.displayName ?? null,
       profile: {},
@@ -30,7 +30,7 @@ export async function signInWithRole(email: string, password: string): Promise<S
   }
 
   const data = snapshot.data() ?? {};
-  const role = (data.role as SignupRole | undefined) ?? "user";
+  const role = (data.role as SignupRole | undefined) ?? "owner";
   const profile = (data.profile as Record<string, unknown> | undefined) ?? {};
   const displayName =
     credential.user.displayName ??

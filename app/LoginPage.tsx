@@ -184,8 +184,8 @@ export function LoginPage({ onLogin, onNavigateToSignup }: LoginPageProps) {
               onClick={() =>
                 onLogin({
                   uid: 'demo-user',
-                  role: 'user',
-                  email: 'demo-user@smartdogs.app',
+                  role: 'owner',
+                  email: 'demo-owner@smartdogs.app',
                   displayName: 'Utilisateur Démo',
                   profile: {},
                 })
@@ -199,9 +199,9 @@ export function LoginPage({ onLogin, onNavigateToSignup }: LoginPageProps) {
               size="sm"
               onClick={() =>
                 onLogin({
-                  uid: 'demo-teacher',
-                  role: 'teacher',
-                  email: 'demo-teacher@smartdogs.app',
+                  uid: 'demo-educator',
+                  role: 'educator',
+                  email: 'demo-educator@smartdogs.app',
                   displayName: 'Coach Démo',
                   profile: {},
                 })

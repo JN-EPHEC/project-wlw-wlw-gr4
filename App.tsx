@@ -66,7 +66,10 @@ import { VerifiedPage } from './app/VerifiedPage';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userType, setUserType] = useState<'user' | 'club' | 'teacher' | null>(null);
+  // 🔹 rôles alignés avec Firestore
+  const [userType, setUserType] = useState<'owner' | 'club' | 'educator' | null>(null);
+  const [authAccount, setAuthAccount] = useState<SignedInAccount | null>(null);
+
   const [authPage, setAuthPage] = useState<'login' | 'signupChoice' | 'signupUser' | 'signupClub' | 'signupTeacher'>('login');
   const [currentPage, setCurrentPage] = useState('home');
   const [selectedClubId, setSelectedClubId] = useState<number | null>(null);
@@ -85,7 +88,34 @@ export default function App() {
   const handleNavigate = (page: string) => {
     setPreviousPage(currentPage);
     setCurrentPage(page);
-    if (page !== 'clubDetail' && page !== 'teacherDetail' && page !== 'booking' && page !== 'clubCommunity' && page !== 'chatRoom' && page !== 'forum' && page !== 'postDetail' && page !== 'eventDetail' && page !== 'eventBooking' && page !== 'ratingInvitation' && page !== 'rating' && page !== 'reviews' && page !== 'notifications' && page !== 'bookings' && page !== 'dogs' && page !== 'followedClubs' && page !== 'settings' && page !== 'djanai' && page !== 'djanaiResults' && page !== 'djanai-program' && page !== 'mydog' && page !== 'dogProgression' && page !== 'dogTasks' && page !== 'dogBadges' && page !== 'teacherLeaderboard' && page !== 'clubLeaderboard') {
+    if (
+      page !== 'clubDetail' &&
+      page !== 'teacherDetail' &&
+      page !== 'booking' &&
+      page !== 'clubCommunity' &&
+      page !== 'chatRoom' &&
+      page !== 'forum' &&
+      page !== 'postDetail' &&
+      page !== 'eventDetail' &&
+      page !== 'eventBooking' &&
+      page !== 'ratingInvitation' &&
+      page !== 'rating' &&
+      page !== 'reviews' &&
+      page !== 'notifications' &&
+      page !== 'bookings' &&
+      page !== 'dogs' &&
+      page !== 'followedClubs' &&
+      page !== 'settings' &&
+      page !== 'djanai' &&
+      page !== 'djanaiResults' &&
+      page !== 'djanai-program' &&
+      page !== 'mydog' &&
+      page !== 'dogProgression' &&
+      page !== 'dogTasks' &&
+      page !== 'dogBadges' &&
+      page !== 'teacherLeaderboard' &&
+      page !== 'clubLeaderboard'
+    ) {
       setSelectedClubId(null);
       setSelectedChannelId('');
       setSelectedChannelName('');
@@ -99,7 +129,6 @@ export default function App() {
   };
 
   const handleClubClick = (clubId: number) => {
-    // Check if it's an event ID (>= 200) or a club ID
     if (clubId >= 200 && clubId < 300) {
       setSelectedEventId(clubId);
       setCurrentPage('eventDetail');
@@ -133,8 +162,7 @@ export default function App() {
     setSelectedClubId(clubId);
     setSelectedChannelId(channelId);
     setSelectedChannelName(channelName);
-    
-    // Check if it's the forum channel (tips-tricks)
+
     if (channelId === 'tips-tricks') {
       setCurrentPage('forum');
     } else {
@@ -170,12 +198,12 @@ export default function App() {
 
   const handleLogin = (session: SignedInAccount) => {
     setIsAuthenticated(true);
-    setUserType(session.role);
-    setAuthAccount(session);
-    // Set initial page based on user type
+    setUserType(session.role as 'owner' | 'club' | 'educator');
+    setAuthAccount(session); // 🔹 on garde la session
+
     if (session.role === 'club') {
       setCurrentPage('clubHome');
-    } else if (session.role === 'teacher') {
+    } else if (session.role === 'educator') {
       setCurrentPage('teacher-home');
     } else {
       setCurrentPage('home');
@@ -183,11 +211,10 @@ export default function App() {
   };
 
   const handleSignup = () => {
-    // After successful signup, redirect to login
     setAuthPage('login');
   };
 
-  // If not authenticated, show auth pages
+  // Auth flow
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -242,26 +269,29 @@ export default function App() {
   };
 
   const renderPage = () => {
-    // Club interface pages
+    // CLUB INTERFACE
     if (userType === 'club') {
       switch (currentPage) {
         case 'clubHome':
           return <ClubHomePage onNavigate={handleNavigate} />;
         case 'clubProfile':
-          return <ClubProfilePage 
-            onNavigate={handleNavigate}
-            onLogout={() => {
-              setIsAuthenticated(false);
-              setUserType(null);
-              setCurrentPage('home');
-            }}
-            onDeleteClub={() => {
-              // Simuler la suppression du club
-              setIsAuthenticated(false);
-              setUserType(null);
-              setCurrentPage('home');
-            }}
-          />;
+          return (
+            <ClubProfilePage
+              onNavigate={handleNavigate}
+              onLogout={() => {
+                setIsAuthenticated(false);
+                setUserType(null);
+                setAuthAccount(null);
+                setCurrentPage('home');
+              }}
+              onDeleteClub={() => {
+                setIsAuthenticated(false);
+                setUserType(null);
+                setAuthAccount(null);
+                setCurrentPage('home');
+              }}
+            />
+          );
         case 'clubCommunity':
           return <ClubCommunityManagementPage onNavigate={handleNavigate} />;
         case 'clubAnnouncements':
@@ -269,7 +299,12 @@ export default function App() {
         case 'clubEventsManagement':
           return <ClubEventsManagementPage onBack={() => handleNavigate('clubCommunity')} />;
         case 'clubChannels':
-          return <ClubChannelsPage onBack={() => handleNavigate('clubCommunity')} onChannelClick={handleClubChannelClick} />;
+          return (
+            <ClubChannelsPage
+              onBack={() => handleNavigate('clubCommunity')}
+              onChannelClick={handleClubChannelClick}
+            />
+          );
         case 'clubChannelChat':
           return selectedChannelId ? (
             <ClubChannelChatPage
@@ -287,30 +322,34 @@ export default function App() {
         case 'clubPayments':
           return <ClubPaymentsPage />;
         case 'clubTeachers':
-          return <ClubTeachersPage 
-            onBack={() => handleNavigate('clubProfile')} 
-            onNavigateToPricing={() => handleNavigate('clubTeachersPricing')}
-            onNavigateToAddTeacher={() => handleNavigate('clubAddTeacher')}
-            onNavigateToRequests={() => handleNavigate('clubTeacherRequests')}
-          />;
+          return (
+            <ClubTeachersPage
+              onBack={() => handleNavigate('clubProfile')}
+              onNavigateToPricing={() => handleNavigate('clubTeachersPricing')}
+              onNavigateToAddTeacher={() => handleNavigate('clubAddTeacher')}
+              onNavigateToRequests={() => handleNavigate('clubTeacherRequests')}
+            />
+          );
         case 'clubAddTeacher':
-          return <ClubAddTeacherPage
-            onBack={() => handleNavigate('clubTeachers')}
-            onTeacherAdded={() => {
-              // Ici on pourrait passer le professeur ajouté à la page principale
-              // Pour l'instant on retourne juste à la liste
-              handleNavigate('clubTeachers');
-            }}
-          />;
+          return (
+            <ClubAddTeacherPage
+              onBack={() => handleNavigate('clubTeachers')}
+              onTeacherAdded={() => {
+                handleNavigate('clubTeachers');
+              }}
+            />
+          );
         case 'clubTeachersPricing':
-          return <ClubTeachersPricingPage 
-            onBack={() => handleNavigate('clubTeachers')}
-            onContinue={(count, price) => {
-              setTeachersPricingData({ count, price });
-              handleNavigate('clubTeachersPayment');
-            }}
-            currentTeachersCount={2}
-          />;
+          return (
+            <ClubTeachersPricingPage
+              onBack={() => handleNavigate('clubTeachers')}
+              onContinue={(count, price) => {
+                setTeachersPricingData({ count, price });
+                handleNavigate('clubTeachersPayment');
+              }}
+              currentTeachersCount={2}
+            />
+          );
         case 'clubTeachersPayment':
           return teachersPricingData ? (
             <ClubTeachersPaymentPage
@@ -340,54 +379,68 @@ export default function App() {
       }
     }
 
-    // Teacher interface pages
-    if (userType === 'teacher') {
+    // EDUCATOR / TEACHER INTERFACE
+    if (userType === 'educator') {
       switch (currentPage) {
         case 'teacher-home':
           return <TeacherHomePage onNavigate={handleNavigate} />;
         case 'teacher-appointments':
           return <TeacherAppointmentsPage />;
         case 'teacher-community':
-          return <TeacherCommunitySelectionPage onNavigate={(page, clubId) => {
-            setSelectedClubId(clubId || null);
-            handleNavigate(page);
-          }} />;
+          return (
+            <TeacherCommunitySelectionPage
+              onNavigate={(page, clubId) => {
+                setSelectedClubId(clubId || null);
+                handleNavigate(page);
+              }}
+            />
+          );
         case 'teacher-club-community':
-          return <TeacherClubCommunityPage 
-            clubId={selectedClubId || undefined}
-            onBack={() => handleNavigate('teacher-community')}
-            onNavigate={(page, data) => {
-              if (data?.clubId) setSelectedClubId(data.clubId);
-              if (data?.channelId) setSelectedChannelId(data.channelId);
-              handleNavigate(page);
-            }}
-          />;
+          return (
+            <TeacherClubCommunityPage
+              clubId={selectedClubId || undefined}
+              onBack={() => handleNavigate('teacher-community')}
+              onNavigate={(page, data) => {
+                if (data?.clubId) setSelectedClubId(data.clubId);
+                if (data?.channelId) setSelectedChannelId(data.channelId);
+                handleNavigate(page);
+              }}
+            />
+          );
         case 'teacher-channel-chat':
-          return <TeacherChannelChatPage 
-            channelId={selectedChannelId ? Number(selectedChannelId) : undefined}
-            clubId={selectedClubId || undefined}
-            onBack={() => handleNavigate('teacher-club-community')}
-            onNavigate={handleNavigate}
-          />;
+          return (
+            <TeacherChannelChatPage
+              channelId={selectedChannelId ? Number(selectedChannelId) : undefined}
+              clubId={selectedClubId || undefined}
+              onBack={() => handleNavigate('teacher-club-community')}
+              onNavigate={handleNavigate}
+            />
+          );
         case 'teacher-club-members':
-          return <TeacherClubMembersPage 
-            clubId={selectedClubId || undefined}
-            onBack={() => handleNavigate('teacher-club-community')}
-          />;
+          return (
+            <TeacherClubMembersPage
+              clubId={selectedClubId || undefined}
+              onBack={() => handleNavigate('teacher-club-community')}
+            />
+          );
         case 'teacher-account':
-          return <TeacherAccountPage 
-            onNavigate={handleNavigate}
-            onLogout={() => {
-              setIsAuthenticated(false);
-              setUserType(null);
-              setCurrentPage('home');
-            }}
-            onDeleteAccount={() => {
-              setIsAuthenticated(false);
-              setUserType(null);
-              setCurrentPage('home');
-            }}
-          />;
+          return (
+            <TeacherAccountPage
+              onNavigate={handleNavigate}
+              onLogout={() => {
+                setIsAuthenticated(false);
+                setUserType(null);
+                setAuthAccount(null);
+                setCurrentPage('home');
+              }}
+              onDeleteAccount={() => {
+                setIsAuthenticated(false);
+                setUserType(null);
+                setAuthAccount(null);
+                setCurrentPage('home');
+              }}
+            />
+          );
         case 'teacher-clubs':
           return <TeacherClubsPage onNavigate={handleNavigate} onBack={() => handleNavigate('teacher-home')} />;
         case 'teacher-training':
@@ -400,7 +453,7 @@ export default function App() {
               onBack={() => handleNavigate('teacher-account')}
               onViewTeacher={(teacherId) => {
                 setSelectedTeacherId(teacherId);
-                setSelectedClubId(1); // Default club for now
+                setSelectedClubId(1);
                 handleNavigate('teacherDetail');
               }}
             />
@@ -410,7 +463,7 @@ export default function App() {
       }
     }
 
-    // User interface pages
+    // OWNER (utilisateur classique)
     switch (currentPage) {
       case 'home':
         return <HomePage onNavigate={handleNavigate} />;
@@ -419,18 +472,23 @@ export default function App() {
       case 'community':
         return <CommunityPage onClubClick={handleCommunityClubClick} />;
       case 'mydog':
-        return <MyDogsPage onNavigate={(page) => {
-          if (page === 'dogProgression') {
-            const dogId = (window as any).selectedDogId || 1;
-            setSelectedDogId(dogId);
-            handleNavigate(page);
-          } else {
-            handleNavigate(page);
-          }
-        }} />;
+        return (
+          <MyDogsPage
+            onNavigate={(page) => {
+              if (page === 'dogProgression') {
+                const dogId = (window as any).selectedDogId || 1;
+                setSelectedDogId(dogId);
+                handleNavigate(page);
+              } else {
+                handleNavigate(page);
+              }
+            }}
+          />
+        );
       case 'account':
         return (
-          <AccountPage 
+          <AccountPage
+            user={authAccount} // 🔹 on passe la session ici
             onNavigate={handleNavigate}
             onShowRatingInvitation={(bookingId) => {
               setSelectedBookingId(bookingId);
@@ -439,6 +497,7 @@ export default function App() {
             onLogout={() => {
               setIsAuthenticated(false);
               setUserType(null);
+              setAuthAccount(null);
               setCurrentPage('home');
             }}
           />
@@ -447,9 +506,9 @@ export default function App() {
         return <VerifiedPage onBack={() => handleNavigate('account')} />;
       case 'clubDetail':
         return selectedClubId ? (
-          <ClubDetailPage 
-            clubId={selectedClubId} 
-            onBack={() => handleNavigate('clubs')} 
+          <ClubDetailPage
+            clubId={selectedClubId}
+            onBack={() => handleNavigate('clubs')}
             onBookAppointment={handleBookAppointment}
             onHomeTrainingRequest={handleHomeTrainingRequest}
             onShowReviews={handleShowReviews}
@@ -458,10 +517,7 @@ export default function App() {
         ) : null;
       case 'homeTrainingBooking':
         return selectedClubId ? (
-          <HomeTrainingBookingPage
-            clubId={selectedClubId}
-            onBack={() => handleNavigate('home')}
-          />
+          <HomeTrainingBookingPage clubId={selectedClubId} onBack={() => handleNavigate('home')} />
         ) : null;
       case 'teacherDetail':
         return selectedTeacherId && selectedClubId ? (
@@ -492,17 +548,11 @@ export default function App() {
         ) : null;
       case 'dogTasks':
         return selectedDogId ? (
-          <DogTasksPage
-            dogId={selectedDogId}
-            onBack={() => handleNavigate('dogProgression')}
-          />
+          <DogTasksPage dogId={selectedDogId} onBack={() => handleNavigate('dogProgression')} />
         ) : null;
       case 'dogBadges':
         return selectedDogId ? (
-          <BadgesCollectionPage
-            dogId={selectedDogId}
-            onBack={() => handleNavigate('dogProgression')}
-          />
+          <BadgesCollectionPage dogId={selectedDogId} onBack={() => handleNavigate('dogProgression')} />
         ) : null;
       case 'teacherLeaderboard':
         return (
@@ -510,7 +560,7 @@ export default function App() {
             onBack={() => handleNavigate('clubs')}
             onViewTeacher={(teacherId) => {
               setSelectedTeacherId(teacherId);
-              setSelectedClubId(1); // Default club for now
+              setSelectedClubId(1);
               handleNavigate('teacherDetail');
             }}
           />
@@ -527,25 +577,15 @@ export default function App() {
         );
       case 'eventDetail':
         return selectedEventId ? (
-          <EventDetailPage
-            eventId={selectedEventId}
-            onBack={() => handleNavigate('clubs')}
-            onRegister={handleRegisterEvent}
-          />
+          <EventDetailPage eventId={selectedEventId} onBack={() => handleNavigate('clubs')} onRegister={handleRegisterEvent} />
         ) : null;
       case 'eventBooking':
         return selectedEventId ? (
-          <EventBookingPage
-            eventId={selectedEventId}
-            onBack={() => handleNavigate('eventDetail')}
-          />
+          <EventBookingPage eventId={selectedEventId} onBack={() => handleNavigate('eventDetail')} />
         ) : null;
       case 'booking':
         return selectedClubId ? (
-          <BookingPage 
-            clubId={selectedClubId} 
-            onBack={() => handleNavigate('clubDetail')} 
-          />
+          <BookingPage clubId={selectedClubId} onBack={() => handleNavigate('clubDetail')} />
         ) : null;
       case 'ratingInvitation':
         return selectedBookingId ? (
@@ -574,7 +614,7 @@ export default function App() {
         return (
           <ReviewsPage
             clubId={selectedClubId || undefined}
-            onBack={() => selectedClubId ? handleNavigate('clubDetail') : handleNavigate('home')}
+            onBack={() => (selectedClubId ? handleNavigate('clubDetail') : handleNavigate('home'))}
           />
         );
       case 'notifications':
@@ -646,7 +686,6 @@ export default function App() {
           />
         ) : null;
       case 'djanai-program':
-        // Affiche le programme existant, ou crée un profil par défaut si aucun n'existe
         const defaultProfile = dogProfile || {
           age: 'adult',
           breed: 'Mixed',
@@ -679,10 +718,7 @@ export default function App() {
         ) : null;
       case 'events':
         return selectedClubId ? (
-          <EventsListPage
-            clubId={selectedClubId}
-            onBack={() => handleNavigate('clubCommunity')}
-          />
+          <EventsListPage clubId={selectedClubId} onBack={() => handleNavigate('clubCommunity')} />
         ) : null;
       case 'chatRoom':
         return selectedClubId && selectedChannelId ? (
@@ -705,10 +741,7 @@ export default function App() {
         ) : null;
       case 'postDetail':
         return selectedPostId ? (
-          <PostDetailPage
-            postId={selectedPostId}
-            onBack={() => handleNavigate('forum')}
-          />
+          <PostDetailPage postId={selectedPostId} onBack={() => handleNavigate('forum')} />
         ) : null;
       case 'guidelines':
         return <GuidelinesPage onBack={() => handleNavigate('account')} />;
@@ -719,14 +752,26 @@ export default function App() {
 
   const clubPages = ['clubHome', 'clubProfile', 'clubCommunity', 'clubAppointments', 'clubPayments'];
   const teacherPages = ['teacher-home', 'teacher-appointments', 'teacher-community', 'teacher-account'];
-  const userPagesWithoutNav = ['verified', 'clubDetail', 'booking', 'homeTrainingBooking', 'clubCommunity', 'chatRoom', 'events', 'forum', 'postDetail', 'guidelines'];
-  const showBottomNav = userType === 'club' 
-    ? clubPages.includes(currentPage) 
-    : userType === 'teacher'
-    ? teacherPages.includes(currentPage)
-    : !userPagesWithoutNav.includes(currentPage);
+  const userPagesWithoutNav = [
+    'verified',
+    'clubDetail',
+    'booking',
+    'homeTrainingBooking',
+    'clubCommunity',
+    'chatRoom',
+    'events',
+    'forum',
+    'postDetail',
+    'guidelines',
+  ];
 
-  // Guidelines page should be full-width on desktop
+  const showBottomNav =
+    userType === 'club'
+      ? clubPages.includes(currentPage)
+      : userType === 'educator'
+      ? teacherPages.includes(currentPage)
+      : !userPagesWithoutNav.includes(currentPage);
+
   if (currentPage === 'guidelines') {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -737,22 +782,17 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      {/* Mobile Container - iPhone 15 Pro dimensions */}
       <div className="relative w-full max-w-[393px] h-screen bg-white mx-auto shadow-lg">
         {renderPage()}
-        {showBottomNav && (
-          userType === 'club' ? (
+        {showBottomNav &&
+          (userType === 'club' ? (
             <ClubBottomNav currentPage={currentPage} onNavigate={handleNavigate} />
-          ) : userType === 'teacher' ? (
+          ) : userType === 'educator' ? (
             <TeacherBottomNav currentPage={currentPage} onNavigate={handleNavigate} />
           ) : (
             <BottomNav currentPage={currentPage} onNavigate={handleNavigate} />
-          )
-        )}
+          ))}
       </div>
     </div>
   );
-}
-function setAuthAccount(_session: SignedInAccount) {
-  throw new Error('Function not implemented.');
 }
