@@ -11,7 +11,7 @@ interface TeacherHomePageProps {
 export function TeacherHomePage({ onNavigate }: TeacherHomePageProps = {}) {
   const [notifications] = useState([
     { id: 1, type: 'booking', message: 'Nouvelle réservation pour demain 14h', time: '5 min', unread: true },
-    { id: 2, type: 'review', message: 'Sophie L. a laissé un avis 5★', time: '1h', unread: true },
+    { id: 2, type: 'review', message: 'Un client a laissé un avis 5★', time: '1h', unread: true },
     { id: 3, type: 'payment', message: 'Paiement de 45€ reçu', time: '3h', unread: false },
   ]);
 
@@ -19,7 +19,7 @@ export function TeacherHomePage({ onNavigate }: TeacherHomePageProps = {}) {
     {
       id: 1,
       title: 'Éducation de base',
-      client: 'Marie Dubois',
+      client: 'Client',
       dog: 'Max',
       breed: 'Golden Retriever',
       date: 'Aujourd\'hui',
@@ -31,7 +31,7 @@ export function TeacherHomePage({ onNavigate }: TeacherHomePageProps = {}) {
     {
       id: 2,
       title: 'Agility niveau 2',
-      client: 'Thomas Martin',
+      client: 'Client',
       dog: 'Luna',
       breed: 'Border Collie',
       date: 'Demain',
@@ -43,7 +43,7 @@ export function TeacherHomePage({ onNavigate }: TeacherHomePageProps = {}) {
     {
       id: 3,
       title: 'Comportement agressif',
-      client: 'Sophie Laurent',
+      client: 'Client',
       dog: 'Rex',
       breed: 'Berger Allemand',
       date: 'Demain',
@@ -65,9 +65,9 @@ export function TeacherHomePage({ onNavigate }: TeacherHomePageProps = {}) {
     <div className="flex flex-col h-full bg-white pb-20">
       {/* Header */}
       <div className="bg-gradient-to-br from-[#41B6A6] to-[#359889] px-4 pt-12 pb-8 rounded-b-3xl shadow-lg">
-        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-white">Bonjour, Pierre 👋</h1>
+            <h1 className="text-white">Bonjour 👋</h1>
             <p className="text-white/80 text-sm mt-1">Éducateur canin professionnel</p>
           </div>
           <button 

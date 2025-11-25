@@ -1,9 +1,9 @@
+import { ArrowLeft, MoreVertical, Pin, Send, Settings, Trash2, Users } from 'lucide-react';
 import { useState } from 'react';
-import { ArrowLeft, Send, MoreVertical, Trash2, Pin, Users, Settings } from 'lucide-react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
 import { Badge } from './ui/badge';
+import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { Input } from './ui/input';
 
 interface TeacherChannelChatPageProps {
   channelId?: number;
@@ -36,7 +36,7 @@ export function TeacherChannelChatPage({ channelId = 1, clubId = 1, onBack, onNa
   const messages = [
     {
       id: 1,
-      author: 'Marie Dubois',
+      author: 'Membre',
       role: 'Membre',
       time: '10:30',
       content: 'Bonjour à tous ! Mon chien a vraiment progressé depuis le dernier cours 🐕',
@@ -44,16 +44,16 @@ export function TeacherChannelChatPage({ channelId = 1, clubId = 1, onBack, onNa
     },
     {
       id: 2,
-      author: 'Sophie Martin',
+      author: 'Éducatrice',
       role: 'Éducatrice',
       time: '10:35',
-      content: 'C\'est super Marie ! Continue comme ça, la constance est la clé 👍',
+      content: 'C\'est super ! Continue comme ça, la constance est la clé 👍',
       avatar: 'SM',
       isEducator: true,
     },
     {
       id: 3,
-      author: 'Thomas Laurent',
+      author: 'Membre',
       role: 'Membre',
       time: '10:40',
       content: 'Question : est-ce que quelqu\'un a des conseils pour un chien qui tire en laisse ?',
@@ -61,16 +61,16 @@ export function TeacherChannelChatPage({ channelId = 1, clubId = 1, onBack, onNa
     },
     {
       id: 4,
-      author: 'Sophie Martin',
+      author: 'Éducatrice',
       role: 'Éducatrice',
       time: '10:42',
-      content: 'Thomas, je te conseille de venir au prochain cours spécialisé "Marche en laisse" jeudi à 15h. On travaillera là-dessus en détail !',
+      content: 'Je te conseille de venir au prochain cours spécialisé "Marche en laisse" jeudi à 15h. On travaillera là-dessus en détail !',
       avatar: 'SM',
       isEducator: true,
     },
     {
       id: 5,
-      author: 'Julie Bernard',
+      author: 'Membre',
       role: 'Membre',
       time: '11:15',
       content: 'Merci pour le cours d\'hier, c\'était génial ! 🎉',

@@ -17,7 +17,7 @@ export function ClubChannelChatPage({ channelId, channelName, onBack }: ClubChan
   const messages = [
     {
       id: 1,
-      user: 'Sophie Leclerc',
+      user: 'Éducateur',
       userRole: 'Éducateur',
       message: 'Bonjour à tous ! N\'oubliez pas la session de groupe ce samedi à 14h 🐕',
       time: '10:30',
@@ -25,7 +25,7 @@ export function ClubChannelChatPage({ channelId, channelName, onBack }: ClubChan
     },
     {
       id: 2,
-      user: 'Marie Dupont',
+      user: 'Membre',
       userRole: 'Membre',
       message: 'Bonjour ! Est-ce qu\'il faut apporter quelque chose de spécial ?',
       time: '10:32',
@@ -33,7 +33,7 @@ export function ClubChannelChatPage({ channelId, channelName, onBack }: ClubChan
     },
     {
       id: 3,
-      user: 'Pierre Martin',
+      user: 'Éducateur',
       userRole: 'Éducateur',
       message: 'Apportez des friandises et de l\'eau pour votre chien. On fournit le matériel !',
       time: '10:35',
@@ -41,25 +41,25 @@ export function ClubChannelChatPage({ channelId, channelName, onBack }: ClubChan
     },
     {
       id: 4,
-      user: 'Jean Martin',
+      user: 'Membre',
       userRole: 'Membre',
-      message: 'Super ! Luna et moi serons là 🎉',
+      message: 'Super ! Nous serons là 🎉',
       time: '10:40',
       isClubStaff: false,
     },
     {
       id: 5,
-      user: 'Emma Bernard',
+      user: 'Membre',
       userRole: 'Membre',
-      message: 'Question : c\'est adapté pour un chien réactif ? Max a encore du mal avec les autres chiens...',
+      message: 'Question : c\'est adapté pour un chien réactif ? Mon chien a encore du mal avec les autres chiens...',
       time: '11:15',
       isClubStaff: false,
     },
     {
       id: 6,
-      user: 'Sophie Leclerc',
+      user: 'Éducateur',
       userRole: 'Éducateur',
-      message: 'Oui Emma ! On travaillera justement sur la socialisation. Je serai là pour vous accompagner 👍',
+      message: 'Oui ! On travaillera justement sur la socialisation. Je serai là pour vous accompagner 👍',
       time: '11:20',
       isClubStaff: true,
     },

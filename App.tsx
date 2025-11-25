@@ -466,7 +466,7 @@ export default function App() {
     // OWNER (utilisateur classique)
     switch (currentPage) {
       case 'home':
-        return <HomePage onNavigate={handleNavigate} />;
+        return <HomePage user={authAccount} onNavigate={handleNavigate} />;
       case 'clubs':
         return <ClubsPage onClubClick={handleClubClick} onNavigate={handleNavigate} />;
       case 'community':
@@ -746,7 +746,7 @@ export default function App() {
       case 'guidelines':
         return <GuidelinesPage onBack={() => handleNavigate('account')} />;
       default:
-        return <HomePage onNavigate={handleNavigate} />;
+        return <HomePage user={authAccount} onNavigate={handleNavigate} />;
     }
   };
 
