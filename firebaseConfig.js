@@ -14,5 +14,5 @@ export const auth = getAuth(app);
 export const storage = getStorage(app);
 export const db = getFirestore(app);
 
-// Optionnel mais pratique si tu veux importer l'app ailleurs
+// Optionnel mais pratique si tu veux importer l'app ailleurs n
 export default app;
