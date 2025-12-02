@@ -1,4 +1,4 @@
-import { GoogleAuthProvider, signInWithPopup, fetchSignInMethodsForEmail, sendPasswordResetEmail } from "firebase/auth";
+import { fetchSignInMethodsForEmail, GoogleAuthProvider, sendPasswordResetEmail, signInWithPopup } from "firebase/auth";
 import { doc, getDoc } from 'firebase/firestore';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { useState } from 'react';
