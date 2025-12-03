@@ -1,4 +1,4 @@
-import { fetchSignInMethodsForEmail, GoogleAuthProvider, sendPasswordResetEmail, signInWithPopup } from "firebase/auth";
+import { GoogleAuthProvider, sendPasswordResetEmail, signInWithPopup } from "firebase/auth";
 import { doc, getDoc } from 'firebase/firestore';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { useState } from 'react';
@@ -105,27 +105,6 @@ export function LoginPage({ onLogin, onNavigateToSignup }: LoginPageProps) {
     try {
       setIsSubmitting(true);
       setSubmitError(null);
-      const normalizedEmail = email.trim().toLowerCase();
-
-      // Check which sign-in methods are available for this email
-      const methods = await fetchSignInMethodsForEmail(auth, normalizedEmail);
-
-      if (!methods || methods.length === 0) {
-        setSubmitError("Aucun compte trouvé pour cet email. Créez-en un d'abord.");
-        return;
-      }
-
-      if (!methods.includes('password')) {
-        // If the user has google sign-in only, instruct them to use Google or reset password
-        if (methods.includes('google.com')) {
-          setSubmitError("Ce compte est lié à Google. Connectez-vous via Google ou réinitialisez le mot de passe pour définir un mot de passe.");
-        } else if (methods.includes('facebook.com')) {
-          setSubmitError("Ce compte est lié à Facebook. Connectez-vous via Facebook.");
-        } else {
-          setSubmitError("Ce compte n'utilise pas l'authentification par mot de passe.");
-        }
-        return;
-      }
 
       const session = await signInWithRole(email, password);
       onLogin(session);
