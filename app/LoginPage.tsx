@@ -1,7 +1,9 @@
-import { signInWithPopup, User } from "firebase/auth";
+import { GoogleAuthProvider, sendPasswordResetEmail, signInWithPopup } from "firebase/auth";
+import { doc, getDoc } from 'firebase/firestore';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { useState } from 'react';
-import { auth, provider } from '../firebaseConfig';
+import { db } from '../firebase';
+import { auth, provider as facebookProvider } from '../firebaseConfig';
 import type { SignedInAccount } from '../hooks/auth';
 import { signInWithRole } from '../hooks/auth';
 import { formatFirebaseAuthError } from '../hooks/signup';
@@ -9,6 +11,7 @@ import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+// removed unused getAuth import — we use the exported `auth` from ../firebaseConfig
 
 interface LoginPageProps {
   onLogin: (session: SignedInAccount) => void;
@@ -22,14 +25,76 @@ export function LoginPage({ onLogin, onNavigateToSignup }: LoginPageProps) {
   const [rememberMe, setRememberMe] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [resetSent, setResetSent] = useState<string | null>(null);
 
-  const handleFacebookLogin=() => {
-    signInWithPopup(auth, provider).then ((result)=>{
-    setuser(result.user);
-    }).catch((err)=>{
-      console.log(err);
-    })
-  }
+  // keep the auth language to french
+  auth.languageCode = 'fr';
+
+  const handleGoogleLogin = async () => {
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const googleProvider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+
+      // Load profile from Firestore (if exists) to get role/profile
+      const profileRef = doc(db, 'users', user.uid);
+      const snapshot = await getDoc(profileRef);
+
+      const role = (snapshot.exists() && (snapshot.data()?.role as any)) || 'owner';
+      const profile = (snapshot.exists() && (snapshot.data()?.profile as Record<string, unknown>)) || {};
+      const displayName = user.displayName ?? (snapshot.exists() ? snapshot.data()?.displayName ?? null : null);
+      const emailFromData = snapshot.exists() ? snapshot.data()?.email ?? user.email ?? user.email ?? '' : user.email ?? '';
+
+      const session: SignedInAccount = {
+        uid: user.uid,
+        role,
+        email: (emailFromData as string) ?? '',
+        displayName: displayName ?? null,
+        profile,
+      };
+
+      onLogin(session);
+    } catch (error) {
+      setSubmitError(formatFirebaseAuthError(error));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleFacebookLogin = async () => {
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      // The default provider in firebaseConfig is a Facebook provider
+      const result = await signInWithPopup(auth, facebookProvider);
+      const user = result.user;
+
+      // Load profile from Firestore (if exists) to get role/profile
+      const profileRef = doc(db, 'users', user.uid);
+      const snapshot = await getDoc(profileRef);
+
+      const role = (snapshot.exists() && (snapshot.data()?.role as any)) || 'owner';
+      const profile = (snapshot.exists() && (snapshot.data()?.profile as Record<string, unknown>)) || {};
+      const displayName = user.displayName ?? (snapshot.exists() ? snapshot.data()?.displayName ?? null : null);
+      const emailFromData = snapshot.exists() ? snapshot.data()?.email ?? user.email ?? user.email ?? '' : user.email ?? '';
+
+      const session: SignedInAccount = {
+        uid: user.uid,
+        role,
+        email: (emailFromData as string) ?? '',
+        displayName: displayName ?? null,
+        profile,
+      };
+
+      onLogin(session);
+    } catch (error) {
+      setSubmitError(formatFirebaseAuthError(error));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -40,8 +105,28 @@ export function LoginPage({ onLogin, onNavigateToSignup }: LoginPageProps) {
     try {
       setIsSubmitting(true);
       setSubmitError(null);
+
       const session = await signInWithRole(email, password);
       onLogin(session);
+    } catch (error) {
+      setSubmitError(formatFirebaseAuthError(error));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    if (!email) {
+      setSubmitError('Veuillez indiquer votre email pour recevoir un lien de réinitialisation.');
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    try {
+      setIsSubmitting(true);
+      setSubmitError(null);
+      await sendPasswordResetEmail(auth, normalizedEmail);
+      setResetSent('Lien de réinitialisation envoyé. Vérifiez votre boite e-mail.');
     } catch (error) {
       setSubmitError(formatFirebaseAuthError(error));
     } finally {
@@ -118,7 +203,11 @@ export function LoginPage({ onLogin, onNavigateToSignup }: LoginPageProps) {
                 />
                 <span className="text-sm text-gray-600">Se souvenir de moi</span>
               </label>
-              <button className="text-sm text-[#41B6A6] hover:underline">
+              <button
+                type="button"
+                onClick={handlePasswordReset}
+                className="text-sm text-[#41B6A6] hover:underline"
+              >
                 Mot de passe oublié ?
               </button>
             </div>
@@ -127,6 +216,9 @@ export function LoginPage({ onLogin, onNavigateToSignup }: LoginPageProps) {
             <div className="space-y-3">
               {submitError && (
                 <p className="text-sm text-red-600 text-center">{submitError}</p>
+              )}
+              {resetSent && (
+                <p className="text-sm text-green-600 text-center">{resetSent}</p>
               )}
               <Button
                 onClick={handleLogin}
@@ -151,6 +243,7 @@ export function LoginPage({ onLogin, onNavigateToSignup }: LoginPageProps) {
           <Button
             variant="outline"
             className="w-full h-12 border-gray-300 hover:bg-gray-50"
+            onClick={handleGoogleLogin}
           >
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
               <path
@@ -202,8 +295,5 @@ export function LoginPage({ onLogin, onNavigateToSignup }: LoginPageProps) {
       </div>
     </div>
   );
-}
-function setuser(_user: User) {
-  throw new Error("Function not implemented.");
 }
 
