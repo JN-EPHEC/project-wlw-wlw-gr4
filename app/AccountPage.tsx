@@ -1,4 +1,7 @@
+import { deleteUser } from 'firebase/auth';
+import { collection, getDocs, query, where, writeBatch } from 'firebase/firestore';
 import { BadgeCheck, Bell, Calendar, ChevronRight, Dog, Heart, LogOut, Settings, Star } from 'lucide-react';
+import { auth, db } from '../firebase';
 import type { SignedInAccount } from '../hooks/auth';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import {
@@ -290,6 +293,73 @@ export function AccountPage({ onNavigate, onShowRatingInvitation, onLogout, user
             </AlertDialogContent>
           </AlertDialog>
         </div>
+        
+          {/* Delete Account Button with confirmation */}
+          <div className="pt-4">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full border-2 border-red-700 text-red-700 hover:bg-red-50 hover:text-red-800"
+                >
+                  Supprimer le compte
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Supprimer votre compte</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Cette action est irréversible : votre compte et toutes les données associées seront supprimés.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-red-700 hover:bg-red-800"
+                    onClick={async () => {
+                      try {
+                        const user = auth.currentUser;
+                        if (!user) {
+                          alert('Vous devez être connecté pour supprimer votre compte.');
+                          return;
+                        }
+
+                        // Delete all dogs owned by this user
+                        const q = query(collection(db, 'Chien'), where('ownerId', '==', user.uid));
+                        const snapshot = await getDocs(q);
+                        if (!snapshot.empty) {
+                          const batch = writeBatch(db);
+                          snapshot.forEach((d) => batch.delete(d.ref));
+                          await batch.commit();
+                        }
+
+                        // Delete Firebase auth user
+                        try {
+                          await deleteUser(user);
+                        } catch (authErr: any) {
+                          console.error('Failed to delete auth user', authErr);
+                          if (authErr?.code === 'auth/requires-recent-login') {
+                            alert('La suppression du compte nécessite une récente authentification. Veuillez vous reconnecter puis réessayer.');
+                            return;
+                          }
+                          alert('Impossible de supprimer le compte : ' + (authErr?.message || authErr));
+                          return;
+                        }
+
+                        alert('Votre compte a été supprimé.');
+                        onLogout?.();
+                      } catch (err) {
+                        console.error('Error deleting account and data', err);
+                        alert('Une erreur est survenue lors de la suppression du compte.');
+                      }
+                    }}
+                  >
+                    Confirmer la suppression
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
       </div>
     </div>
   );
