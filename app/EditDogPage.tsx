@@ -1,7 +1,7 @@
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
 import { ArrowLeft, Camera, Upload, X } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { db, storage } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
 import { Badge } from './ui/badge';
@@ -12,16 +12,15 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
 
-interface AddDogPageProps {
+interface EditDogPageProps {
+  dogId: string;
   onBack: () => void;
-  onSave: (dogData: any) => void;
+  onSave?: (dogData: any) => void;
 }
 
-export function AddDogPage({ onBack, onSave }: AddDogPageProps) {
+export function EditDogPage({ dogId, onBack, onSave }: EditDogPageProps) {
   const { user } = useAuth();
-
   const [loading, setLoading] = useState(false);
-
   const [formData, setFormData] = useState({
     name: '',
     breed: '',
@@ -33,7 +32,6 @@ export function AddDogPage({ onBack, onSave }: AddDogPageProps) {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [additionalPhotos, setAdditionalPhotos] = useState<string[]>([]);
-  const [additionalPhotoFiles, setAdditionalPhotoFiles] = useState<File[]>([]);
   const [vaccineFileName, setVaccineFileName] = useState<string>('');
 
   const dogBreeds = [
@@ -78,15 +76,12 @@ export function AddDogPage({ onBack, onSave }: AddDogPageProps) {
     const files = e.target.files;
     if (files) {
       const newPhotos: string[] = [];
-      const newFiles: File[] = [];
       Array.from(files).forEach((file) => {
-        newFiles.push(file);
         const reader = new FileReader();
         reader.onloadend = () => {
           newPhotos.push(reader.result as string);
           if (newPhotos.length === files.length) {
             setAdditionalPhotos([...additionalPhotos, ...newPhotos]);
-            setAdditionalPhotoFiles([...additionalPhotoFiles, ...newFiles]);
           }
         };
         reader.readAsDataURL(file);
@@ -96,16 +91,46 @@ export function AddDogPage({ onBack, onSave }: AddDogPageProps) {
 
   const removeAdditionalPhoto = (index: number) => {
     setAdditionalPhotos(additionalPhotos.filter((_, i) => i !== index));
-    setAdditionalPhotoFiles(additionalPhotoFiles.filter((_, i) => i !== index));
   };
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const d = await getDoc(doc(db, 'Chien', dogId));
+        if (d.exists()) {
+          const data = d.data();
+          setFormData({
+            name: data.name || '',
+            breed: data.breed || '',
+            age: data.birthDate || data.age || '',
+            weight: data.weight || '',
+            height: data.height || '',
+            otherInfo: data.otherInfo || '',
+          });
+          setPhotoPreview(data.photoUrl || data.image || null);
+          setAdditionalPhotos(data.additionalPhotos || []);
+          setVaccineFileName(data.vaccineFile || '');
+        } else {
+          console.error('Dog not found', dogId);
+        }
+      } catch (err) {
+        console.error('Failed to load dog', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [dogId]);
 
   const handleSubmit = async () => {
     if (!formData.name || !formData.breed) {
       alert('Veuillez remplir au minimum le nom et la race de votre chien');
       return;
     }
+
     if (!user?.uid) {
-      alert('Vous devez être connecté pour ajouter un chien');
+      alert('Vous devez être connecté pour modifier ce chien');
       return;
     }
 
@@ -119,20 +144,8 @@ export function AddDogPage({ onBack, onSave }: AddDogPageProps) {
         photoUrl = await getDownloadURL(imgRef);
       }
 
-      // Upload additional photos to Storage and get URLs
-      let additionalPhotoUrls: string[] = [];
-      if (additionalPhotoFiles.length > 0) {
-        additionalPhotoUrls = await Promise.all(
-          additionalPhotoFiles.map(async (file) => {
-            const path = `dogs/${user.uid}/additional_${Date.now()}_${file.name}`;
-            const imgRef = storageRef(storage, path);
-            await uploadBytes(imgRef, file);
-            return await getDownloadURL(imgRef);
-          })
-        );
-      }
-
-      const dogData = {
+      const ref = doc(db, 'Chien', dogId);
+      const payload = {
         name: formData.name,
         breed: formData.breed,
         birthDate: formData.age || '',
@@ -140,21 +153,19 @@ export function AddDogPage({ onBack, onSave }: AddDogPageProps) {
         height: formData.height || '',
         otherInfo: formData.otherInfo || '',
         photoUrl: photoUrl !== undefined ? photoUrl : photoPreview || undefined,
-        additionalPhotos: additionalPhotoUrls,
+        additionalPhotos: additionalPhotos || [],
         vaccineFile: vaccineFileName || undefined,
-        ownerId: user.uid,
-        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
-      const cleaned = Object.fromEntries(Object.entries(dogData).filter(([_, v]) => v !== undefined));
-      console.log('Creating dog with', cleaned);
-      const ref = await addDoc(collection(db, 'Chien'), cleaned as any);
-      console.log('Dog created with id', ref.id);
-      onSave?.({ id: ref.id, ...cleaned });
+      const cleanedPayload = Object.fromEntries(Object.entries(payload).filter(([_, v]) => v !== undefined));
+      await updateDoc(ref, cleanedPayload as any);
+      onSave?.({ id: dogId, ...formData, photoUrl });
+      alert('Profil mis à jour avec succès');
+      onBack();
     } catch (err: any) {
-      console.error('Failed to create dog', err);
+      console.error('Failed to update dog', err);
       const msg = err?.message || JSON.stringify(err);
-      alert('Erreur lors de la création du chien: ' + msg);
+      alert('Erreur lors de la mise à jour du chien: ' + msg);
     } finally {
       setLoading(false);
     }
@@ -174,8 +185,8 @@ export function AddDogPage({ onBack, onSave }: AddDogPageProps) {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-white">Ajouter un chien</h1>
-            <p className="text-white/80 text-sm">Complétez le profil de votre compagnon</p>
+            <h1 className="text-white">Modifier le profil</h1>
+            <p className="text-white/80 text-sm">Mettre à jour les informations de {formData.name || 'votre chien'}</p>
           </div>
         </div>
       </div>
@@ -412,7 +423,7 @@ export function AddDogPage({ onBack, onSave }: AddDogPageProps) {
             className={`flex-1 h-12 rounded-xl bg-[#41B6A6] hover:bg-[#359889] text-white ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
             disabled={loading}
           >
-            {loading ? 'Création...' : 'Enregistrer'}
+            {loading ? 'Enregistrement...' : 'Enregistrer'}
           </Button>
         </div>
       </div>

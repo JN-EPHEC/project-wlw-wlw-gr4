@@ -1,25 +1,37 @@
-import { Activity, Award, Bell, Calendar, Camera, ChevronRight, Clock, Plus, Sparkles, TrendingUp } from 'lucide-react';
-import { useState } from 'react';
+import { collection, deleteDoc, doc, DocumentData, getDoc, onSnapshot, query, QuerySnapshot, where } from 'firebase/firestore';
+import { Activity, Award, Bell, Calendar, Camera, ChevronRight, Clock, Edit, Plus, Sparkles, Trash2, TrendingUp } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { db } from '../firebase';
+import { useAuth } from '../hooks/useAuth';
 import { AddDogPage } from './AddDogPage';
+import { EditDogPage } from './EditDogPage';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Progress } from './ui/progress';
 
-interface Dog {
-  id: number;
+export interface Dog {
+  id: string;
   name: string;
   breed: string;
-  age: string;
-  weight: string;
+  birthDate?: string;
+  age?: string;
+  weight?: string;
   height?: string;
-  image: string;
-  healthStatus: {
-    vaccines: string;
-    deworming: string;
-    vetVisit: string;
+  gender?: string;
+  ownerId?: string;
+  photoUrl?: string;
+  additionalPhotos?: string[];
+  otherInfo?: string;
+  vaccineFile?: string;
+  healthStatus?: {
+    vaccines?: string;
+    deworming?: string;
+    vetVisit?: string;
   };
+  createdAt?: any;
+  updatedAt?: any;
 }
 
 interface MyDogsPageProps {
@@ -27,60 +39,101 @@ interface MyDogsPageProps {
 }
 
 export function MyDogsPage({ onNavigate }: MyDogsPageProps = {}) {
-  const [view, setView] = useState<'list' | 'add' | 'detail'>('list');
-  const [selectedDogId, setSelectedDogId] = useState<number | null>(null);
-  const [dogs, setDogs] = useState<Dog[]>([
-    {
-      id: 1,
-      name: 'Max',
-      breed: 'Golden Retriever',
-      age: '3 ans',
-      weight: '32 kg',
-      height: '58 cm',
-      image: 'https://images.unsplash.com/photo-1719292606971-0916fc62f5b0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=600',
-      healthStatus: {
-        vaccines: 'À jour',
-        deworming: 'Dans 2 mois',
-        vetVisit: '15 Nov 2025',
-      },
-    },
-    {
-      id: 2,
-      name: 'Luna',
-      breed: 'Border Collie',
-      age: '2 ans',
-      weight: '18 kg',
-      height: '48 cm',
-      image: 'https://images.unsplash.com/photo-1568572933382-74d440642117?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=600',
-      healthStatus: {
-        vaccines: 'À jour',
-        deworming: 'À jour',
-        vetVisit: '28 Nov 2025',
-      },
-    },
-  ]);
+  const [view, setView] = useState<'list' | 'add' | 'detail' | 'edit'>('list');
+  const [selectedDogId, setSelectedDogId] = useState<string | null>(null);
+  const [dogs, setDogs] = useState<Dog[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleAddDog = (dogData: any) => {
-    const newDog: Dog = {
-      id: dogs.length + 1,
-      name: dogData.name,
-      breed: dogData.breed,
-      age: dogData.age || 'Non renseigné',
-      weight: dogData.weight || 'Non renseigné',
-      height: dogData.height,
-      image: dogData.photo || 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=600',
-      healthStatus: {
-        vaccines: 'À mettre à jour',
-        deworming: 'À mettre à jour',
-        vetVisit: 'Non planifiée',
-      },
-    };
+  const { user, loading: authLoading } = useAuth();
 
-    setDogs([...dogs, newDog]);
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user?.uid) {
+      setDogs([]);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    const q = query(collection(db, 'Chien'), where('ownerId', '==', user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
+      const fetched: Dog[] = snapshot.docs.map(d => {
+        const data = d.data();
+        return {
+          id: d.id,
+          name: (data.name as string) || '',
+          breed: (data.breed as string) || '',
+          birthDate: (data.birthDate as string) || data.age || undefined,
+          age: (data.age as string) || undefined,
+          weight: data.weight || undefined,
+          height: data.height || undefined,
+          gender: data.gender || undefined,
+          ownerId: data.ownerId || undefined,
+          photoUrl: data.photoUrl || data.image || undefined,
+          additionalPhotos: data.additionalPhotos || undefined,
+          otherInfo: data.otherInfo || undefined,
+          vaccineFile: data.vaccineFile || undefined,
+          healthStatus: data.healthStatus || undefined,
+          createdAt: data.createdAt || undefined,
+          updatedAt: data.updatedAt || undefined,
+        };
+      });
+      setDogs(fetched);
+      setLoading(false);
+    }, (err) => {
+      console.error('Failed to load dogs', err);
+      setError('Impossible de charger vos chiens pour le moment.');
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user, authLoading]);
+
+  const handleAddDog = (_dogData: any) => {
+    // add handled inside AddDogPage via Firestore; here simply switch view
     setView('list');
   };
 
-  const handleDogClick = (dogId: number) => {
+  const handleEditDog = (_dogData: any) => {
+    // editing handled inside EditDogPage via Firestore; switch to detail view
+    setView('detail');
+  };
+
+  const handleDeleteDog = async (dogId: string) => {
+    if (!user?.uid) {
+      alert('Vous devez être connecté pour supprimer ce chien.');
+      return;
+    }
+
+    try {
+      const ref = doc(db, 'Chien', dogId);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        alert('Profil du chien introuvable.');
+        setView('list');
+        setSelectedDogId(null);
+        return;
+      }
+      const data = snap.data() as any;
+      if (data.ownerId && data.ownerId !== user.uid) {
+        alert("Vous n'êtes pas autorisé à supprimer ce chien.");
+        return;
+      }
+
+      await deleteDoc(ref);
+      alert('Le chien a été supprimé.');
+      setView('list');
+      setSelectedDogId(null);
+    } catch (err: any) {
+      console.error('Failed to delete dog', err);
+      setError('Impossible de supprimer ce chien pour le moment.');
+      alert('Impossible de supprimer le chien: ' + (err?.message || String(err)));
+    }
+  };
+
+  const handleDogClick = (dogId: string) => {
     setSelectedDogId(dogId);
     setView('detail');
   };
@@ -94,12 +147,27 @@ export function MyDogsPage({ onNavigate }: MyDogsPageProps = {}) {
     );
   }
 
+  if (view === 'edit' && selectedDogId) {
+    const selectedDog = dogs.find(d => d.id === selectedDogId);
+    if (selectedDog) {
+      return (
+        <EditDogPage
+          dogId={selectedDogId}
+          onBack={() => setView('detail')}
+          onSave={handleEditDog}
+        />
+      );
+    }
+  }
+
   if (view === 'detail' && selectedDogId) {
     const selectedDog = dogs.find(d => d.id === selectedDogId);
     if (selectedDog) {
       return <DogDetailView 
         dog={selectedDog} 
         onBack={() => setView('list')} 
+        onEdit={() => setView('edit')}
+        onDelete={handleDeleteDog}
         onNavigate={onNavigate}
         onViewProgression={(dogId) => {
           // This will be handled by App.tsx
@@ -113,7 +181,7 @@ export function MyDogsPage({ onNavigate }: MyDogsPageProps = {}) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-[#41B6A6]/5 to-white pb-20 overflow-y-auto">
+    <div className="flex flex-col h-full bg-gradient-to-b from-[#41B6A6]/5 to-white pb-20">
       {/* Header */}
       <div className="bg-gradient-to-br from-[#41B6A6] to-[#359889] px-4 pt-12 pb-6 shadow-lg">
         <div className="flex items-center justify-between mb-2">
@@ -125,77 +193,86 @@ export function MyDogsPage({ onNavigate }: MyDogsPageProps = {}) {
             onClick={() => setView('add')}
             size="sm"
             className="bg-white text-[#41B6A6] hover:bg-white/90 rounded-full"
+            disabled={loading}
           >
-            <Plus className="h-4 w-4 mr-1" />
-            Ajouter
+            {loading ? 'Chargement...' : (<><Plus className="h-4 w-4 mr-1" />Ajouter</>)}
           </Button>
         </div>
       </div>
 
       {/* Dogs List */}
-      <div className="px-4 py-6 space-y-4">
-        {dogs.map((dog) => (
-          <Card
-            key={dog.id}
-            className="p-4 shadow-md border-0 cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => handleDogClick(dog.id)}
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-20 h-20 rounded-full overflow-hidden border-3 border-[#41B6A6] flex-shrink-0">
-                <ImageWithFallback
-                  src={dog.image}
-                  alt={dog.name}
-                  className="w-full h-full object-cover"
-                />
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+        {error && (
+          <div className="text-center py-4 text-red-600 bg-red-50 rounded-lg mb-4">
+            {error}
+          </div>
+        )}
+        {loading ? (
+          <div className="text-center py-12 text-gray-500">Chargement des chiens...</div>
+        ) : (
+          dogs.map((dog) => (
+            <Card
+              key={dog.id}
+              className="p-4 shadow-md border-0 cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => handleDogClick(dog.id)}
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 rounded-full overflow-hidden border-3 border-[#41B6A6] flex-shrink-0">
+                  <ImageWithFallback
+                    src={dog.photoUrl || (dog as any).image || 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=600'}
+                    alt={dog.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-gray-800 mb-1">{dog.name}</h3>
+                  <p className="text-sm text-gray-600 mb-2">{dog.breed}</p>
+                  <div className="flex gap-2 text-xs text-gray-500">
+                    <span>{dog.age}</span>
+                    <span>•</span>
+                    <span>{dog.weight}</span>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
               </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-gray-800 mb-1">{dog.name}</h3>
-                <p className="text-sm text-gray-600 mb-2">{dog.breed}</p>
-                <div className="flex gap-2 text-xs text-gray-500">
-                  <span>{dog.age}</span>
-                  <span>•</span>
-                  <span>{dog.weight}</span>
+
+              {/* Quick Health Status */}
+              <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-3 gap-2">
+                <div className="text-center">
+                  <p className="text-xs text-gray-500 mb-1">Vaccins</p>
+                  <Badge
+                    className={`text-xs ${
+                      (dog.healthStatus?.vaccines ?? '') === 'À jour'
+                        ? 'bg-green-100 text-green-700 border-0'
+                        : 'bg-orange-100 text-orange-700 border-0'
+                    }`}
+                  >
+                    {dog.healthStatus?.vaccines ?? 'À mettre à jour'}
+                  </Badge>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-gray-500 mb-1">Vermifuge</p>
+                  <Badge
+                    className={`text-xs ${
+                      (dog.healthStatus?.deworming ?? '') === 'À jour'
+                        ? 'bg-green-100 text-green-700 border-0'
+                        : 'bg-orange-100 text-orange-700 border-0'
+                    }`}
+                  >
+                    {dog.healthStatus?.deworming ?? 'À mettre à jour'}
+                  </Badge>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-gray-500 mb-1">Véto</p>
+                  <p className="text-xs text-gray-700">{dog.healthStatus?.vetVisit ?? 'Non planifiée'}</p>
                 </div>
               </div>
-              <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
-            </div>
-
-            {/* Quick Health Status */}
-            <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-3 gap-2">
-              <div className="text-center">
-                <p className="text-xs text-gray-500 mb-1">Vaccins</p>
-                <Badge
-                  className={`text-xs ${
-                    dog.healthStatus.vaccines === 'À jour'
-                      ? 'bg-green-100 text-green-700 border-0'
-                      : 'bg-orange-100 text-orange-700 border-0'
-                  }`}
-                >
-                  {dog.healthStatus.vaccines}
-                </Badge>
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-gray-500 mb-1">Vermifuge</p>
-                <Badge
-                  className={`text-xs ${
-                    dog.healthStatus.deworming === 'À jour'
-                      ? 'bg-green-100 text-green-700 border-0'
-                      : 'bg-orange-100 text-orange-700 border-0'
-                  }`}
-                >
-                  {dog.healthStatus.deworming}
-                </Badge>
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-gray-500 mb-1">Véto</p>
-                <p className="text-xs text-gray-700">{dog.healthStatus.vetVisit}</p>
-              </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          ))
+        )}
 
         {/* Empty State */}
-        {dogs.length === 0 && (
+        {!loading && dogs.length === 0 && (
           <div className="text-center py-12">
             <div className="text-6xl mb-4">🐕</div>
             <h3 className="text-gray-800 mb-2">Aucun chien enregistré</h3>
@@ -203,6 +280,7 @@ export function MyDogsPage({ onNavigate }: MyDogsPageProps = {}) {
             <Button
               onClick={() => setView('add')}
               className="bg-[#41B6A6] hover:bg-[#359889]"
+              disabled={loading}
             >
               <Plus className="h-4 w-4 mr-2" />
               Ajouter un chien
@@ -218,15 +296,19 @@ export function MyDogsPage({ onNavigate }: MyDogsPageProps = {}) {
 interface DogDetailViewProps {
   dog: Dog;
   onBack: () => void;
+  onEdit: () => void;
+  onDelete: (dogId: string) => void;
   onNavigate?: (page: string) => void;
-  onViewProgression?: (dogId: number) => void;
+  onViewProgression?: (dogId: string) => void;
 }
 
-function DogDetailView({ dog, onBack, onNavigate, onViewProgression }: DogDetailViewProps) {
-  const healthData = [
-    { label: 'Vaccins', status: dog.healthStatus.vaccines, color: dog.healthStatus.vaccines === 'À jour' ? 'text-green-600' : 'text-orange-600', icon: '💉' },
-    { label: 'Vermifuge', status: dog.healthStatus.deworming, color: dog.healthStatus.deworming === 'À jour' ? 'text-green-600' : 'text-orange-600', icon: '💊' },
-    { label: 'Visite véto', status: dog.healthStatus.vetVisit, color: 'text-blue-600', icon: '🏥' },
+function DogDetailView({ dog, onBack, onEdit, onDelete, onNavigate, onViewProgression }: DogDetailViewProps) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+    const healthData = [
+    { label: 'Vaccins', status: dog.healthStatus?.vaccines ?? 'À mettre à jour', color: (dog.healthStatus?.vaccines ?? '') === 'À jour' ? 'text-green-600' : 'text-orange-600', icon: '💉' },
+    { label: 'Vermifuge', status: dog.healthStatus?.deworming ?? 'À mettre à jour', color: (dog.healthStatus?.deworming ?? '') === 'À jour' ? 'text-green-600' : 'text-orange-600', icon: '💊' },
+    { label: 'Visite véto', status: dog.healthStatus?.vetVisit ?? 'Non planifiée', color: 'text-blue-600', icon: '🏥' },
   ];
 
   const trainingProgress = [
@@ -250,9 +332,9 @@ function DogDetailView({ dog, onBack, onNavigate, onViewProgression }: DogDetail
           <ChevronRight className="h-5 w-5 rotate-180" />
         </Button>
         <div className="flex items-center gap-4 mb-4">
-          <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg">
+            <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg">
             <ImageWithFallback
-              src={dog.image}
+              src={dog.photoUrl || (dog as any).image || 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=600'}
               alt={dog.name}
               className="w-full h-full object-cover"
             />
@@ -598,7 +680,7 @@ function DogDetailView({ dog, onBack, onNavigate, onViewProgression }: DogDetail
             </Button>
           </div>
           <div className="grid grid-cols-3 gap-2">
-            {[dog.image, dog.image, dog.image].map((img, index) => (
+            {[(dog.photoUrl || (dog as any).image || 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=600'), (dog.photoUrl || (dog as any).image || 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=600'), (dog.photoUrl || (dog as any).image || 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=600')].map((img, index) => (
               <div
                 key={index}
                 className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 hover:border-[#41B6A6] transition-colors cursor-pointer"
@@ -616,6 +698,79 @@ function DogDetailView({ dog, onBack, onNavigate, onViewProgression }: DogDetail
             </div>
           </div>
         </section>
+
+        {/* Actions */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-gray-800">Actions</h2>
+          </div>
+          <div className="space-y-3">
+            <Card
+              className="p-4 shadow-sm border-0 bg-gradient-to-br from-[#41B6A6]/10 to-white cursor-pointer hover:shadow-md transition-shadow"
+              onClick={onEdit}
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-[#41B6A6] to-[#359889] rounded-full flex items-center justify-center flex-shrink-0">
+                  <Edit className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-gray-800 mb-1">Éditer le profil</h3>
+                  <p className="text-sm text-gray-600">Modifier les informations de {dog.name}</p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-gray-400" />
+              </div>
+            </Card>
+
+            <Card
+              className="p-4 shadow-sm border-0 bg-gradient-to-br from-[#F28B6F]/10 to-white cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-[#F28B6F] to-[#d9a772] rounded-full flex items-center justify-center flex-shrink-0">
+                  <Trash2 className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-gray-800 mb-1">Supprimer le profil</h3>
+                  <p className="text-sm text-gray-600">Supprimer le profil de {dog.name}</p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-gray-400" />
+              </div>
+            </Card>
+          </div>
+        </section>
+
+        {/* Delete Confirmation */}
+        {showDeleteConfirm && (
+          <Card className="p-4 shadow-lg border-0 border-l-4 border-l-red-500 bg-red-50">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <Trash2 className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-red-900 mb-1">Confirmer la suppression</h3>
+                <p className="text-sm text-red-700">Êtes-vous sûr de vouloir supprimer définitivement le profil de {dog.name} ? Cette action est irréversible.</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 border-gray-300"
+              >
+                Annuler
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => onDelete(dog.id)}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Supprimer
+              </Button>
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );
