@@ -20,9 +20,9 @@ export default function PasswordResetSuccessPage() {
         <View style={styles.iconCircle}>
           <Ionicons name="checkmark-circle" size={28} color="#16A34A" />
         </View>
-        <Text style={styles.title}>Mot de passe modifie</Text>
+        <Text style={styles.title}>Mot de passe modifié</Text>
         <Text style={styles.subtitle}>
-          Votre mot de passe a ete mis a jour. Vous pouvez desormais vous connecter avec vos nouveaux identifiants.
+          Votre mot de passe a été mis a jour. Vous pouvez desormais vous connecter avec vos nouveaux identifiants.
         </Text>
         <TouchableOpacity style={styles.button} onPress={() => router.push('/')} activeOpacity={0.9}>
           <Text style={styles.buttonText}>Se connecter</Text>

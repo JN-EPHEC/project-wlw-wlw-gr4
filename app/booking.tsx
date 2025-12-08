@@ -52,14 +52,14 @@ export default function BookingScreen({ navigation, route }: Props) {
           <TouchableOpacity onPress={() => navigation.navigate('clubDetail', { clubId })} style={styles.backButton}>
             <Ionicons name="arrow-back" size={20} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Reservation confirmée</Text>
+          <Text style={styles.headerTitle}>Réservation confirmée</Text>
           <View style={{ width: 32 }} />
         </View>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.confirmIcon}>
             <Ionicons name="calendar-outline" size={48} color={palette.primary} />
           </View>
-          <Text style={styles.title}>Reservation réussie !</Text>
+          <Text style={styles.title}>Réservation réussie !</Text>
           <Text style={styles.subText}>Votre rendez-vous a été confirmé. Un email vous sera envoyé.</Text>
 
           <View style={styles.card}>

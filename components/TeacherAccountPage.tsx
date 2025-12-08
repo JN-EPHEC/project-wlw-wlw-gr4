@@ -39,7 +39,7 @@ export default function TeacherAccountPage() {
         <View style={styles.header}>
           <View>
             <Text style={styles.title}>Compte</Text>
-            <Text style={styles.subtitle}>Profil enseignant et preferences</Text>
+            <Text style={styles.subtitle}>Profil enseignant et préférences</Text>
           </View>
           <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('teacher-home')}>
             <Ionicons name="create-outline" size={18} color={palette.primary} />
@@ -79,7 +79,7 @@ export default function TeacherAccountPage() {
           </View>
           <View style={styles.toggleRow}>
             <View>
-              <Text style={styles.toggleTitle}>Deplacements a domicile</Text>
+              <Text style={styles.toggleTitle}>Deplacements à domicile</Text>
               <Text style={styles.toggleMeta}>Zone: 8 km autour de Paris 15</Text>
             </View>
             <Switch value={homeTravel} onValueChange={setHomeTravel} trackColor={{ true: '#FAD5C1' }} thumbColor="#F28B6F" />
@@ -126,7 +126,7 @@ export default function TeacherAccountPage() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Support et securite</Text>
+          <Text style={styles.sectionTitle}>Support et sécurité</Text>
           <View style={{ gap: 10 }}>
             <TouchableOpacity
               style={styles.row}
@@ -138,7 +138,7 @@ export default function TeacherAccountPage() {
             </TouchableOpacity>
             <View style={styles.row}>
               <Ionicons name="help-circle-outline" size={18} color={palette.gray} />
-              <Text style={styles.rowTitle}>Centre d aide</Text>
+              <Text style={styles.rowTitle}>Centre d'aide</Text>
               <Ionicons name="chevron-forward" size={18} color={palette.gray} />
             </View>
             <View style={styles.row}>

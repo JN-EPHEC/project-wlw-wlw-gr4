@@ -78,7 +78,7 @@ export default function LoginScreen() {
               accent={palette.primary}
             />
             <TouchableOpacity onPress={() => navigation.navigate('password-reset')}>
-              <Text style={styles.link}>Mot de passe oublie ?</Text>
+              <Text style={styles.link}>Mot de passe oublié ?</Text>
             </TouchableOpacity>
           </View>
 
@@ -117,7 +117,7 @@ export default function LoginScreen() {
         <View style={styles.footer}>
           <Text style={styles.footerText}>Vous n'avez pas de compte ? </Text>
           <TouchableOpacity onPress={() => navigation.navigate('signupChoice')}>
-            <Text style={styles.footerLink}>Creer un compte</Text>
+            <Text style={styles.footerLink}>Créer un compte</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

@@ -71,7 +71,7 @@ export default function ResetPasswordPage() {
                 <Ionicons name="key-outline" size={20} color={palette.primary} />
               </View>
               <Text style={styles.title}>Nouveau mot de passe</Text>
-              <Text style={styles.subtitle}>Choisissez un nouveau mot de passe pour securiser votre compte.</Text>
+              <Text style={styles.subtitle}>Choisissez un nouveau mot de passe pour sécuriser votre compte.</Text>
             </View>
 
             <View style={{ gap: 12 }}>
@@ -99,7 +99,7 @@ export default function ResetPasswordPage() {
             </View>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
-            {success ? <Text style={styles.success}>Mot de passe mis a jour.</Text> : null}
+            {success ? <Text style={styles.success}>Mot de passe mis à jour.</Text> : null}
 
             <TouchableOpacity
               style={[styles.button, (!isValid || loading) && { opacity: 0.6 }]}
@@ -110,7 +110,7 @@ export default function ResetPasswordPage() {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.buttonText}>Mettre a jour</Text>
+                <Text style={styles.buttonText}>Mettre à jour</Text>
               )}
             </TouchableOpacity>
 

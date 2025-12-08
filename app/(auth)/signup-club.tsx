@@ -95,11 +95,11 @@ export default function SignupClubScreen() {
       return;
     }
     if (!services.length) {
-      setError('Selectionnez au moins un service propose.');
+      setError('Selectionnez au moins un service proposé.');
       return;
     }
     if (form.password.length < 8) {
-      setError('Mot de passe trop court (minimum 8 caracteres).');
+      setError('Mot de passe trop court (minimum 8 caractères).');
       return;
     }
     if (form.password !== form.confirmPassword) {
@@ -107,7 +107,7 @@ export default function SignupClubScreen() {
       return;
     }
     if (!acceptTerms) {
-      setError("Merci d accepter les conditions d utilisation professionnelles.");
+      setError("Merci d'accepter les conditions d'utilisation professionnelles.");
       return;
     }
     try {

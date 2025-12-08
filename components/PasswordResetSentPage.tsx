@@ -20,9 +20,9 @@ export default function PasswordResetSentPage() {
         <View style={styles.iconCircle}>
           <Ionicons name="mail-outline" size={24} color={palette.primary} />
         </View>
-        <Text style={styles.title}>Email envoye</Text>
+        <Text style={styles.title}>Email envoyé</Text>
         <Text style={styles.subtitle}>
-          Verifiez votre boite mail et suivez le lien de reinitialisation. Pensez a regarder les dossiers Promotions ou Spam.
+          Vérifiez votre boite mail et suivez le lien de réinitialisation. Pensez à regarder les dossiers Promotions ou Spam.
         </Text>
         <TouchableOpacity style={styles.button} onPress={() => router.back()} activeOpacity={0.9}>
           <Text style={styles.buttonText}>Retour</Text>

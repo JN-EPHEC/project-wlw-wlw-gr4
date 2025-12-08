@@ -70,9 +70,9 @@ export default function ForgotPasswordPage({ defaultEmail }: Props) {
               <View style={styles.iconCircle}>
                 <Ionicons name="lock-closed-outline" size={20} color={palette.primary} />
               </View>
-              <Text style={styles.title}>Reinitialiser le mot de passe</Text>
+              <Text style={styles.title}>Réinitialiser le mot de passe</Text>
               <Text style={styles.subtitle}>
-                Entrez l email utilise lors de votre inscription. Nous vous envoyons un lien de reinitialisation.
+                Entrez l'email utilisé lors de votre inscription. Nous vous enverrons un lien de réinitialisation.
               </Text>
             </View>
 
@@ -90,7 +90,7 @@ export default function ForgotPasswordPage({ defaultEmail }: Props) {
             </View>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
-            {sent ? <Text style={styles.success}>Email envoye. Verifiez votre boite mail.</Text> : null}
+            {sent ? <Text style={styles.success}>Email envoyé. Verifiez votre boite mail.</Text> : null}
 
             <TouchableOpacity
               style={[styles.button, (!isEmailValid || loading) && { opacity: 0.6 }]}
@@ -106,7 +106,7 @@ export default function ForgotPasswordPage({ defaultEmail }: Props) {
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.linkBtn} onPress={() => router.back()}>
-              <Text style={styles.linkText}>Retour a la connexion</Text>
+              <Text style={styles.linkText}>Retour à la connexion</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

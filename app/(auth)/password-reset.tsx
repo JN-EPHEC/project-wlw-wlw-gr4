@@ -39,7 +39,7 @@ export default function PasswordResetScreen() {
       />
       <View style={[authStyles.content, { marginTop: -16 }]}>
         <View style={[cardStyle, styles.card]}>
-          <Text style={styles.helper}>Saisissez l email associe a votre compte Smart Dogs.</Text>
+          <Text style={styles.helper}>Saisissez l'email associé à votre compte Smart Dogs.</Text>
           <LabeledInput
             label="Email"
             value={email}
@@ -58,7 +58,7 @@ export default function PasswordResetScreen() {
             disabled={actionLoading}
           />
           <TouchableOpacity onPress={() => navigation.navigate('login')}>
-            <Text style={styles.link}>Retour a la connexion</Text>
+            <Text style={styles.link}>Retour à la connexion</Text>
           </TouchableOpacity>
         </View>
       </View>
