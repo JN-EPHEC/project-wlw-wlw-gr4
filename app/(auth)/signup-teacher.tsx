@@ -104,11 +104,11 @@ export default function SignupTeacherScreen() {
       return;
     }
     if (!specialties.length) {
-      setError('Choisissez au moins une specialite.');
+      setError('Choisissez au moins une spécialité.');
       return;
     }
     if (!acceptTerms) {
-      setError("Merci d accepter les conditions d utilisation professionnelles.");
+      setError("Merci d'accepter les conditions d'utilisation professionnelles.");
       return;
     }
 
@@ -146,8 +146,8 @@ export default function SignupTeacherScreen() {
   return (
     <SafeAreaView style={authStyles.safeArea}>
       <AuthHeader
-        title="Creer un compte"
-        subtitle="Educateur / independant"
+        title="Créer un compte"
+        subtitle="Educateur / Indépendant"
         onBack={() => navigation.navigate('signupChoice')}
         color={palette.teacher}
       />
@@ -255,7 +255,7 @@ export default function SignupTeacherScreen() {
         </View>
 
         <View style={[cardStyle, styles.card]}>
-          <Text style={authStyles.sectionTitle}>Specialites proposees *</Text>
+          <Text style={authStyles.sectionTitle}>Spécialités proposées *</Text>
           <View style={styles.chipWrap}>
             {specialtiesList.map((item) => (
               <SelectChip
@@ -274,11 +274,11 @@ export default function SignupTeacherScreen() {
           files={documents}
           onPick={handlePickDocuments}
           color={palette.teacher}
-          description="Ajoutez vos pieces justificatives (diplomes, RC pro, piece d identite) pour etre verifie."
+          description="Ajoutez vos pièces justificatives (diplomes, RC pro, pièce d'identitée) pour être vérifié."
         />
 
         <View style={[cardStyle, styles.card]}>
-          <Text style={authStyles.sectionTitle}>Securite</Text>
+          <Text style={authStyles.sectionTitle}>Sécurité</Text>
           <LabeledInput
             label="Mot de passe *"
             value={form.password}
@@ -309,7 +309,7 @@ export default function SignupTeacherScreen() {
 
         <InfoCard
           title='Badge "Smart Dogs verified"'
-          description="Apres verification de vos documents, vous afficherez le badge de confiance pour rassurer vos clients."
+          description="Après verification de vos documents, vous afficherez le badge de confiance pour rassurer vos clients."
           color={palette.teacher}
           icon={<MaterialCommunityIcons name="shield-check-outline" size={22} color={palette.teacher} />}
         />
@@ -318,7 +318,7 @@ export default function SignupTeacherScreen() {
           <CheckboxRow
             checked={acceptTerms}
             onToggle={() => setAcceptTerms((v) => !v)}
-            label="J accepte les conditions d utilisation professionnelles et la politique de confidentialite."
+            label="J'accepte les conditions d'utilisation professionnelles et la politique de confidentialité."
             accent={palette.teacher}
           />
           <CheckboxRow
@@ -332,7 +332,7 @@ export default function SignupTeacherScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <PrimaryButton
-          title={loading ? 'Creation en cours...' : 'Creer mon compte educateur'}
+          title={loading ? 'Creation en cours...' : 'Créer mon compte éducateur'}
           onPress={handleSubmit}
           color={palette.teacher}
           disabled={loading || !acceptTerms}

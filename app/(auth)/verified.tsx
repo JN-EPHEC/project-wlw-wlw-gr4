@@ -20,9 +20,9 @@ export default function VerifiedScreen() {
       <View style={[authStyles.content, styles.centerContent]}>
         <View style={[cardStyle, styles.card]}>
           <Ionicons name="mail-unread-outline" size={54} color={palette.primary} />
-          <Text style={styles.title}>Verifiez votre boite mail</Text>
+          <Text style={styles.title}>Vérifiez votre boite mail</Text>
           <Text style={styles.subtitle}>
-            Nous avons envoye un lien de verification {email ? `a ${email}` : 'sur votre email'}.
+            Nous avons envoyé un lien de verification {email ? `a ${email}` : 'sur votre email'}.
             Cliquez dessus puis connectez-vous pour finaliser votre inscription.
           </Text>
           <PrimaryButton title="Retour a la connexion" onPress={() => navigation.navigate('login')} color={palette.primary} />

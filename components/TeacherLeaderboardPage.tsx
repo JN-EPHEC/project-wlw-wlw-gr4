@@ -151,7 +151,7 @@ export default function TeacherLeaderboardPage() {
             <Text style={styles.secondaryText}>Voir mon score</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('teacher-appointments')}>
-            <Text style={styles.primaryBtnText}>Ameliorer</Text>
+            <Text style={styles.primaryBtnText}>Améliorer</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
