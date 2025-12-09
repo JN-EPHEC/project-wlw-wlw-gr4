@@ -16,9 +16,9 @@ const initialNotifications = [
   {
     id: 1,
     type: 'rating',
-    title: 'Donnez votre avis',
-    message: "Comment s'est pass‚e votre s‚ance au Canin Club Paris ?",
-    time: 'Il y a 2h',
+    title: 'Donnez votre avis !',
+    message: "Comment s'est passée votre séance au Canin Club Paris ?",
+    time: 'Il y a 2 heures',
     isRead: false,
     icon: 'star',
     iconColor: '#E9B782',
@@ -28,9 +28,9 @@ const initialNotifications = [
   {
     id: 2,
     type: 'club',
-    title: 'R‚servation confirm‚e',
-    message: 'S‚ance du 2 novembre … 14h00 avec Sophie Martin confirm‚e.',
-    time: 'Il y a 3h',
+    title: 'Réservation confirmée !',
+    message: 'Séance du 2 novembre à 14h00 avec Sophie Martin confirmée.',
+    time: 'Il y a 3 heures',
     isRead: false,
     icon: 'checkmark-circle',
     iconColor: '#16A34A',
@@ -41,8 +41,8 @@ const initialNotifications = [
   {
     id: 3,
     type: 'club',
-    title: 'Nouvel ‚v‚nement',
-    message: 'Comp‚tition Agility - Grand Prix 2024 ouverte aux inscriptions.',
+    title: 'Nouvel événement !',
+    message: 'Compétition Agility - Grand Prix 2024 ouverte aux inscriptions.',
     time: 'Hier',
     isRead: false,
     icon: 'trophy',
@@ -54,8 +54,8 @@ const initialNotifications = [
   {
     id: 4,
     type: 'message',
-    title: 'Nouveau message',
-    message: 'Sophie vous a ‚crit dans #conseils.',
+    title: 'Nouveau message !',
+    message: 'Sophie vous a écrit dans #conseils.',
     time: 'Il y a 2 jours',
     isRead: true,
     icon: 'chatbubble-ellipses',
@@ -77,19 +77,23 @@ export default function NotificationsScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => navigation.navigate((previousTarget as any) ?? 'account')}
-            style={styles.back}
-          >
-            <Ionicons name="arrow-back" size={20} color="#fff" />
-          </TouchableOpacity>
-          <View>
-            <Text style={styles.headerTitle}>Notifications</Text>
-            <Text style={styles.headerSub}>{unreadCount} non lues</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+            <TouchableOpacity
+              onPress={() => (previousTarget ? navigation.navigate(previousTarget as any) : navigation.goBack())}
+              style={styles.back}
+            >
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Mes notifications</Text>
           </View>
-          <TouchableOpacity style={styles.back} onPress={markAllRead}>
-            <Ionicons name="checkmark-done" size={20} color="#fff" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={styles.headerSub}>
+              {unreadCount} non lue{unreadCount > 1 ? 's' : ''}
+            </Text>
+            <TouchableOpacity style={styles.back} onPress={markAllRead}>
+              <Ionicons name="checkmark-done" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {notifications.map((n) => (
@@ -103,7 +107,7 @@ export default function NotificationsScreen({ navigation, route }: Props) {
               } else if (n.type === 'club') {
                 navigation.navigate('clubDetail', { clubId: n.clubId ?? 0 });
               } else {
-                navigation.navigate((previousTarget as any) ?? 'account');
+                navigation.goBack();
               }
             }}
           >

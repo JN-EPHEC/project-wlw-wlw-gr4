@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -44,8 +44,10 @@ type AccountNavigationProp = NativeStackNavigationProp<UserStackParamList, 'acco
 
 export default function AccountScreen() {
   const navigation = useNavigation<AccountNavigationProp>();
-  const { user, profile, logout, actionLoading } = useAuth();
+  const { user, profile, logout, deleteAccount, actionLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
 
   const profileData = useMemo(() => ((profile as any)?.profile ?? {}) as Record<string, any>, [profile]);
   const displayName = useMemo(() => {
@@ -94,7 +96,7 @@ export default function AccountScreen() {
     { id: 'bookings', icon: 'calendar-outline' as const, label: 'Mes réservations', badge: bookingsCount ? String(bookingsCount) : '3', onPress: () => navigation.navigate('bookings') },
     { id: 'dogs', icon: 'paw-outline' as const, label: 'Mes chiens', badge: null, onPress: () => navigation.navigate('dogs') },
     { id: 'clubs', icon: 'heart-outline' as const, label: 'Clubs suivis', badge: null, onPress: () => navigation.navigate('followedClubs') },
-    { id: 'notifications', icon: 'notifications-outline' as const, label: 'Notifications', badge: '5', onPress: () => navigation.navigate('notifications') },
+    { id: 'notifications', icon: 'notifications-outline' as const, label: 'Notifications', badge: '5', onPress: () => navigation.navigate('notifications', { previousTarget: 'account' }) },
     { id: 'ratingInvitation', icon: 'star-outline' as const, label: 'Invitations avis', badge: null, onPress: () => navigation.navigate('ratingInvitation', { bookingId: 501, previousTarget: 'account' }) },
     { id: 'settings', icon: 'settings-outline' as const, label: 'Paramètres', badge: null, onPress: () => navigation.navigate('settings') },
   ];
@@ -108,13 +110,28 @@ export default function AccountScreen() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    setError(null);
+    try {
+      await deleteAccount();
+      setDeleteModalVisible(false);
+    } catch (err) {
+      setError(formatFirebaseAuthError(err));
+      setDeleteModalVisible(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
-      <LinearGradient colors={['#3fb9a8', '#e9f8f4']} style={styles.background} />
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.heading}>Mon compte</Text>
-          <LinearGradient colors={['#34b6a3', '#53cdb6']} style={styles.profileWrapper}>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.4)', 'rgba(255,255,255,0.1)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.profileWrapper}
+          >
             <View style={styles.profileCard}>
               <View style={styles.profileRow}>
                 <View style={styles.avatar}>
@@ -151,7 +168,12 @@ export default function AccountScreen() {
           </LinearGradient>
         </View>
 
-        <LinearGradient colors={['#3ab5a4', '#40bfa9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.badgeCard}>
+        <LinearGradient
+          colors={[palette.primary, palette.primaryDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.badgeCard}
+        >
           <View style={styles.badgeIcon}>
             <Ionicons name="shield-checkmark-outline" size={24} color={palette.surface} />
           </View>
@@ -224,7 +246,7 @@ export default function AccountScreen() {
 
         <TouchableOpacity
           style={[styles.logoutButton, actionLoading && styles.disabled]}
-          onPress={handleLogout}
+          onPress={() => setLogoutModalVisible(true)}
           disabled={actionLoading}
         >
           <Ionicons name="log-out-outline" size={18} color="#DC2626" />
@@ -232,16 +254,51 @@ export default function AccountScreen() {
         </TouchableOpacity>
       </ScrollView>
       <UserBottomNav current="account" />
+
+      {/* Logout Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isLogoutModalVisible}
+        onRequestClose={() => setLogoutModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalText}>Vous êtes sur le point de vous déconnecter</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setLogoutModalVisible(false)}
+              >
+                <Text style={styles.cancelButtonText}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleLogout}
+              >
+                <Text style={styles.confirmButtonText}>Se déconnecter</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#E9F8F4' },
-  background: { ...StyleSheet.absoluteFillObject },
+  safe: { flex: 1, backgroundColor: '#F0F2F5' },
   container: { padding: 16, paddingBottom: 140, gap: 16 },
-  header: { gap: 12 },
-  heading: { color: '#fff', fontSize: 24, fontWeight: '700' },
+  header: {
+    gap: 12,
+    backgroundColor: palette.primary,
+    padding: 16,
+    margin: -16,
+    marginBottom: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  heading: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
   profileWrapper: { borderRadius: 22, padding: 1 },
   profileCard: {
     backgroundColor: palette.surface,
@@ -376,7 +433,7 @@ const styles = StyleSheet.create({
   },
   clubIcon: { fontSize: 20 },
   clubName: { color: palette.text, fontSize: 12, textAlign: 'center' },
-  error: { color: '#DC2626', fontSize: 13 },
+  error: { color: '#DC2626', fontSize: 13, textAlign: 'center', marginBottom: 8 },
   logoutButton: {
     marginTop: 8,
     borderWidth: 1.5,
@@ -390,5 +447,99 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   logoutText: { color: '#DC2626', fontWeight: '700' },
+  deleteButton: {
+    marginTop: 8,
+    borderWidth: 1.5,
+    borderColor: '#DC2626',
+    borderRadius: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'transparent',
+  },
+  deleteButtonText: { color: '#DC2626', fontWeight: '700' },
   disabled: { opacity: 0.6 },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    width: '90%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#1F2937',
+  },
+  modalText: {
+    marginBottom: 25,
+    textAlign: 'center',
+    fontSize: 16,
+    color: '#4B5563',
+    lineHeight: 24,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalButton: {
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    elevation: 2,
+    flex: 1,
+    marginHorizontal: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#DC2626',
+  },
+  cancelButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  confirmButton: {
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#DC2626',
+  },
+  confirmButtonText: {
+    color: '#DC2626',
+    fontWeight: 'bold',
+  },
+  deleteCancelButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  deleteCancelButtonText: {
+    color: '#1F2937',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  deleteConfirmButton: {
+    backgroundColor: '#DC2626',
+  },
+  deleteConfirmButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
 });

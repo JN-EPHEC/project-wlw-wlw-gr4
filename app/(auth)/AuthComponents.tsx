@@ -261,8 +261,16 @@ type AuthHeaderProps = {
 };
 
 export function AuthHeader({ title, subtitle, onBack, color = palette.primary }: AuthHeaderProps) {
+  const lightColors: { [key: string]: string } = {
+    [palette.primary]: '#7cd1c4',
+    [palette.teacher]: '#f7ac99',
+    [palette.club]: '#f0c9a1',
+  };
+
+  const gradientColors = [color, color, lightColors[color] || color];
+
   return (
-    <LinearGradient colors={[color, color, '#ffffff']} style={styles.header}>
+    <LinearGradient colors={gradientColors} style={styles.header}>
       <View style={{ width: '100%', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 }}>
         {onBack ? (
           <TouchableOpacity onPress={onBack} style={styles.backButton} activeOpacity={0.85}>

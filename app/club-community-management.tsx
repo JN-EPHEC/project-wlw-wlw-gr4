@@ -15,7 +15,6 @@ const palette = {
 type Props = NativeStackScreenProps<ClubStackParamList, 'clubCommunity'>;
 
 export default function ClubCommunityManagementScreen({ navigation }: Props) {
-
   const stats = {
     announcements: 5,
     unreadAnnouncements: 2,
@@ -30,18 +29,15 @@ export default function ClubCommunityManagementScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 32 }}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={styles.headerRow}>
             <TouchableOpacity style={styles.backBtn} onPress={() => handleNavigate('clubHome')}>
               <Ionicons name="arrow-back" size={20} color="#fff" />
             </TouchableOpacity>
             <View>
-              <Text style={styles.headerTitle}>Ma Communaut‚</Text>
-              <Text style={styles.headerSub}>G‚rez votre communaut‚</Text>
+              <Text style={styles.headerTitle}>Ma communauté</Text>
+              <Text style={styles.headerSub}>Gérez votre communauté</Text>
             </View>
           </View>
         </View>
@@ -74,8 +70,7 @@ export default function ClubCommunityManagementScreen({ navigation }: Props) {
           <TouchableOpacity
             style={[styles.card, styles.cardTerracotta]}
             activeOpacity={0.9}
-            onPress={() => handleNavigate('clubAnnouncements')}
-          >
+            onPress={() => handleNavigate('clubAnnouncements')}>
             <View style={styles.cardIconTerracotta}>
               <MaterialCommunityIcons name="bell-outline" size={28} color="#fff" />
             </View>
@@ -84,16 +79,12 @@ export default function ClubCommunityManagementScreen({ navigation }: Props) {
                 <Text style={styles.cardTitle}>Annonces</Text>
                 {stats.unreadAnnouncements > 0 ? (
                   <View style={[styles.badge, { backgroundColor: '#F28B6F' }]}>
-                    <Text style={[styles.badgeText, { color: '#fff' }]}>
-                      {stats.unreadAnnouncements} nouvelles
-                    </Text>
+                    <Text style={[styles.badgeText, { color: '#fff' }]}>{stats.unreadAnnouncements} nouvelles</Text>
                   </View>
                 ) : null}
               </View>
               <Text style={styles.cardMeta}>Gérez les annonces officielles du club</Text>
-              <Text style={[styles.cardMeta, { color: '#F97316' }]}>
-                {stats.announcements} annonces publiées
-              </Text>
+              <Text style={[styles.cardMeta, { color: '#F97316' }]}>{stats.announcements} annonces publiées</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={palette.gray} />
           </TouchableOpacity>
@@ -101,8 +92,7 @@ export default function ClubCommunityManagementScreen({ navigation }: Props) {
           <TouchableOpacity
             style={[styles.card, styles.cardTurquoise]}
             activeOpacity={0.9}
-            onPress={() => handleNavigate('clubEventsManagement')}
-          >
+            onPress={() => handleNavigate('clubEventsManagement')}>
             <View style={styles.cardIconTurquoise}>
               <MaterialCommunityIcons name="calendar-month-outline" size={28} color="#fff" />
             </View>
@@ -119,11 +109,7 @@ export default function ClubCommunityManagementScreen({ navigation }: Props) {
             <Ionicons name="chevron-forward" size={18} color={palette.gray} />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.card}
-            activeOpacity={0.9}
-            onPress={() => handleNavigate('clubChannels')}
-          >
+          <TouchableOpacity style={styles.card} activeOpacity={0.9} onPress={() => handleNavigate('clubChannels')}>
             <View style={styles.cardIconGray}>
               <MaterialCommunityIcons name="pound" size={28} color="#fff" />
             </View>
@@ -142,11 +128,7 @@ export default function ClubCommunityManagementScreen({ navigation }: Props) {
             <Ionicons name="chevron-forward" size={18} color={palette.gray} />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.card, styles.cardPurple]}
-            activeOpacity={0.9}
-            onPress={() => handleNavigate('clubMembers')}
-          >
+          <TouchableOpacity style={[styles.card, styles.cardPurple]} activeOpacity={0.9} onPress={() => handleNavigate('clubMembers')}>
             <View style={styles.cardIconPurple}>
               <Ionicons name="people" size={26} color="#fff" />
             </View>
@@ -162,11 +144,11 @@ export default function ClubCommunityManagementScreen({ navigation }: Props) {
             </View>
             <Ionicons name="chevron-forward" size={18} color={palette.gray} />
           </TouchableOpacity>
+
           <TouchableOpacity
             style={[styles.card, styles.cardTurquoise]}
             activeOpacity={0.9}
-            onPress={() => handleNavigate('clubAppointments')}
-          >
+            onPress={() => handleNavigate('clubAppointments')}>
             <View style={styles.cardIconTurquoise}>
               <Ionicons name="calendar-outline" size={26} color="#fff" />
             </View>
@@ -178,7 +160,7 @@ export default function ClubCommunityManagementScreen({ navigation }: Props) {
                 </View>
               </View>
               <Text style={styles.cardMeta}>Consultez les demandes et plannings</Text>
-              <Text style={[styles.cardMeta, { color: '#0F766E' }]}>Demandes a domicile incluses</Text>
+              <Text style={[styles.cardMeta, { color: '#0F766E' }]}>Demandes à domicile incluses</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={palette.gray} />
           </TouchableOpacity>
@@ -186,8 +168,7 @@ export default function ClubCommunityManagementScreen({ navigation }: Props) {
           <TouchableOpacity
             style={[styles.card, styles.cardTerracotta]}
             activeOpacity={0.9}
-            onPress={() => handleNavigate('clubLeaderboard')}
-          >
+            onPress={() => handleNavigate('clubLeaderboard')}>
             <View style={styles.cardIconTerracotta}>
               <MaterialCommunityIcons name="trophy-outline" size={28} color="#fff" />
             </View>
@@ -196,7 +177,7 @@ export default function ClubCommunityManagementScreen({ navigation }: Props) {
                 <Text style={styles.cardTitle}>Classement</Text>
               </View>
               <Text style={styles.cardMeta}>Voir votre position inter-clubs</Text>
-              <Text style={[styles.cardMeta, { color: '#C2410C' }]}>Booster ma visibilite</Text>
+              <Text style={[styles.cardMeta, { color: '#C2410C' }]}>Booster ma visibilité</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={palette.gray} />
           </TouchableOpacity>

@@ -61,57 +61,59 @@ export default function CommunityScreen() {
           <Text style={styles.headerSub}>Vos clubs et groupes</Text>
         </View>
 
-        <View style={styles.statsCard}>
-          <View style={styles.stat}>
-            <Ionicons name="people-outline" size={18} color={palette.primary} />
-            <Text style={styles.statValue}>{clubs.length}</Text>
-            <Text style={styles.statLabel}>Clubs</Text>
+        <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 14 }}>
+          <View style={styles.statsCard}>
+            <View style={styles.stat}>
+              <Ionicons name="people-outline" size={18} color={palette.primary} />
+              <Text style={styles.statValue}>{clubs.length}</Text>
+              <Text style={styles.statLabel}>Clubs</Text>
+            </View>
+            <View style={styles.dividerVertical} />
+            <View style={styles.stat}>
+              <Ionicons name="chatbubbles-outline" size={18} color={palette.primary} />
+              <Text style={styles.statValue}>{totalUnread}</Text>
+              <Text style={styles.statLabel}>Non lus</Text>
+            </View>
+            <View style={styles.dividerVertical} />
+            <View style={styles.stat}>
+              <Ionicons name="notifications-outline" size={18} color={palette.primary} />
+              <Text style={styles.statValue}>3</Text>
+              <Text style={styles.statLabel}>Événements</Text>
+            </View>
           </View>
-          <View style={styles.dividerVertical} />
-          <View style={styles.stat}>
-            <Ionicons name="chatbubbles-outline" size={18} color={palette.primary} />
-            <Text style={styles.statValue}>{totalUnread}</Text>
-            <Text style={styles.statLabel}>Non lus</Text>
-          </View>
-          <View style={styles.dividerVertical} />
-          <View style={styles.stat}>
-            <Ionicons name="notifications-outline" size={18} color={palette.primary} />
-            <Text style={styles.statValue}>3</Text>
-            <Text style={styles.statLabel}>Événements</Text>
-          </View>
-        </View>
 
-        {clubs.map((club) => (
-          <TouchableOpacity
-            key={club.id}
-            style={styles.card}
-            activeOpacity={0.9}
-            onPress={() => navigation.navigate('clubCommunity', { clubId: club.id })}
-          >
-            <Image source={{ uri: club.image }} style={styles.image} />
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.title}>{club.name}</Text>
-                {club.verified ? <MaterialCommunityIcons name="check-decagram" size={18} color={palette.primary} /> : null}
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 4 }}>
-                <Ionicons name="people-outline" size={14} color={palette.gray} />
-                <Text style={styles.sub}>{club.members} membres</Text>
-                <Ionicons name="time-outline" size={14} color={palette.gray} />
-                <Text style={styles.sub}>{club.time}</Text>
-              </View>
-              <Text style={styles.lastMessage}>{club.lastMessage}</Text>
-            </View>
-            <View style={{ alignItems: 'flex-end', gap: 8 }}>
-              {club.unread > 0 ? (
-                <View style={styles.unreadBadge}>
-                  <Text style={styles.unreadText}>{club.unread}</Text>
+          {clubs.map((club) => (
+            <TouchableOpacity
+              key={club.id}
+              style={styles.card}
+              activeOpacity={0.9}
+              onPress={() => navigation.navigate('clubCommunity', { clubId: club.id })}
+            >
+              <Image source={{ uri: club.image }} style={styles.image} />
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.title}>{club.name}</Text>
+                  {club.verified ? <MaterialCommunityIcons name="check-decagram" size={18} color={palette.primary} /> : null}
                 </View>
-              ) : null}
-              <Ionicons name="chevron-forward" size={18} color={palette.gray} />
-            </View>
-          </TouchableOpacity>
-        ))}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 4 }}>
+                  <Ionicons name="people-outline" size={14} color={palette.gray} />
+                  <Text style={styles.sub}>{club.members} membres</Text>
+                  <Ionicons name="time-outline" size={14} color={palette.gray} />
+                  <Text style={styles.sub}>{club.time}</Text>
+                </View>
+                <Text style={styles.lastMessage}>{club.lastMessage}</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end', gap: 8 }}>
+                {club.unread > 0 ? (
+                  <View style={styles.unreadBadge}>
+                    <Text style={styles.unreadText}>{club.unread}</Text>
+                  </View>
+                ) : null}
+                <Ionicons name="chevron-forward" size={18} color={palette.gray} />
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
       </ScrollView>
       <UserBottomNav current="community" />
     </SafeAreaView>
@@ -119,11 +121,19 @@ export default function CommunityScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F5F7FA' },
-  content: { padding: 16, gap: 14, paddingBottom: 120 },
-  header: { backgroundColor: palette.primary, borderRadius: 18, padding: 16, gap: 4 },
-  headerTitle: { color: '#fff', fontSize: 20, fontWeight: '700' },
-  headerSub: { color: 'rgba(255,255,255,0.9)', fontSize: 13 },
+  safe: { flex: 1, backgroundColor: '#F0F2F5' },
+  content: { paddingBottom: 120 },
+  header: {
+    backgroundColor: palette.primary,
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    gap: 8,
+  },
+  headerTitle: { color: '#fff', fontSize: 26, fontWeight: 'bold' },
+  headerSub: { color: '#fff', fontSize: 16 },
   statsCard: {
     backgroundColor: '#fff',
     borderRadius: 16,

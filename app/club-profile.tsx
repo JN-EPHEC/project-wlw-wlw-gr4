@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Modal,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -12,7 +13,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import ClubBottomNav from '@/components/ClubBottomNav';
-import { useAuth } from '@/context/AuthContext';
+import { formatFirebaseAuthError, useAuth } from '@/context/AuthContext';
 import { resetToHome } from '@/navigation/navigationRef';
 import { ClubStackParamList } from '@/navigation/types';
 
@@ -49,7 +50,7 @@ const initialTerrains = [
 type Props = NativeStackScreenProps<ClubStackParamList, 'clubProfile'>;
 
 export default function ClubProfileScreen({ navigation }: Props) {
-  const { logout, deleteAccount } = useAuth();
+  const { logout, deleteAccount, actionLoading } = useAuth();
   const [settings, setSettings] = useState({
     acceptNewMembers: true,
     showPhonePublic: true,
@@ -60,14 +61,23 @@ export default function ClubProfileScreen({ navigation }: Props) {
   });
   const [bankConnected, setBankConnected] = useState(false);
   const [terrains] = useState(initialTerrains);
+  const [error, setError] = useState<string | null>(null);
+  const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
 
   const handleLogout = async () => {
     await logout();
   };
 
   const handleDeleteClub = async () => {
-    await deleteAccount();
-    resetToHome();
+    setError(null);
+    try {
+      await deleteAccount();
+      resetToHome();
+      setDeleteModalVisible(false);
+    } catch (err) {
+      setError(formatFirebaseAuthError(err));
+      setDeleteModalVisible(false);
+    }
   };
 
   const handleGoToLeaderboard = () => {
@@ -336,15 +346,48 @@ export default function ClubProfileScreen({ navigation }: Props) {
               <MaterialCommunityIcons name="logout" size={18} color="#B91C1C" />
               <Text style={[styles.cardTitle, { color: '#B91C1C' }]}>Deconnexion</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.lineItem} onPress={handleDeleteClub}>
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+            <TouchableOpacity
+              style={[styles.lineItem, styles.deleteButton, actionLoading && styles.disabled]}
+              onPress={() => setDeleteModalVisible(true)}
+              disabled={actionLoading}
+            >
               <MaterialCommunityIcons name="trash-can-outline" size={18} color="#B91C1C" />
-              <Text style={[styles.cardTitle, { color: '#B91C1C' }]}>Supprimer mon club</Text>
+              <Text style={[styles.cardTitle, styles.deleteButtonText, { color: '#B91C1C' }]}>{actionLoading ? 'Suppression...' : 'Supprimer mon club'}</Text>
             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
 
       <ClubBottomNav current="clubProfile" />
+
+      {/* Delete Account Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isDeleteModalVisible}
+        onRequestClose={() => setDeleteModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalText}>Êtes-vous sûr de vouloir supprimer votre compte de club ? Cette action est irréversible.</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.deleteCancelButton]}
+                onPress={() => setDeleteModalVisible(false)}
+              >
+                <Text style={styles.deleteCancelButtonText}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.deleteConfirmButton]}
+                onPress={handleDeleteClub}
+              >
+                <Text style={styles.deleteConfirmButtonText}>Supprimer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -599,5 +642,79 @@ const styles = StyleSheet.create({
     borderColor: '#FCA5A5',
     backgroundColor: '#FEF2F2',
     gap: 8,
+  },
+  error: { color: '#DC2626', fontSize: 13, textAlign: 'center', marginBottom: 8 },
+  deleteButton: {
+    marginTop: 8,
+    borderWidth: 1.5,
+    borderColor: 'transparent', // Make it transparent as lineItem already has border
+    borderRadius: 16,
+    paddingVertical: 0, // Adjust padding as lineItem already has it
+    flexDirection: 'row',
+    justifyContent: 'flex-start', // Align to start since it's inside a lineItem
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'transparent',
+  },
+  deleteButtonText: { color: '#B91C1C', fontWeight: '700' },
+  disabled: { opacity: 0.6 },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    width: '90%',
+  },
+  modalText: {
+    marginBottom: 25,
+    textAlign: 'center',
+    fontSize: 16,
+    color: '#4B5563',
+    lineHeight: 24,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalButton: {
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    elevation: 2,
+    flex: 1,
+    marginHorizontal: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteCancelButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  deleteCancelButtonText: {
+    color: '#1F2937',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  deleteConfirmButton: {
+    backgroundColor: '#DC2626',
+  },
+  deleteConfirmButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });

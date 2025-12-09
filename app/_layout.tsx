@@ -50,7 +50,7 @@ function RootLayoutNav() {
   useEffect(() => {
     if (initializing) return;
     const inAuthStack = segments.length <= 0 || segments[0] === '(auth)';
-    if (!user && !inAuthStack) {
+    if (!user) {
       router.replace('/(auth)/login');
     } else if (user && inAuthStack) {
       router.replace('/(tabs)/home');
@@ -67,7 +67,7 @@ function RootLayoutNav() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#F8FAFC' } }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />

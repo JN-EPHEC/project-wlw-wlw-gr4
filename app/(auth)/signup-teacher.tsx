@@ -51,7 +51,7 @@ export default function SignupTeacherScreen() {
 
   const specialtiesList = useMemo(
     () => [
-      'Education canine',
+      'Éducation canine',
       'Agility',
       'Comportementalisme',
       'Dressage',
@@ -92,11 +92,11 @@ export default function SignupTeacherScreen() {
 
   const handleSubmit = async () => {
     if (!form.firstName || !form.lastName || !form.email || !form.password) {
-      setError('Tous les champs obligatoires doivent etre remplis.');
+      setError('Tous les champs obligatoires doivent être remplis.');
       return;
     }
     if (form.password.length < 8) {
-      setError('Mot de passe trop court (minimum 8 caracteres).');
+      setError('Mot de passe trop court (minimum 8 caractères).');
       return;
     }
     if (form.password !== form.confirmPassword) {
@@ -104,11 +104,11 @@ export default function SignupTeacherScreen() {
       return;
     }
     if (!specialties.length) {
-      setError('Choisissez au moins une specialite.');
+      setError('Choisissez au moins une spécialité.');
       return;
     }
     if (!acceptTerms) {
-      setError("Merci d accepter les conditions d utilisation professionnelles.");
+      setError("Merci d'accepter les conditions d'utilisation professionnelles.");
       return;
     }
 
@@ -146,8 +146,8 @@ export default function SignupTeacherScreen() {
   return (
     <SafeAreaView style={authStyles.safeArea}>
       <AuthHeader
-        title="Creer un compte"
-        subtitle="Educateur / independant"
+        title="Créer un compte"
+        subtitle="Éducateur / indépendant"
         onBack={() => navigation.navigate('signupChoice')}
         color={palette.teacher}
       />
@@ -166,7 +166,7 @@ export default function SignupTeacherScreen() {
           <View style={styles.inlineRow}>
             <View style={{ flex: 1 }}>
               <LabeledInput
-                label="Prenom *"
+                label="Prénom *"
                 value={form.firstName}
                 onChangeText={(v) => setForm((p) => ({ ...p, firstName: v }))}
                 placeholder="Marie"
@@ -193,7 +193,7 @@ export default function SignupTeacherScreen() {
             icon={<Ionicons name="mail-outline" size={18} color={palette.gray} />}
           />
           <LabeledInput
-            label="Telephone *"
+            label="Téléphone *"
             value={form.phone}
             onChangeText={(v) => setForm((p) => ({ ...p, phone: v }))}
             placeholder="06 12 34 56 78"
@@ -224,28 +224,28 @@ export default function SignupTeacherScreen() {
         <View style={[cardStyle, styles.card]}>
           <Text style={authStyles.sectionTitle}>Informations professionnelles / bio</Text>
           <LabeledInput
-            label="Certifications et diplomes"
+            label="Certifications et diplômes"
             value={form.certifications}
             onChangeText={(v) => setForm((p) => ({ ...p, certifications: v }))}
-            placeholder="BP d educateur canin, autres diplomes..."
+            placeholder="BP d'éducateur canin, autres diplômes..."
             multiline
           />
           <LabeledInput
-            label="Experiences"
+            label="Expériences"
             value={form.experience}
             onChangeText={(v) => setForm((p) => ({ ...p, experience: v }))}
-            placeholder="Nombre d annees, references, parcours..."
+            placeholder="Nombre d'années, références, parcours..."
             multiline
           />
           <LabeledInput
-            label="Bio / presentation"
+            label="Bio / présentation"
             value={form.bio}
             onChangeText={(v) => setForm((p) => ({ ...p, bio: v }))}
-            placeholder="Decrivez votre approche, vos valeurs..."
+            placeholder="Décrivez votre approche, vos valeurs..."
             multiline
           />
           <LabeledInput
-            label="Site web / reseaux pro"
+            label="Site web / réseaux pro"
             value={form.website}
             onChangeText={(v) => setForm((p) => ({ ...p, website: v }))}
             placeholder="https://"
@@ -255,7 +255,7 @@ export default function SignupTeacherScreen() {
         </View>
 
         <View style={[cardStyle, styles.card]}>
-          <Text style={authStyles.sectionTitle}>Specialites proposees *</Text>
+          <Text style={authStyles.sectionTitle}>Spécialités proposées *</Text>
           <View style={styles.chipWrap}>
             {specialtiesList.map((item) => (
               <SelectChip
@@ -274,11 +274,11 @@ export default function SignupTeacherScreen() {
           files={documents}
           onPick={handlePickDocuments}
           color={palette.teacher}
-          description="Ajoutez vos pieces justificatives (diplomes, RC pro, piece d identite) pour etre verifie."
+          description="Ajoutez vos pièces justificatives (diplômes, RC pro, pièce d'identité) pour être vérifié."
         />
 
         <View style={[cardStyle, styles.card]}>
-          <Text style={authStyles.sectionTitle}>Securite</Text>
+          <Text style={authStyles.sectionTitle}>Sécurité</Text>
           <LabeledInput
             label="Mot de passe *"
             value={form.password}
@@ -309,7 +309,7 @@ export default function SignupTeacherScreen() {
 
         <InfoCard
           title='Badge "Smart Dogs verified"'
-          description="Apres verification de vos documents, vous afficherez le badge de confiance pour rassurer vos clients."
+          description="Après vérification de vos documents, vous afficherez le badge de confiance pour rassurer vos clients."
           color={palette.teacher}
           icon={<MaterialCommunityIcons name="shield-check-outline" size={22} color={palette.teacher} />}
         />
@@ -318,7 +318,7 @@ export default function SignupTeacherScreen() {
           <CheckboxRow
             checked={acceptTerms}
             onToggle={() => setAcceptTerms((v) => !v)}
-            label="J accepte les conditions d utilisation professionnelles et la politique de confidentialite."
+            label="J'accepte les conditions d'utilisation professionnelles et la politique de confidentialité."
             accent={palette.teacher}
           />
           <CheckboxRow
@@ -332,7 +332,7 @@ export default function SignupTeacherScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <PrimaryButton
-          title={loading ? 'Creation en cours...' : 'Creer mon compte educateur'}
+          title={loading ? 'Création en cours...' : 'Créer mon compte éducateur'}
           onPress={handleSubmit}
           color={palette.teacher}
           disabled={loading || !acceptTerms}

@@ -53,11 +53,11 @@ export default function SignupUserScreen() {
 
   const handleSubmit = async () => {
     if (!form.firstName || !form.lastName || !form.email || !form.password) {
-      setError('Tous les champs obligatoires doivent etre remplis.');
+      setError('Tous les champs obligatoires doivent être remplis.');
       return;
     }
     if (form.password.length < 8) {
-      setError('Mot de passe trop court (minimum 8 caracteres).');
+      setError('Mot de passe trop court (minimum 8 caractères).');
       return;
     }
     if (form.password !== form.confirmPassword) {
@@ -65,7 +65,7 @@ export default function SignupUserScreen() {
       return;
     }
     if (!acceptTerms) {
-      setError("Merci d accepter les conditions d utilisation.");
+      setError("Merci d'accepter les conditions d'utilisation.");
       return;
     }
     try {
@@ -95,7 +95,7 @@ export default function SignupUserScreen() {
   return (
     <SafeAreaView style={authStyles.safeArea}>
       <AuthHeader
-        title="Creer un compte"
+        title="Créer un compte"
         subtitle="Compte particulier"
         onBack={() => navigation.navigate('signupChoice')}
         color={palette.primary}
@@ -115,7 +115,7 @@ export default function SignupUserScreen() {
           <View style={styles.inlineRow}>
             <View style={{ flex: 1 }}>
               <LabeledInput
-                label="Prenom *"
+                label="Prénom *"
                 value={form.firstName}
                 onChangeText={(v) => setForm((p) => ({ ...p, firstName: v }))}
                 placeholder="Jean"
@@ -142,7 +142,7 @@ export default function SignupUserScreen() {
             icon={<Ionicons name="mail-outline" size={18} color={palette.gray} />}
           />
           <LabeledInput
-            label="Telephone"
+            label="Téléphone"
             value={form.phone}
             onChangeText={(v) => setForm((p) => ({ ...p, phone: v }))}
             placeholder="06 12 34 56 78"
@@ -159,7 +159,7 @@ export default function SignupUserScreen() {
         </View>
 
         <View style={[cardStyle, styles.card]}>
-          <Text style={authStyles.sectionTitle}>Securite</Text>
+          <Text style={authStyles.sectionTitle}>Sécurité</Text>
           <LabeledInput
             label="Mot de passe *"
             value={form.password}
@@ -173,7 +173,7 @@ export default function SignupUserScreen() {
               </TouchableOpacity>
             }
           />
-          <Text style={authStyles.helperText}>Minimum 8 caracteres avec majuscules, minuscules et chiffres.</Text>
+          <Text style={authStyles.helperText}>Minimum 8 caractères avec majuscules, minuscules et chiffres.</Text>
           <LabeledInput
             label="Confirmer le mot de passe *"
             value={form.confirmPassword}
@@ -193,7 +193,7 @@ export default function SignupUserScreen() {
           <CheckboxRow
             checked={acceptTerms}
             onToggle={() => setAcceptTerms((v) => !v)}
-            label="J accepte les conditions d utilisation et la politique de confidentialite Smart Dogs."
+            label="J'accepte les conditions d'utilisation et la politique de confidentialité Smart Dogs."
             accent={palette.primary}
           />
           <CheckboxRow
@@ -207,7 +207,7 @@ export default function SignupUserScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <PrimaryButton
-          title={disabled ? 'Creation en cours...' : 'Creer mon compte'}
+          title={disabled ? 'Création en cours...' : 'Créer mon compte'}
           onPress={handleSubmit}
           color={palette.primary}
           disabled={disabled || !acceptTerms}

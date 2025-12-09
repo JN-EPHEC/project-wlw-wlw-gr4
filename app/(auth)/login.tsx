@@ -3,8 +3,9 @@ import { Alert, Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpac
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
-import { AuthHeader, CheckboxRow, LabeledInput, PrimaryButton, authStyles, cardStyle, palette } from './AuthComponents';
+import { CheckboxRow, LabeledInput, PrimaryButton, authStyles, cardStyle, palette } from './AuthComponents';
 import { formatFirebaseAuthError, useAuth } from '@/context/AuthContext';
 import { AuthStackParamList } from '@/navigation/AuthStack';
 
@@ -16,7 +17,7 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
-  const logo = useMemo(() => require('@/assets/images/icon.png'), []);
+  const logo = useMemo(() => require('@/assets/images/Smartdogs-logo.png'), []);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -33,20 +34,20 @@ export default function LoginScreen() {
   };
 
   const handleSocial = (provider: 'google' | 'facebook') => {
-    Alert.alert('Fonction a venir', `Connexion ${provider} sera bientot disponible.`);
+    Alert.alert('Fonction à venir', `Connexion ${provider} sera bientôt disponible.`);
   };
 
   return (
-    <SafeAreaView style={authStyles.safeArea}>
-      <AuthHeader title="Smart Dogs" subtitle="Connectez-vous a votre compte" color={palette.primary} />
-      <ScrollView contentContainerStyle={[authStyles.content, { marginTop: -36 }]}>
-        <View style={[cardStyle, styles.card, styles.heroCard]}>
-          <Image source={logo} style={styles.logo} resizeMode="contain" />
-          <Text style={styles.heroTitle}>Smart Dogs</Text>
-          <Text style={styles.heroSubtitle}>Bienvenue, connectez-vous pour continuer.</Text>
-        </View>
+    <LinearGradient colors={['#FFFFFF', '#F2FBF8']} style={{ flex: 1 }}>
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView contentContainerStyle={styles.content}>
+          <LinearGradient colors={['#3DC9A7', '#2BAE90']} style={styles.header}>
+            <Image source={logo} style={styles.logo} resizeMode="contain" />
+            <Text style={styles.headerTitle}>Smart Dogs</Text>
+            <Text style={styles.headerSubtitle}>Connectez-vous à votre compte</Text>
+          </LinearGradient>
 
-        <View style={[cardStyle, styles.card]}>
+          <View style={[cardStyle, styles.loginCard]}>
           <LabeledInput
             label="Email"
             value={email}
@@ -78,7 +79,7 @@ export default function LoginScreen() {
               accent={palette.primary}
             />
             <TouchableOpacity onPress={() => navigation.navigate('password-reset')}>
-              <Text style={styles.link}>Mot de passe oublie ?</Text>
+              <Text style={styles.link}>Mot de passe oublié ?</Text>
             </TouchableOpacity>
           </View>
 
@@ -86,7 +87,7 @@ export default function LoginScreen() {
 
           <PrimaryButton
             title={actionLoading ? 'Connexion...' : 'Se connecter'}
-            onPress={handleLogin}
+            onPress={handleLogin} // Keep existing handler
             color={palette.primary}
             loading={actionLoading}
             disabled={actionLoading}
@@ -101,14 +102,15 @@ export default function LoginScreen() {
 
         <View style={{ gap: 12 }}>
           <TouchableOpacity style={styles.socialBtn} activeOpacity={0.9} onPress={() => handleSocial('google')}>
-            <View style={styles.socialIconCircle}>
-              <Text style={styles.socialIconText}>G</Text>
-            </View>
+            <Image source={require('@/assets/images/google-logo.png')} style={styles.socialIcon} />
             <Text style={styles.socialText}>Continuer avec Google</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.socialBtn} activeOpacity={0.9} onPress={() => handleSocial('facebook')}>
-            <View style={[styles.socialIconCircle, { backgroundColor: '#E7F0FF' }]}>
-              <Text style={[styles.socialIconText, { color: '#1877F2' }]}>f</Text>
+            <View style={styles.socialIconCircle}>
+              <Image
+                source={require('@/assets/images/facebook-logo.png')}
+                style={[styles.socialIcon, { width: 24, height: 24 }]}
+              />
             </View>
             <Text style={styles.socialText}>Continuer avec Facebook</Text>
           </TouchableOpacity>
@@ -117,50 +119,103 @@ export default function LoginScreen() {
         <View style={styles.footer}>
           <Text style={styles.footerText}>Vous n'avez pas de compte ? </Text>
           <TouchableOpacity onPress={() => navigation.navigate('signupChoice')}>
-            <Text style={styles.footerLink}>Creer un compte</Text>
+            <Text style={styles.footerLink}>Créer un compte</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { gap: 6 },
-  heroCard: {
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#FFFFFF',
+  safeArea: {
+    flex: 1,
   },
-  logo: { width: 82, height: 82, marginBottom: 6 },
-  heroTitle: { color: palette.text, fontSize: 20, fontWeight: '800' },
-  heroSubtitle: { color: palette.gray, fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  content: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+    gap: 24,
+  },
+  header: {
+    width: '100%',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    alignItems: 'center',
+    paddingTop: 60, // A bit more padding to account for the status bar
+    paddingBottom: 60,
+    marginBottom: -40, // Overlap effect
+    zIndex: 1,
+  },
+  logo: {
+    width: 70,
+    height: 70,
+    marginBottom: 12,
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: 'bold',
+  },
+  headerSubtitle: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 17,
+    marginTop: 4,
+  },
+  loginCard: {
+    padding: 28,
+    gap: 16,
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
   rowBetween: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 2,
+    marginTop: 4,
+    marginBottom: 8,
   },
-  link: { color: palette.primary, fontWeight: '700' },
-  error: { color: '#DC2626', marginTop: 6 },
-  separatorRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 4 },
-  separatorLine: { flex: 1, height: 1, backgroundColor: '#E5E7EB' },
-  separatorText: { color: palette.gray, fontWeight: '700' },
-  socialBtn: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+  link: {
+    color: palette.primary,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  error: {
+    color: '#DC2626',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  separatorRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  separatorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#D0D0D0',
+  },
+  separatorText: {
+    color: palette.gray,
+    fontWeight: '600',
+  },
+  socialBtn: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    height: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E6E6E6',
     shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 6,
-    elevation: 1,
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 2,
   },
   socialIconCircle: {
     width: 32,
@@ -170,9 +225,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  socialIconText: { fontSize: 16, fontWeight: '700', color: palette.text },
-  socialText: { color: palette.text, fontWeight: '700', fontSize: 15 },
-  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 6 },
-  footerText: { color: palette.gray, fontWeight: '600' },
-  footerLink: { color: palette.primary, fontWeight: '800' },
+  socialIcon: {
+    width: 28,
+    height: 28,
+  },
+  socialText: {
+    color: palette.text,
+    fontWeight: '600',
+    fontSize: 16,
+    marginLeft: 12,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  footerText: { color: palette.gray, fontSize: 15 },
+  footerLink: { color: palette.primary, fontWeight: '700', fontSize: 15 },
 });

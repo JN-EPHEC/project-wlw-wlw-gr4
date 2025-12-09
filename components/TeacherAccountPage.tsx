@@ -2,10 +2,10 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View, Modal } from 'react-native';
 
 import TeacherBottomNav from '@/components/TeacherBottomNav';
-import { useAuth } from '@/context/AuthContext';
+import { formatFirebaseAuthError, useAuth } from '@/context/AuthContext';
 import { TeacherStackParamList } from '@/navigation/types';
 
 const palette = {
@@ -26,9 +26,34 @@ const verifications = [
 
 export default function TeacherAccountPage() {
   const navigation = useNavigation<NativeStackNavigationProp<TeacherStackParamList>>();
-  const { logout } = useAuth();
+  const { logout, deleteAccount, actionLoading } = useAuth();
   const [available, setAvailable] = useState(true);
   const [homeTravel, setHomeTravel] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
+
+  const handleLogout = async () => {
+    setError(null);
+    try {
+      await logout();
+      setLogoutModalVisible(false);
+    } catch (err) {
+      setError(formatFirebaseAuthError(err));
+      setLogoutModalVisible(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setError(null);
+    try {
+      await deleteAccount();
+      setDeleteModalVisible(false);
+    } catch (err) {
+      setError(formatFirebaseAuthError(err));
+      setDeleteModalVisible(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -146,14 +171,89 @@ export default function TeacherAccountPage() {
               <Text style={styles.rowTitle}>Confidentialite</Text>
               <Ionicons name="chevron-forward" size={18} color={palette.gray} />
             </View>
-            <TouchableOpacity style={styles.row} onPress={logout}>
+          </View>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <View style={{ gap: 10 }}>
+            <TouchableOpacity
+              style={[styles.dangerButton, actionLoading && styles.disabled]}
+              onPress={() => setLogoutModalVisible(true)}
+              disabled={actionLoading}
+            >
               <Ionicons name="log-out-outline" size={18} color="#DC2626" />
-              <Text style={[styles.rowTitle, { color: '#DC2626' }]}>Se deconnecter</Text>
+              <Text style={styles.dangerButtonText}>
+                {actionLoading ? 'Déconnexion...' : 'Se déconnecter'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.dangerButton, actionLoading && styles.disabled]}
+              onPress={() => setDeleteModalVisible(true)}
+              disabled={actionLoading}
+            >
+              <Ionicons name="trash-outline" size={18} color="#DC2626" />
+              <Text style={styles.dangerButtonText}>
+                {actionLoading ? 'Suppression...' : 'Supprimer mon compte'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
       <TeacherBottomNav current="teacher-account" />
+
+      {/* Logout Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isLogoutModalVisible}
+        onRequestClose={() => setLogoutModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalText}>Vous êtes sur le point de vous déconnecter</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.logoutCancelButton]}
+                onPress={() => setLogoutModalVisible(false)}
+              >
+                <Text style={styles.logoutCancelButtonText}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.logoutConfirmButton]}
+                onPress={handleLogout}
+              >
+                <Text style={styles.logoutConfirmButtonText}>Se deconnecter</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete Account Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isDeleteModalVisible}
+        onRequestClose={() => setDeleteModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalText}>Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.deleteCancelButton]}
+                onPress={() => setDeleteModalVisible(false)}
+              >
+                <Text style={styles.deleteCancelButtonText}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.deleteConfirmButton]}
+                onPress={handleDeleteAccount}
+              >
+                <Text style={styles.deleteConfirmButtonText}>Supprimer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -258,4 +358,94 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   primaryBtnText: { color: '#fff', fontWeight: '700' },
+  error: { color: '#DC2626', fontSize: 13, textAlign: 'center', marginBottom: 8 },
+  dangerButton: {
+    borderWidth: 1.5,
+    borderColor: '#DC2626',
+    borderRadius: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fff',
+  },
+  dangerButtonText: { color: '#DC2626', fontWeight: '700' },
+  disabled: { opacity: 0.6 },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    width: '90%',
+  },
+  modalText: {
+    marginBottom: 25,
+    textAlign: 'center',
+    fontSize: 16,
+    color: '#4B5563',
+    lineHeight: 24,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalButton: {
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    elevation: 2,
+    flex: 1,
+    marginHorizontal: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoutCancelButton: {
+    backgroundColor: '#DC2626',
+  },
+  logoutCancelButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  logoutConfirmButton: {
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#DC2626',
+  },
+  logoutConfirmButtonText: {
+    color: '#DC2626',
+    fontWeight: 'bold',
+  },
+  deleteCancelButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  deleteCancelButtonText: {
+    color: '#1F2937',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  deleteConfirmButton: {
+    backgroundColor: '#DC2626',
+  },
+  deleteConfirmButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
 });
+
