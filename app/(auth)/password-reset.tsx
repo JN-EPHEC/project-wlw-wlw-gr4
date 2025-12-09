@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { AuthHeader, LabeledInput, PrimaryButton, authStyles, cardStyle, palette } from './AuthComponents';
 import { formatFirebaseAuthError, useAuth } from '@/context/AuthContext';
@@ -16,14 +17,14 @@ export default function PasswordResetScreen() {
 
   const handleSend = async () => {
     if (!email) {
-      setError('Indiquez votre email pour recevoir le lien de reinitialisation.');
+      setError('Indiquez votre email pour recevoir le lien de réinitialisation.');
       return;
     }
     try {
       setError('');
       setMsg('');
       await resetPassword(email.trim());
-      setMsg('Email de reinitialisation envoye. Verifiez votre boite mail.');
+      setMsg('Email de réinitialisation envoyé. Vérifiez votre boite mail.');
     } catch (err) {
       setError(formatFirebaseAuthError(err));
     }
@@ -32,12 +33,11 @@ export default function PasswordResetScreen() {
   return (
     <SafeAreaView style={authStyles.safeArea}>
       <AuthHeader
-        title="Reinitialiser le mot de passe"
-        subtitle="Recevez un lien par email"
+        title="Réinitialiser le mot de passe"
         onBack={() => navigation.navigate('login')}
         color={palette.primary}
       />
-      <View style={[authStyles.content, { marginTop: -16 }]}>
+      <View style={[authStyles.content, { marginTop: 20 }]}>
         <View style={[cardStyle, styles.card]}>
           <Text style={styles.helper}>Saisissez l'email associé à votre compte Smart Dogs.</Text>
           <LabeledInput
@@ -47,6 +47,7 @@ export default function PasswordResetScreen() {
             placeholder="votre.email@exemple.com"
             keyboardType="email-address"
             autoCapitalize="none"
+            icon={<Ionicons name="mail-outline" size={18} color={palette.gray} />}
           />
           {error ? <Text style={styles.error}>{error}</Text> : null}
           {msg ? <Text style={styles.success}>{msg}</Text> : null}

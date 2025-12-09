@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -10,7 +10,7 @@ type UserTab = 'home' | 'clubs' | 'community' | 'mydog' | 'account';
 type NavItem = {
   id: UserTab;
   label: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 };
 
 type Props = {
@@ -18,11 +18,10 @@ type Props = {
 };
 
 const palette = {
-  primary: '#41B6A6',
-  text: '#1F2937',
-  gray: '#6B7280',
-  border: '#E5E7EB',
-  surface: '#FFFFFF',
+  active: '#27b3a3',
+  inactive: '#6f7589',
+  background: '#ffffff',
+  divider: '#e4e8f0',
 };
 
 export default function UserBottomNav({ current }: Props) {
@@ -30,10 +29,10 @@ export default function UserBottomNav({ current }: Props) {
 
   const navItems: NavItem[] = [
     { id: 'home', icon: 'home-outline', label: 'Accueil' },
-    { id: 'clubs', icon: 'business-outline', label: 'Clubs' },
-    { id: 'community', icon: 'chatbubbles-outline', label: 'Communaut\u00e9' },
-    { id: 'mydog', icon: 'paw-outline', label: 'Mes chiens' },
-    { id: 'account', icon: 'person-circle-outline', label: 'Compte' },
+    { id: 'clubs', icon: 'account-group-outline', label: 'Clubs' },
+    { id: 'community', icon: 'message-text-outline', label: 'Communaut\u00e9' },
+    { id: 'mydog', icon: 'dog', label: 'Mes chiens' },
+    { id: 'account', icon: 'account-circle-outline', label: 'Compte' },
   ];
 
   const handlePress = (id: UserTab) => {
@@ -48,18 +47,14 @@ export default function UserBottomNav({ current }: Props) {
       <View style={styles.bar}>
         {navItems.map((item) => {
           const isActive = item.id === current;
+          const color = isActive ? palette.active : palette.inactive;
           return (
             <TouchableOpacity
               key={item.id}
               onPress={() => handlePress(item.id)}
-              style={[styles.item, isActive && styles.itemActive]}
-              activeOpacity={0.85}
-            >
-              <Ionicons
-                name={item.icon}
-                size={22}
-                color={isActive ? palette.primary : palette.gray}
-              />
+              style={styles.item}
+              activeOpacity={0.85}>
+              <MaterialCommunityIcons name={item.icon} size={28} color={color} />
               <Text style={[styles.label, isActive && styles.labelActive]} numberOfLines={1}>
                 {item.label}
               </Text>
@@ -77,43 +72,32 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'transparent',
-    paddingBottom: 6,
+    backgroundColor: palette.background,
+    borderTopWidth: 1,
+    borderTopColor: palette.divider,
+    paddingBottom: 8,
   },
   bar: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    marginHorizontal: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    backgroundColor: palette.surface,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: palette.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    backgroundColor: palette.background,
   },
   item: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
     gap: 4,
   },
-  itemActive: {
-    backgroundColor: '#E0F2F1',
-    borderRadius: 12,
-  },
   label: {
-    fontSize: 11,
-    color: palette.gray,
+    fontSize: 12,
+    color: palette.inactive,
+    fontWeight: '500',
   },
   labelActive: {
-    color: palette.primary,
-    fontWeight: '600',
+    color: palette.active,
+    fontWeight: '700',
   },
 });

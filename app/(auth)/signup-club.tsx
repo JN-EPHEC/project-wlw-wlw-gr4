@@ -49,18 +49,47 @@ export default function SignupClubScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const servicesList = useMemo(
-    () => [
-      'Education canine',
-      'Agility',
-      'Dressage',
-      'Pension canine',
-      'Comportementalisme',
-      'Toilettage',
-      'Dog sitting',
-    ],
-    [],
-  );
+    const servicesList = useMemo(
+
+      () => [
+
+        'Éducation canine',
+
+        'Agility',
+
+        'Dressage',
+
+        'Pension canine',
+
+        'Comportementalisme',
+
+        'Toilettage',
+
+        'Dog sitting',
+
+      ],
+
+      [],
+
+    );
+
+  
+
+    const toggleService = (value: string) => {
+
+      setServices((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]));
+
+    };
+
+  
+
+    const handlePickLogo = async () => {
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+
+        quality: 0.8,
 
   const toggleService = (value: string) => {
     setServices((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]));
@@ -131,83 +160,323 @@ export default function SignupClubScreen() {
         newsletterOptIn: newsletter,
         acceptTerms,
       });
-      // Auth listener will redirect by role
-    } catch (err) {
-      setError(formatFirebaseAuthError(err));
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
-  const loading = submitting || actionLoading;
+      if (!result.canceled && result.assets?.length) {
 
-  return (
-    <SafeAreaView style={authStyles.safeArea}>
-      <AuthHeader
-        title="Creer un compte club"
-        subtitle="Pour les professionnels du secteur canin"
-        onBack={() => navigation.navigate('signupChoice')}
-        color={palette.club}
-      />
-      <ScrollView contentContainerStyle={[authStyles.content, { marginTop: -16 }]}>
-        <UploadField
-          title="Logo / photo du club (optionnel)"
-          files={logo}
-          onPick={handlePickLogo}
+        const asset = result.assets[0];
+
+        setLogo([{ uri: asset.uri, name: asset.fileName ?? 'logo.jpg', mimeType: asset.mimeType }]);
+
+      }
+
+    };
+
+  
+
+    const handlePickDocuments = async () => {
+
+      const result = await DocumentPicker.getDocumentAsync({ multiple: true, copyToCacheDirectory: true });
+
+      if (!result.canceled && result.assets?.length) {
+
+        const picked = result.assets.map((asset) => ({
+
+          uri: asset.uri,
+
+          name: asset.name,
+
+          mimeType: asset.mimeType,
+
+        }));
+
+        setDocuments((prev) => [...prev, ...picked]);
+
+      }
+
+    };
+
+  
+
+      const handleSubmit = async () => {
+
+  
+
+        if (!form.clubName || !form.email || !form.phone || !form.siret || !form.password) {
+
+  
+
+          setError('Renseignez tous les champs obligatoires.');
+
+  
+
+          return;
+
+  
+
+        }
+
+  
+
+        if (!services.length) {
+
+  
+
+          setError('Sélectionnez au moins un service proposé.');
+
+  
+
+          return;
+
+  
+
+        }
+
+  
+
+        if (form.password.length < 8) {
+
+  
+
+          setError('Mot de passe trop court (minimum 8 caractères).');
+
+  
+
+          return;
+
+  
+
+        }
+
+  
+
+        if (form.password !== form.confirmPassword) {
+
+  
+
+          setError('Les mots de passe ne correspondent pas.');
+
+  
+
+          return;
+
+  
+
+        }
+
+  
+
+        if (!acceptTerms) {
+
+  
+
+          setError("Merci d'accepter les conditions d'utilisation professionnelles.");
+
+  
+
+          return;
+
+  
+
+        }
+
+      try {
+
+        setSubmitting(true);
+
+        setError('');
+
+        await registerClub({
+
+          clubName: form.clubName.trim(),
+
+          legalName: form.legalName.trim(),
+
+          siret: form.siret.trim(),
+
+          website: form.website.trim(),
+
+          description: form.description.trim(),
+
+          email: form.email.trim(),
+
+          phone: form.phone.trim(),
+
+          address: form.address.trim(),
+
+          city: form.city.trim(),
+
+          postalCode: form.postalCode.trim(),
+
+          services,
+
+          password: form.password,
+
+          logo: logo[0],
+
+          documents,
+
+          newsletterOptIn: newsletter,
+
+          acceptTerms,
+
+        });
+
+        // Auth listener will redirect by role
+
+      } catch (err) {
+
+        setError(formatFirebaseAuthError(err));
+
+      } finally {
+
+        setSubmitting(false);
+
+      }
+
+    };
+
+  
+
+    const loading = submitting || actionLoading;
+
+  
+
+    return (
+
+      <SafeAreaView style={authStyles.safeArea}>
+
+        <AuthHeader
+
+          title="Créer un compte club"
+
+          subtitle="Pour les professionnels du secteur canin"
+
+          onBack={() => navigation.navigate('signupChoice')}
+
           color={palette.club}
-          single
-          description="Ajoutez votre logo pour identifier rapidement votre structure."
+
         />
 
-        <View style={[cardStyle, styles.card]}>
-          <Text style={authStyles.sectionTitle}>Informations du club</Text>
-          <LabeledInput
-            label="Nom du club *"
-            value={form.clubName}
-            onChangeText={(v) => setForm((p) => ({ ...p, clubName: v }))}
-            placeholder="Club canin"
-          />
-          <LabeledInput
-            label="Raison sociale"
-            value={form.legalName}
-            onChangeText={(v) => setForm((p) => ({ ...p, legalName: v }))}
-            placeholder="Association, SASU..."
-          />
-          <LabeledInput
-            label="SIRET / RNA *"
-            value={form.siret}
-            onChangeText={(v) => setForm((p) => ({ ...p, siret: v }))}
-            placeholder="123 456 789 00010"
-          />
-          <LabeledInput
-            label="Site web (optionnel)"
-            value={form.website}
-            onChangeText={(v) => setForm((p) => ({ ...p, website: v }))}
-            placeholder="https://"
-            keyboardType="url"
-            icon={<Ionicons name="link-outline" size={18} color={palette.gray} />}
-          />
-          <LabeledInput
-            label="Description du club"
-            value={form.description}
-            onChangeText={(v) => setForm((p) => ({ ...p, description: v }))}
-            placeholder="Presentation, valeurs, specialites..."
-            multiline
-          />
-        </View>
+        <ScrollView contentContainerStyle={[authStyles.content, { marginTop: -16 }]}>
 
-        <View style={[cardStyle, styles.card]}>
-          <Text style={authStyles.sectionTitle}>Services proposes *</Text>
-          <View style={styles.chipWrap}>
-            {servicesList.map((item) => (
-              <SelectChip
-                key={item}
-                label={item}
-                selected={services.includes(item)}
-                onPress={() => toggleService(item)}
-                color={palette.club}
-              />
-            ))}
+          <UploadField
+
+            title="Logo / photo du club (optionnel)"
+
+            files={logo}
+
+            onPick={handlePickLogo}
+
+            color={palette.club}
+
+            single
+
+            description="Ajoutez votre logo pour identifier rapidement votre structure."
+
+          />
+
+  
+
+          <View style={[cardStyle, styles.card]}>
+
+            <Text style={authStyles.sectionTitle}>Informations du club</Text>
+
+            <LabeledInput
+
+              label="Nom du club *"
+
+              value={form.clubName}
+
+              onChangeText={(v) => setForm((p) => ({ ...p, clubName: v }))}
+
+              placeholder="Club canin"
+
+            />
+
+            <LabeledInput
+
+              label="Dénomination sociale"
+
+              value={form.legalName}
+
+              onChangeText={(v) => setForm((p) => ({ ...p, legalName: v }))}
+
+              placeholder="SA, SRL, ..."
+
+            />
+
+            <LabeledInput
+
+              label="Numéro d'entreprise / N°BCE *"
+
+              value={form.siret}
+
+              onChangeText={(v) => setForm((p) => ({ ...p, siret: v }))}
+
+              placeholder="0444.499.733"
+
+            />
+
+            <LabeledInput
+
+              label="Site web (optionnel)"
+
+              value={form.website}
+
+              onChangeText={(v) => setForm((p) => ({ ...p, website: v }))}
+
+              placeholder="https://"
+
+              keyboardType="url"
+
+              icon={<Ionicons name="link-outline" size={18} color={palette.gray} />}
+
+            />
+
+            <LabeledInput
+
+              label="Description du club"
+
+              value={form.description}
+
+              onChangeText={(v) => setForm((p) => ({ ...p, description: v }))}
+
+              placeholder="Présentation, valeurs, spécialités..."
+
+              multiline
+
+            />
+
+          </View>
+
+  
+
+          <View style={[cardStyle, styles.card]}>
+
+            <Text style={authStyles.sectionTitle}>Services proposés *</Text>
+
+            <View style={styles.chipWrap}>
+
+              {servicesList.map((item) => (
+
+                <SelectChip
+
+                  key={item}
+
+                  label={item}
+
+                  selected={services.includes(item)}
+
+                  onPress={() => toggleService(item)}
+
+                  color={palette.club}
+
+                />
+
+              ))
+
+            }
+
           </View>
         </View>
 
@@ -217,7 +486,7 @@ export default function SignupClubScreen() {
             label="Email *"
             value={form.email}
             onChangeText={(v) => setForm((p) => ({ ...p, email: v }))}
-            placeholder="contact@club.fr"
+            placeholder="contact@club.be"
             keyboardType="email-address"
             autoCapitalize="none"
             icon={<Ionicons name="mail-outline" size={18} color={palette.gray} />}
@@ -226,7 +495,7 @@ export default function SignupClubScreen() {
             label="Telephone *"
             value={form.phone}
             onChangeText={(v) => setForm((p) => ({ ...p, phone: v }))}
-            placeholder="01 23 45 67 89"
+            placeholder="476 16 34 43"
             keyboardType="phone-pad"
             icon={<Ionicons name="call-outline" size={18} color={palette.gray} />}
           />
@@ -234,7 +503,7 @@ export default function SignupClubScreen() {
             label="Adresse"
             value={form.address}
             onChangeText={(v) => setForm((p) => ({ ...p, address: v }))}
-            placeholder="123 Rue de la Republique"
+            placeholder="Chaussée de Gand"
             icon={<Ionicons name="home-outline" size={18} color={palette.gray} />}
           />
           <View style={styles.inlineRow}>
@@ -243,7 +512,7 @@ export default function SignupClubScreen() {
                 label="Code postal"
                 value={form.postalCode}
                 onChangeText={(v) => setForm((p) => ({ ...p, postalCode: v }))}
-                placeholder="75015"
+                placeholder="1082"
                 keyboardType="numeric"
               />
             </View>
@@ -252,7 +521,7 @@ export default function SignupClubScreen() {
                 label="Ville"
                 value={form.city}
                 onChangeText={(v) => setForm((p) => ({ ...p, city: v }))}
-                placeholder="Paris"
+                placeholder="Bruxelles"
               />
             </View>
           </View>
@@ -263,11 +532,11 @@ export default function SignupClubScreen() {
           files={documents}
           onPick={handlePickDocuments}
           color={palette.club}
-          description="Ajoutez vos justificatifs (assurance, Kbis, piece d identite) pour obtenir le badge Smart Dogs verified."
+          description="Ajoutez vos justificatifs (assurance, certificats, pièce d'identité) pour obtenir le badge Smart Dogs verified."
         />
 
         <View style={[cardStyle, styles.card]}>
-          <Text style={authStyles.sectionTitle}>Securite</Text>
+          <Text style={authStyles.sectionTitle}>Sécurité</Text>
           <LabeledInput
             label="Mot de passe *"
             value={form.password}
@@ -298,7 +567,7 @@ export default function SignupClubScreen() {
 
         <InfoCard
           title='Badge "Smart Dogs verified"'
-          description="Apres verification de vos documents, vous afficherez le badge de confiance sur votre page club."
+          description="Après vérification de vos documents, vous afficherez le badge de confiance sur votre page club."
           color={palette.club}
           icon={<MaterialCommunityIcons name="shield-check-outline" size={22} color={palette.club} />}
         />
@@ -307,7 +576,7 @@ export default function SignupClubScreen() {
           <CheckboxRow
             checked={acceptTerms}
             onToggle={() => setAcceptTerms((v) => !v)}
-            label="J accepte les conditions d utilisation professionnelles et la politique de confidentialite."
+            label="J'accepte les conditions d'utilisation professionnelles et la politique de confidentialité."
             accent={palette.club}
           />
           <CheckboxRow
@@ -321,7 +590,7 @@ export default function SignupClubScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <PrimaryButton
-          title={loading ? 'Creation en cours...' : 'Creer mon compte club'}
+          title={loading ? 'Création en cours...' : 'Créer mon compte club'}
           onPress={handleSubmit}
           color={palette.club}
           disabled={loading || !acceptTerms}

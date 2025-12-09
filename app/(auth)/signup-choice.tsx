@@ -23,11 +23,11 @@ export default function SignupChoiceScreen() {
   const choices: ChoiceCardProps[] = [
     {
       title: 'Compte particulier',
-      description: 'Pour les proprietaires qui reservent des seances et suivent la progression de leurs chiens.',
+      description: 'Pour les propriétaires qui réservent des séances et suivent la progression de leurs chiens.',
       bullets: [
-        'Reserver des seances de dressage',
-        'Gerer le profil de vos chiens',
-        'Acceder aux outils communautaires',
+        'Réserver des séances de dressage',
+        'Gérer le profil de vos chiens',
+        'Accéder aux outils communautaires',
         'Rejoindre des clubs canins',
       ],
       icon: <Ionicons name="person-circle-outline" size={34} color="#fff" />,
@@ -36,22 +36,22 @@ export default function SignupChoiceScreen() {
       target: 'signupUser',
     },
     {
-      title: 'Compte educateur / independant',
-      description: 'Pour les educateurs canins qui proposent des seances a titre individuel.',
-      bullets: ['Proposer vos seances', 'Gerer agenda et tarifs', 'Obtenir le badge Smart Dogs', 'Visibilite renforcee'],
+      title: 'Compte éducateur / indépendant',
+      description: 'Pour les éducateurs canins qui proposent des séances à titre individuel.',
+      bullets: ['Proposer vos séances', 'Gérer agenda et tarifs', 'Obtenir le badge Smart Dogs', 'Visibilité renforcée'],
       icon: <Ionicons name="school-outline" size={32} color="#fff" />,
       color: palette.teacher,
-      actionLabel: 'Continuer en tant qu educateur',
+      actionLabel: 'Continuer en tant qu\'éducateur',
       target: 'signupTeacher',
     },
     {
       title: 'Compte club / structure',
-      description: 'Pour les clubs canins et structures qui gerent plusieurs educateurs.',
+      description: 'Pour les clubs canins et structures qui gèrent plusieurs éducateurs.',
       bullets: [
-        'Creer et gerer votre club',
-        'Gerer plusieurs educateurs',
-        'Organiser des evenements',
-        'Animer une communaute',
+        'Créer et gérer votre club',
+        'Gérer plusieurs éducateurs',
+        'Organiser des événements',
+        'Animer une communauté',
       ],
       icon: <Ionicons name="business-outline" size={32} color="#fff" />,
       color: palette.club,
@@ -62,7 +62,7 @@ export default function SignupChoiceScreen() {
 
   return (
     <SafeAreaView style={authStyles.safeArea}>
-      <AuthHeader title="Creer un compte" subtitle="Choisissez votre type de compte" color={palette.primary} onBack={() => navigation.navigate('login')} />
+      <AuthHeader title="Créer un compte" subtitle="Choisissez votre type de compte" color={palette.primary} onBack={() => navigation.navigate('login')} />
       <ScrollView contentContainerStyle={[authStyles.content, { marginTop: -16 }]}>
         {choices.map((choice) => (
           <View key={choice.title} style={[cardStyle, styles.card]}>
@@ -88,7 +88,7 @@ export default function SignupChoiceScreen() {
         ))}
 
         <InfoCard
-          title="Besoin d aide ?"
+          title="Besoin d'aide ?"
           description="Si vous ne savez pas quel type de compte choisir, contactez-nous sur support@smartdogs.fr"
           color={palette.primary}
           icon={<Ionicons name="information-circle-outline" size={22} color={palette.primary} />}

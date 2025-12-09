@@ -115,7 +115,7 @@ export default function SignupUserScreen() {
           <View style={styles.inlineRow}>
             <View style={{ flex: 1 }}>
               <LabeledInput
-                label="Prenom *"
+                label="Prénom *"
                 value={form.firstName}
                 onChangeText={(v) => setForm((p) => ({ ...p, firstName: v }))}
                 placeholder="Jean"
@@ -142,7 +142,7 @@ export default function SignupUserScreen() {
             icon={<Ionicons name="mail-outline" size={18} color={palette.gray} />}
           />
           <LabeledInput
-            label="Telephone"
+            label="Téléphone"
             value={form.phone}
             onChangeText={(v) => setForm((p) => ({ ...p, phone: v }))}
             placeholder="06 12 34 56 78"

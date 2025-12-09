@@ -44,7 +44,7 @@ type CardBase = {
   tagLabel?: string;
 };
 
-const featuredCards: CardBase[] = [
+const favoriteCards: CardBase[] = [
   {
     id: 201,
     title: 'Compétition Régionale Agility',
@@ -342,9 +342,10 @@ export default function ClubsScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={{ backgroundColor: palette.primary, paddingTop: 6, paddingHorizontal: 0 }}>
-          <View style={[styles.hero, { marginHorizontal: 0, marginTop: 0 }]}>
+        <View style={{ backgroundColor: palette.primary, paddingTop: 6, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, paddingBottom: 24 }}>
+          <View style={styles.hero}>
             <Text style={styles.heading}>Découvrir</Text>
+            <Text style={styles.subheading}>Tous les clubs et éducateurs</Text>
             <View style={styles.searchBar}>
               <Ionicons name="search" size={18} color="#9CA3AF" />
               <TextInput
@@ -383,17 +384,17 @@ export default function ClubsScreen() {
             <Chip label="Évènements" active={filter === 'events'} onPress={() => setFilter('events')} />
           </View>
 
-          <Section title="Mes favoris">
+          <Section title="Clubs Boostés">
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-              {featuredCards.map((item) => (
+              {boosted.map((item) => (
                 <TileCard key={item.id} item={item} />
               ))}
             </ScrollView>
           </Section>
 
-          <Section title="Clubs Boostés">
+          <Section title="Mes favoris">
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-              {boosted.map((item) => (
+              {favoriteCards.map((item) => (
                 <TileCard key={item.id} item={item} />
               ))}
             </ScrollView>
@@ -438,20 +439,14 @@ export default function ClubsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F6FBF9' },
+  safe: { flex: 1, backgroundColor: '#F0F2F5' },
   content: { paddingTop: 0, paddingBottom: 130, gap: 18 },
   hero: {
-    backgroundColor: palette.primary,
-    borderRadius: 22,
     padding: 16,
     gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 14,
-    elevation: 6,
   },
-  heading: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  heading: { color: '#fff', fontSize: 26, fontWeight: 'bold' },
+  subheading: { color: '#fff', fontSize: 16 },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',

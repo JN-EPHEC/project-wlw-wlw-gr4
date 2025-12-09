@@ -1,7 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   Dimensions,
   Image,
@@ -13,7 +12,6 @@ import {
   View,
 } from 'react-native';
 
-import { UserStackParamList } from '@/navigation/types';
 import UserBottomNav from '@/components/UserBottomNav';
 
 const { width } = Dimensions.get('window');
@@ -155,11 +153,8 @@ const palette = {
   text: '#1F2937',
 };
 
-type HomeNavigationProp = NativeStackNavigationProp<UserStackParamList, 'home'>;
-
 export default function HomeScreen() {
-  const navigation = useNavigation<HomeNavigationProp>();
-  const profileInitials = useMemo(() => 'SD', []);
+  const navigation = useNavigation<any>();
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -168,16 +163,13 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{profileInitials}</Text>
-              </View>
+              <Image source={require('@/assets/images/Smartdogs-logo.png')} style={styles.avatar} />
               <View>
-                <Text style={styles.headerHint}>Bienvenue sur Smart Dogs</Text>
                 <Text style={styles.headerTitle}>Smart Dogs</Text>
-                <Text style={styles.headerSub}>Prêt(e) pour une nouvelle séance ?</Text>
+                <Text style={styles.headerSub}>Prête pour une nouvelle séance ?</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.notif} onPress={() => navigation.navigate('notifications')}>
+            <TouchableOpacity style={styles.notif} onPress={() => navigation.navigate('notifications', { previousTarget: 'home' })}>
               <Ionicons name="notifications-outline" size={22} color="#fff" />
               <View style={styles.notifBadge}>
                 <Text style={styles.notifBadgeText}>3</Text>
@@ -189,17 +181,7 @@ export default function HomeScreen() {
             <Ionicons name="search" size={18} color="#9CA3AF" />
             <Text style={styles.searchPlaceholder}>Rechercher un club, un dresseur...</Text>
           </View>
-          <View style={styles.navRow}>
-            <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('clubs')}>
-              <Text style={styles.navButtonText}>Clubs</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('community')}>
-              <Text style={styles.navButtonText}>Communauté</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('mydog')}>
-              <Text style={styles.navButtonText}>Mes chiens</Text>
-            </TouchableOpacity>
-          </View>
+
         </View>
 
         <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 18 }}>
@@ -436,28 +418,24 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F5F7FA' },
+  safe: { flex: 1, backgroundColor: '#F0F2F5' },
   container: { paddingBottom: 120 },
   header: {
     backgroundColor: '#41B6A6',
     paddingHorizontal: 16,
     paddingTop: 18,
-    paddingBottom: 18,
+    paddingBottom: 24,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#fff',
   },
-  avatarText: { color: '#fff', fontWeight: '700' },
-  headerHint: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
-  headerTitle: { color: '#fff', fontSize: 20, fontWeight: '700' },
-  headerSub: { color: 'rgba(255,255,255,0.8)', fontSize: 12 },
+  headerTitle: { color: '#fff', fontSize: 26, fontWeight: 'bold' },
+  headerSub: { color: '#fff', fontSize: 16 },
   notif: { padding: 6 },
   notifBadge: {
     position: 'absolute',
@@ -480,16 +458,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     height: 44,
     gap: 8,
+    marginBottom: 10,
   },
   searchPlaceholder: { color: '#9CA3AF', fontSize: 14 },
-  navRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
-  navButton: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  navButtonText: { color: '#fff', fontWeight: '700' },
+
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionTitle: { color: '#1F2937', fontSize: 16, fontWeight: '700' },
