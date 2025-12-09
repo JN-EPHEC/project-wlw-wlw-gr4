@@ -147,7 +147,7 @@ export default function SignupTeacherScreen() {
     <SafeAreaView style={authStyles.safeArea}>
       <AuthHeader
         title="Créer un compte"
-        subtitle="Éducateur / indépendant"
+        subtitle="Educateur / Indépendant"
         onBack={() => navigation.navigate('signupChoice')}
         color={palette.teacher}
       />
@@ -333,6 +333,7 @@ export default function SignupTeacherScreen() {
 
         <PrimaryButton
           title={loading ? 'Création en cours...' : 'Créer mon compte éducateur'}
+
           onPress={handleSubmit}
           color={palette.teacher}
           disabled={loading || !acceptTerms}

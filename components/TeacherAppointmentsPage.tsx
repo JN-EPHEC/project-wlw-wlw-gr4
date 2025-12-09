@@ -217,7 +217,7 @@ export default function TeacherAppointmentsPage() {
           <View style={styles.statCard}>
             <Ionicons name="today-outline" size={18} color={palette.primary} />
             <Text style={styles.statValue}>{counts.today}</Text>
-            <Text style={styles.statLabel}>Aujourd hui</Text>
+            <Text style={styles.statLabel}>Aujourd'hui</Text>
           </View>
           <View style={styles.statCard}>
             <MaterialCommunityIcons name="calendar-week-outline" size={18} color="#16A34A" />

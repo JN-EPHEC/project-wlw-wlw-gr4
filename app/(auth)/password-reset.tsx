@@ -39,7 +39,7 @@ export default function PasswordResetScreen() {
       />
       <View style={[authStyles.content, { marginTop: 20 }]}>
         <View style={[cardStyle, styles.card]}>
-          <Text style={styles.helper}>Saisissez votre e-mail associé à votre compte Smart Dogs</Text>
+          <Text style={styles.helper}>Saisissez l'email associé à votre compte Smart Dogs.</Text>
           <LabeledInput
             label="Email"
             value={email}

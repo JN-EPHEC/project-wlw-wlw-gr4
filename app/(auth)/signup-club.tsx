@@ -91,6 +91,74 @@ export default function SignupClubScreen() {
 
         quality: 0.8,
 
+  const toggleService = (value: string) => {
+    setServices((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]));
+  };
+
+  const handlePickLogo = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets?.length) {
+      const asset = result.assets[0];
+      setLogo([{ uri: asset.uri, name: asset.fileName ?? 'logo.jpg', mimeType: asset.mimeType }]);
+    }
+  };
+
+  const handlePickDocuments = async () => {
+    const result = await DocumentPicker.getDocumentAsync({ multiple: true, copyToCacheDirectory: true });
+    if (!result.canceled && result.assets?.length) {
+      const picked = result.assets.map((asset) => ({
+        uri: asset.uri,
+        name: asset.name,
+        mimeType: asset.mimeType,
+      }));
+      setDocuments((prev) => [...prev, ...picked]);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!form.clubName || !form.email || !form.phone || !form.siret || !form.password) {
+      setError('Renseignez tous les champs obligatoires.');
+      return;
+    }
+    if (!services.length) {
+      setError('Selectionnez au moins un service proposé.');
+      return;
+    }
+    if (form.password.length < 8) {
+      setError('Mot de passe trop court (minimum 8 caractères).');
+      return;
+    }
+    if (form.password !== form.confirmPassword) {
+      setError('Les mots de passe ne correspondent pas.');
+      return;
+    }
+    if (!acceptTerms) {
+      setError("Merci d'accepter les conditions d'utilisation professionnelles.");
+      return;
+    }
+    try {
+      setSubmitting(true);
+      setError('');
+      await registerClub({
+        clubName: form.clubName.trim(),
+        legalName: form.legalName.trim(),
+        siret: form.siret.trim(),
+        website: form.website.trim(),
+        description: form.description.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        address: form.address.trim(),
+        city: form.city.trim(),
+        postalCode: form.postalCode.trim(),
+        services,
+        password: form.password,
+        logo: logo[0],
+        documents,
+        newsletterOptIn: newsletter,
+        acceptTerms,
       });
 
       if (!result.canceled && result.assets?.length) {

@@ -169,15 +169,15 @@ export default function TeacherHomePage() {
           <View style={styles.communityCard}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <MaterialCommunityIcons name="message-text-outline" size={18} color={palette.accent} />
-              <Text style={styles.sectionTitle}>Communaute</Text>
+              <Text style={styles.sectionTitle}>Communauté</Text>
             </View>
-            <Text style={styles.sub}>3 questions en attente de reponse aujourd hui.</Text>
+            <Text style={styles.sub}>3 questions en attente de réponse aujourd hui.</Text>
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
               <TouchableOpacity
                 style={[styles.pillButton, { backgroundColor: palette.accent }]}
                 onPress={() => handleNavigate('teacher-community')}
               >
-                <Text style={styles.pillButtonText}>Repondre maintenant</Text>
+                <Text style={styles.pillButtonText}>Répondre maintenant</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.pillButton, { backgroundColor: '#E5E7EB' }]}

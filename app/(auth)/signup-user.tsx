@@ -102,7 +102,7 @@ export default function SignupUserScreen() {
       />
       <ScrollView contentContainerStyle={[authStyles.content, { marginTop: -16 }]}>
         <UploadField
-          title="Photo de profil (optionnel)"
+          title="Photo de profil (optionnelle)"
           files={profilePhoto}
           onPick={handlePickPhoto}
           color={palette.primary}
@@ -199,7 +199,7 @@ export default function SignupUserScreen() {
           <CheckboxRow
             checked={newsletter}
             onToggle={() => setNewsletter((v) => !v)}
-            label="Recevoir la newsletter Smart Dogs (optionnel)."
+            label="Recevoir la newsletter Smart Dogs (optionnelle)."
             accent={palette.primary}
           />
         </View>
