@@ -5,3 +5,7 @@ node_modules
 firebase_env.js
 expo-env.d.ts
 # @end expo-cli
+
+# Firebase credentials (never commit secrets!) .
+ephec-smartdogs-firebase-adminsdk-fbsvc-f1f0db8690.json
+*firebase*adminsdk*.json
