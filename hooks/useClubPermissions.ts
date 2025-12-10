@@ -1,0 +1,107 @@
+import { useEffect, useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/firebaseConfig';
+
+interface ClubPermissions {
+  canPostInAnnouncements: boolean; // only educators + owner
+  canCreateChannels: boolean; // only educators + owner
+  canKickMembers: boolean; // only owner
+  canManageEducators: boolean; // only owner
+  canDeleteMessages: boolean; // only educators + owner + self
+  canEditMessages: boolean; // only self
+  isCommunityMember: boolean; // is user member of this community
+}
+
+interface UseClubPermissionsResult {
+  permissions: ClubPermissions;
+  loading: boolean;
+  error: string | null;
+}
+
+/**
+ * Hook to check what permissions a user has in a club's community
+ * @param clubId - The club ID to check permissions for
+ * @param userId - The user ID to check permissions for
+ * @param userRole - The user's role ('owner', 'educator', 'club', 'user')
+ * @param educatorIds - Array of educator IDs in the club
+ * @returns Object containing permissions and loading state
+ */
+export const useClubPermissions = (
+  clubId: string,
+  userId: string,
+  userRole: 'owner' | 'educator' | 'club' | 'user',
+  educatorIds: string[] = []
+): UseClubPermissionsResult => {
+  const [permissions, setPermissions] = useState<ClubPermissions>({
+    canPostInAnnouncements: false,
+    canCreateChannels: false,
+    canKickMembers: false,
+    canManageEducators: false,
+    canDeleteMessages: false,
+    canEditMessages: true, // Everyone can edit their own
+    isCommunityMember: false,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!clubId || !userId) {
+      setLoading(false);
+      return;
+    }
+
+    const checkPermissions = async () => {
+      try {
+        console.log('🔍 [useClubPermissions] Checking permissions for user:', userId, 'role:', userRole);
+
+        // Get the club document to check educatorIds
+        const clubRef = doc(db, 'clubs', clubId);
+        const clubSnap = await getDoc(clubRef);
+
+        if (!clubSnap.exists()) {
+          console.log('❌ [useClubPermissions] Club not found');
+          setError('Club non trouvé');
+          setLoading(false);
+          return;
+        }
+
+        const clubData = clubSnap.data();
+        const clubEducatorIds = clubData?.educatorIds || [];
+        const clubOwnerId = clubData?.ownerUserId;
+
+        // Determine if user is club owner
+        const isClubOwner = clubOwnerId === userId || userRole === 'club';
+
+        // Determine if user is educator in this club
+        const isEducator = userRole === 'educator' && (educatorIds.includes(userId) || clubEducatorIds.includes(userId));
+
+        // Determine if user is community member (has made a booking = was invited)
+        // For now, assume all users who access this are members
+        const isMember = true;
+
+        const newPermissions: ClubPermissions = {
+          canPostInAnnouncements: isClubOwner || isEducator,
+          canCreateChannels: isClubOwner || isEducator,
+          canKickMembers: isClubOwner,
+          canManageEducators: isClubOwner,
+          canDeleteMessages: isClubOwner || isEducator,
+          canEditMessages: true, // Everyone can edit their own
+          isCommunityMember: isMember,
+        };
+
+        console.log('✅ [useClubPermissions] Permissions calculated:', newPermissions);
+        setPermissions(newPermissions);
+        setError(null);
+      } catch (err) {
+        console.error('❌ [useClubPermissions] Error checking permissions:', err);
+        setError('Erreur lors de la vérification des permissions');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkPermissions();
+  }, [clubId, userId, userRole, educatorIds]);
+
+  return { permissions, loading, error };
+};

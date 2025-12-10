@@ -22,80 +22,36 @@ type Announcement = {
   isNew: boolean;
 };
 
-const announcementsSeed: Announcement[] = [
-  {
-    id: 1,
-    title: 'Nouvelle session de groupe ce samedi !',
-    content:
-      "Rejoignez-nous pour une session d'agility collective ce samedi à 14h. Places limitées à 10 participants.",
-    author: 'Sophie Leclerc',
-    date: 'Il y a 2h',
-    isNew: true,
-  },
-  {
-    id: 2,
-    title: 'Fermeture exceptionnelle lundi 30 octobre',
-    content:
-      'Le club sera exceptionnellement fermé lundi 30 octobre pour travaux de maintenance. Merci de votre compréhension.',
-    author: 'Pierre Martin',
-    date: 'Hier',
-    isNew: true,
-  },
-  {
-    id: 3,
-    title: "Nouveau programme d'éducation canine",
-    content:
-      "Nous lançons un nouveau programme pour chiots de 3 à 6 mois. Inscriptions ouvertes !",
-    author: 'Sophie Leclerc',
-    date: 'Il y a 3 jours',
-    isNew: false,
-  },
-  {
-    id: 4,
-    title: "Compétition d'agility - Résultats",
-    content:
-      'Félicitations à tous les participants ! Les résultats complets sont disponibles.',
-    author: 'Pierre Martin',
-    date: 'Il y a 5 jours',
-    isNew: false,
-  },
-  {
-    id: 5,
-    title: "Nouveau matériel d'agility disponible",
-    content:
-      'Nous avons reçu de nouveaux obstacles pour l’agility. Venez les découvrir lors de vos prochaines séances !',
-    author: 'Sophie Leclerc',
-    date: 'Il y a 1 semaine',
-    isNew: false,
-  },
-];
-
 type Props = NativeStackScreenProps<ClubStackParamList, 'clubAnnouncements'>;
 
 export default function ClubAnnouncementsScreen({ navigation }: Props) {
-  const [announcements, setAnnouncements] = useState<Announcement[]>(announcementsSeed);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [draft, setDraft] = useState({ title: '', content: '' });
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const handlePublish = () => {
-    if (!draft.title.trim() || !draft.content.trim()) return;
+    if (!draft.title.trim() || !draft.content.trim() || isPublishing) return;
+    
+    setIsPublishing(true);
     const next: Announcement = {
       id: announcements.length + 1,
       title: draft.title.trim(),
       content: draft.content.trim(),
       author: 'Vous',
-      date: 'À l’instant',
+      date: 'A l\'instant',
       isNew: true,
     };
     setAnnouncements([next, ...announcements]);
     setDraft({ title: '', content: '' });
     setShowModal(false);
+    setIsPublishing(false);
   };
 
   const stats = {
     total: announcements.length,
     newCount: announcements.filter((a) => a.isNew).length,
-    readers: 127,
+    readers: 0,
   };
 
   return (
@@ -130,11 +86,6 @@ export default function ClubAnnouncementsScreen({ navigation }: Props) {
             <Text style={styles.statValue}>{stats.newCount}</Text>
             <Text style={styles.statLabel}>Nouvelles</Text>
           </View>
-          <View style={styles.divider} />
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{stats.readers}</Text>
-            <Text style={styles.statLabel}>Lecteurs</Text>
-          </View>
         </View>
 
         <View style={{ padding: 16, gap: 12 }}>
@@ -143,41 +94,49 @@ export default function ClubAnnouncementsScreen({ navigation }: Props) {
             <Text style={styles.sectionTitle}>Toutes les annonces</Text>
           </View>
 
-          {announcements.map((a) => (
-            <View
-              key={a.id}
-              style={[
-                styles.card,
-                a.isNew && { borderColor: '#F28B6F66', backgroundColor: '#FFF1EB' },
-              ]}
-            >
-              <View style={styles.cardHeader}>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={styles.cardTitle}>{a.title}</Text>
-                    {a.isNew ? (
-                      <View style={[styles.badge, { backgroundColor: '#F28B6F' }]}>
-                        <Text style={[styles.badgeText, { color: '#fff' }]}>Nouveau</Text>
-                      </View>
-                    ) : null}
+          {announcements.length === 0 ? (
+            <View style={styles.emptyState}>
+              <MaterialCommunityIcons name="bell-outline" size={48} color={palette.gray} />
+              <Text style={styles.emptyText}>Aucune annonce pour le moment</Text>
+              <Text style={styles.emptySubText}>Créez votre première annonce pour communiquer avec vos membres</Text>
+            </View>
+          ) : (
+            announcements.map((a) => (
+              <View
+                key={a.id}
+                style={[
+                  styles.card,
+                  a.isNew && { borderColor: '#F28B6F66', backgroundColor: '#FFF1EB' },
+                ]}
+              >
+                <View style={styles.cardHeader}>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={styles.cardTitle}>{a.title}</Text>
+                      {a.isNew ? (
+                        <View style={[styles.badge, { backgroundColor: '#F28B6F' }]}>
+                          <Text style={[styles.badgeText, { color: '#fff' }]}>Nouveau</Text>
+                        </View>
+                      ) : null}
+                    </View>
                   </View>
                 </View>
+                <Text style={styles.cardContent}>{a.content}</Text>
+                <View style={styles.cardFooter}>
+                  <Text style={styles.cardMeta}>{a.author}</Text>
+                  <Text style={styles.bullet}>·</Text>
+                  <Text style={styles.cardMeta}>{a.date}</Text>
+                  <View style={{ flex: 1 }} />
+                  <TouchableOpacity style={styles.iconBtn}>
+                    <MaterialCommunityIcons name="pencil-outline" size={16} color={palette.gray} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.iconBtn}>
+                    <MaterialCommunityIcons name="trash-can-outline" size={16} color="#DC2626" />
+                  </TouchableOpacity>
+                </View>
               </View>
-              <Text style={styles.cardContent}>{a.content}</Text>
-              <View style={styles.cardFooter}>
-                <Text style={styles.cardMeta}>{a.author}</Text>
-                <Text style={styles.bullet}>·</Text>
-                <Text style={styles.cardMeta}>{a.date}</Text>
-                <View style={{ flex: 1 }} />
-                <TouchableOpacity style={styles.iconBtn}>
-                  <MaterialCommunityIcons name="pencil-outline" size={16} color={palette.gray} />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.iconBtn}>
-                  <MaterialCommunityIcons name="trash-can-outline" size={16} color="#DC2626" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
+            ))
+          )}
         </View>
 
         <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
@@ -204,7 +163,7 @@ export default function ClubAnnouncementsScreen({ navigation }: Props) {
             </View>
             <View style={{ gap: 12 }}>
               <View>
-                <Text style={styles.label}>Titre de l’annonce</Text>
+                <Text style={styles.label}>Titre de l'annonce</Text>
                 <TextInput
                   value={draft.title}
                   onChangeText={(text) => setDraft({ ...draft, title: text })}
@@ -224,9 +183,14 @@ export default function ClubAnnouncementsScreen({ navigation }: Props) {
                   placeholderTextColor={palette.gray}
                 />
               </View>
-              <TouchableOpacity style={styles.publishBtn} onPress={handlePublish} activeOpacity={0.9}>
+              <TouchableOpacity 
+                style={[styles.publishBtn, isPublishing && { opacity: 0.6 }]} 
+                onPress={handlePublish} 
+                activeOpacity={0.9}
+                disabled={isPublishing}
+              >
                 <MaterialCommunityIcons name="bell-outline" size={18} color="#fff" />
-                <Text style={styles.publishText}>Publier l’annonce</Text>
+                <Text style={styles.publishText}>Publier l'annonce</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -319,6 +283,22 @@ const styles = StyleSheet.create({
     color: palette.text,
     fontWeight: '700',
     fontSize: 16,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    gap: 12,
+  },
+  emptyText: {
+    color: palette.text,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptySubText: {
+    color: palette.gray,
+    fontSize: 13,
+    textAlign: 'center',
   },
   card: {
     backgroundColor: '#fff',

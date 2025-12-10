@@ -5,7 +5,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { ClubStackParamList } from '@/navigation/types';
 
-type ClubTab = 'clubHome' | 'clubProfile' | 'clubAppointments' | 'clubPayments';
+type ClubTab = 'clubHome' | 'clubProfile' | 'clubAppointments' | 'clubPayments' | 'clubCommunity';
 
 type NavItem = {
   id: ClubTab;
@@ -31,6 +31,7 @@ export default function ClubBottomNav({ current }: Props) {
   const navItems: NavItem[] = [
     { id: 'clubHome', icon: 'home-outline', label: 'Accueil' },
     { id: 'clubProfile', icon: 'business-outline', label: 'Mon Club' },
+    { id: 'clubCommunity', icon: 'chatbubbles-outline', label: 'Communauté' },
     { id: 'clubAppointments', icon: 'calendar-outline', label: 'Mes RDV' },
     { id: 'clubPayments', icon: 'card-outline', label: 'Paiements' },
   ];
