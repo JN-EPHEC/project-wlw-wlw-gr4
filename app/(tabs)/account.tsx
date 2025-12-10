@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Alert, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,6 +8,11 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { formatFirebaseAuthError, useAuth } from '@/context/AuthContext';
 import { UserStackParamList } from '@/navigation/types';
 import UserBottomNav from '@/components/UserBottomNav';
+import { useUserUpcomingBookings } from '@/hooks/useUserUpcomingBookings';
+import { useDogs } from '@/hooks/useDogs';
+import { useFavorites } from '@/hooks/useFavorites';
+import { db } from '@/firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
 
 const palette = {
   primary: '#41B6A6',
@@ -45,9 +50,19 @@ type AccountNavigationProp = NativeStackNavigationProp<UserStackParamList, 'acco
 export default function AccountScreen() {
   const navigation = useNavigation<AccountNavigationProp>();
   const { user, profile, logout, deleteAccount, actionLoading } = useAuth();
+  const { bookings } = useUserUpcomingBookings();
+  const { dogs: dogsData } = useDogs();
+  const { favorites } = useFavorites();
   const [error, setError] = useState<string | null>(null);
   const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [followedClubsCount, setFollowedClubsCount] = useState(0);
+
+  useEffect(() => {
+    // Compter les clubs favoris
+    const clubCount = Array.from(favorites.values()).filter(type => type === 'club').length;
+    setFollowedClubsCount(clubCount);
+  }, [favorites]);
 
   const profileData = useMemo(() => ((profile as any)?.profile ?? {}) as Record<string, any>, [profile]);
   const displayName = useMemo(() => {
@@ -87,16 +102,16 @@ export default function AccountScreen() {
       : (profile as any)?.bookingsCount;
 
   const stats = [
-    { label: 'Réservations', value: bookingsCount ?? 12, icon: 'calendar-outline' as const },
-    { label: 'Chiens', value: dogs?.length ?? 0, icon: 'paw-outline' as const },
-    { label: 'Clubs suivis', value: clubs?.length ?? 0, icon: 'heart-outline' as const },
+    { label: 'Réservations', value: bookings.length, icon: 'calendar-outline' as const },
+    { label: 'Chiens', value: dogsData?.length ?? 0, icon: 'paw-outline' as const },
+    { label: 'Clubs suivis', value: followedClubsCount, icon: 'heart-outline' as const },
   ];
 
   const menuItems = [
-    { id: 'bookings', icon: 'calendar-outline' as const, label: 'Mes réservations', badge: bookingsCount ? String(bookingsCount) : '3', onPress: () => navigation.navigate('bookings') },
+    { id: 'bookings', icon: 'calendar-outline' as const, label: 'Mes réservations', badge: bookings.length ? String(bookings.length) : null, onPress: () => navigation.navigate('bookings') },
     { id: 'dogs', icon: 'paw-outline' as const, label: 'Mes chiens', badge: null, onPress: () => navigation.navigate('dogs') },
     { id: 'clubs', icon: 'heart-outline' as const, label: 'Clubs suivis', badge: null, onPress: () => navigation.navigate('followedClubs') },
-    { id: 'notifications', icon: 'notifications-outline' as const, label: 'Notifications', badge: '5', onPress: () => navigation.navigate('notifications', { previousTarget: 'account' }) },
+    { id: 'notifications', icon: 'notifications-outline' as const, label: 'Notifications', badge: null, onPress: () => navigation.navigate('notifications', { previousTarget: 'account' }) },
     { id: 'ratingInvitation', icon: 'star-outline' as const, label: 'Invitations avis', badge: null, onPress: () => navigation.navigate('ratingInvitation', { bookingId: 501, previousTarget: 'account' }) },
     { id: 'settings', icon: 'settings-outline' as const, label: 'Paramètres', badge: null, onPress: () => navigation.navigate('settings') },
   ];
@@ -213,9 +228,9 @@ export default function AccountScreen() {
             </TouchableOpacity>
           </View>
           <View style={styles.cardGrid}>
-            {dogs.slice(0, 2).map((dog, idx) => (
+            {dogsData && dogsData.slice(0, 2).map((dog, idx) => (
               <View key={dog.id ?? idx} style={styles.dogCard}>
-                <Image source={{ uri: dog.image }} style={styles.dogImage} />
+                <Image source={{ uri: dog.photoUrl || 'https://via.placeholder.com/120' }} style={styles.dogImage} />
                 <View style={styles.dogBody}>
                   <Text style={styles.dogName}>{dog.name}</Text>
                   <Text style={styles.dogBreed}>{dog.breed}</Text>
