@@ -100,6 +100,7 @@ export type UserStackParamList = {
   settings: undefined;
   bookings: undefined;
   addDog: undefined;
+  editDog: { dogId: string };
   dogs: undefined;
   followedClubs: undefined;
   djanaiResults: { profile?: Record<string, unknown>; previousPage?: UserRoute };
