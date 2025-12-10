@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Alert } from 'react-native';
+import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Alert, Modal } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import { Timestamp } from 'firebase/firestore';
 
 import { UserStackParamList } from '@/navigation/types';
 import { useDogs } from '@/hooks/useDogs';
+import { useDogDocuments, DogDocument } from '@/hooks/useDogDocuments';
 
 const palette = {
   primary: '#41B6A6',
@@ -19,20 +21,25 @@ type Props = NativeStackScreenProps<UserStackParamList, 'addDog'>;
 
 export default function AddDogScreen({ navigation }: Props) {
   const { addDog, loading: dbLoading, error: dbError } = useDogs();
+  const { uploadDocument, addDocumentToDog, loading: docLoading } = useDogDocuments();
+  
   const [form, setForm] = useState({
     name: '',
     breed: '',
-    birthDate: '',
+    birthDate: '', // Timestamp en millisecondes ou Timestamp Firebase
     gender: '',
     weight: '',
     otherInfo: '',
   });
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<{ uri: string; name: string; mimeType: string } | null>(null);
-  const [documents, setDocuments] = useState<Array<{ uri: string; name: string; type: string }>>([]);
+  const [vaccineDocument, setVaccineDocument] = useState<{ uri: string; name: string; type: string } | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showGenderPicker, setShowGenderPicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const canSave = form.name && form.breed && !saving && !dbLoading;
+  const canSave = form.name && form.breed && !saving && !dbLoading && !docLoading;
 
   const pickImage = async () => {
     try {
@@ -57,40 +64,58 @@ export default function AddDogScreen({ navigation }: Props) {
     }
   };
 
-  const pickDocument = async () => {
+  const pickVaccineDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf', 'image/*', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        type: ['application/pdf', 'image/*'],
       });
 
       if (result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        setDocuments([
-          ...documents,
-          {
-            uri: asset.uri,
-            name: asset.name,
-            type: asset.mimeType || 'application/octet-stream',
-          },
-        ]);
+        setVaccineDocument({
+          uri: asset.uri,
+          name: asset.name,
+          type: asset.mimeType || 'application/octet-stream',
+        });
       }
     } catch (err) {
       Alert.alert('Erreur', 'Impossible de sélectionner un document');
     }
   };
 
-  const removeDocument = (index: number) => {
-    setDocuments(documents.filter((_, i) => i !== index));
+  const removeVaccineDocument = () => {
+    setVaccineDocument(null);
+  };
+
+  const formatDateForDisplay = (timestamp: string | number): string => {
+    if (!timestamp) return '';
+    try {
+      let date: Date;
+      if (typeof timestamp === 'number') {
+        date = new Date(timestamp);
+      } else if (typeof timestamp === 'string' && !isNaN(Number(timestamp))) {
+        // String numérique (comme '1734000000000')
+        date = new Date(parseInt(timestamp, 10));
+      } else {
+        date = new Date(timestamp);
+      }
+      if (isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('fr-FR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    } catch {
+      return '';
+    }
   };
 
   const handleSave = async () => {
     try {
       setSaving(true);
-      await addDog(
+      
+      // Créer le chien d'abord
+      const dogId = await addDog(
         {
           name: form.name,
           breed: form.breed,
-          birthDate: form.birthDate || undefined,
+          birthDate: form.birthDate || undefined, // Timestamp en millisecondes
           gender: form.gender || undefined,
           weight: form.weight || undefined,
           otherInfo: form.otherInfo || undefined,
@@ -98,6 +123,21 @@ export default function AddDogScreen({ navigation }: Props) {
         },
         photoFile || undefined
       );
+
+      // Uploader le document de vaccination si présent
+      if (vaccineDocument && dogId) {
+        const uploadedDoc = await uploadDocument(
+          dogId,
+          vaccineDocument.uri,
+          vaccineDocument.name,
+          vaccineDocument.type
+        );
+
+        if (uploadedDoc) {
+          // Ajouter le document au chien
+          await addDocumentToDog(dogId, uploadedDoc);
+        }
+      }
 
       Alert.alert('Succès', 'Chien ajouté avec succès');
       navigation.goBack();
@@ -142,14 +182,19 @@ export default function AddDogScreen({ navigation }: Props) {
         <Input label="Nom" value={form.name} onChangeText={(t) => setForm({ ...form, name: t })} placeholder="Nala" editable={!saving} />
         <Input label="Race" value={form.breed} onChangeText={(t) => setForm({ ...form, breed: t })} placeholder="Border Collie" editable={!saving} />
         <View style={{ flexDirection: 'row', gap: 12 }}>
-          <Input
-            style={{ flex: 1 }}
-            label="Date de naissance"
-            value={form.birthDate}
-            onChangeText={(t) => setForm({ ...form, birthDate: t })}
-            placeholder="JJ/MM/AAAA"
-            editable={!saving}
-          />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.label}>Date de naissance</Text>
+            <TouchableOpacity
+              style={[styles.dateButton, saving && { opacity: 0.5 }]}
+              onPress={() => setShowDatePicker(true)}
+              disabled={saving}
+            >
+              <Ionicons name="calendar-outline" size={18} color={palette.primary} />
+              <Text style={styles.dateButtonText}>
+                {formatDateForDisplay(form.birthDate) || 'Sélectionner une date'}
+              </Text>
+            </TouchableOpacity>
+          </View>
           <Input
             style={{ width: 110 }}
             label="Poids (kg)"
@@ -160,13 +205,53 @@ export default function AddDogScreen({ navigation }: Props) {
             editable={!saving}
           />
         </View>
-        <Input
-          label="Genre"
-          value={form.gender}
-          onChangeText={(t) => setForm({ ...form, gender: t })}
-          placeholder="Femelle / Mâle"
-          editable={!saving}
-        />
+        <View style={{ gap: 6 }}>
+          <Text style={styles.label}>Genre</Text>
+          <TouchableOpacity
+            style={[styles.genderButton, saving && { opacity: 0.6 }]}
+            onPress={() => !saving && setShowGenderPicker(true)}
+            disabled={saving}
+          >
+            <Text style={[styles.genderButtonText, !form.gender && { color: palette.gray }]}>
+              {form.gender || 'Sélectionner le genre'}
+            </Text>
+            <Ionicons name="chevron-down" size={20} color={palette.primary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Gender Picker Modal */}
+        <Modal visible={showGenderPicker} transparent={true} animationType="slide">
+          <View style={styles.genderPickerOverlay}>
+            <View style={styles.genderPickerContainer}>
+              <View style={styles.genderPickerHeader}>
+                <TouchableOpacity onPress={() => setShowGenderPicker(false)}>
+                  <Text style={styles.genderPickerHeaderText}>Annuler</Text>
+                </TouchableOpacity>
+                <Text style={styles.genderPickerTitle}>Genre du chien</Text>
+                <View style={{ width: 60 }} />
+              </View>
+              <View style={styles.genderPickerContent}>
+                {['Mâle', 'Femelle'].map((option) => (
+                  <TouchableOpacity
+                    key={option}
+                    style={[styles.genderOption, form.gender === option && styles.genderOptionSelected]}
+                    onPress={() => {
+                      setForm({ ...form, gender: option });
+                      setShowGenderPicker(false);
+                    }}
+                  >
+                    <Text style={[styles.genderOptionText, form.gender === option && styles.genderOptionTextSelected]}>
+                      {option}
+                    </Text>
+                    {form.gender === option && (
+                      <Ionicons name="checkmark-circle" size={24} color={palette.primary} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+        </Modal>
         <Input
           label="Notes / santé / caractère"
           value={form.otherInfo}
@@ -182,38 +267,60 @@ export default function AddDogScreen({ navigation }: Props) {
         <View style={{ gap: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <MaterialCommunityIcons name="file-document-outline" size={20} color={palette.primary} />
-            <Text style={styles.sectionTitle}>Vaccinations & Documents</Text>
+            <Text style={styles.sectionTitle}>Certificat de vaccination</Text>
           </View>
 
-          {documents.length > 0 && (
-            <View style={{ gap: 10 }}>
-              {documents.map((doc, index) => (
-                <View key={index} style={styles.documentItem}>
-                  <View style={{ flex: 1, gap: 4 }}>
-                    <Text style={styles.documentName} numberOfLines={1}>{doc.name}</Text>
-                    <Text style={styles.documentType}>{doc.type.split('/')[0]}</Text>
-                  </View>
-                  <TouchableOpacity onPress={() => removeDocument(index)} disabled={saving}>
-                    <Ionicons name="close-circle" size={24} color="#DC2626" />
-                  </TouchableOpacity>
-                </View>
-              ))}
+          {vaccineDocument && (
+            <View style={styles.documentItem}>
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text style={styles.documentName} numberOfLines={1}>{vaccineDocument.name}</Text>
+                <Text style={styles.documentType}>{vaccineDocument.type.split('/')[0]}</Text>
+              </View>
+              <TouchableOpacity onPress={removeVaccineDocument} disabled={saving}>
+                <Ionicons name="close-circle" size={24} color="#DC2626" />
+              </TouchableOpacity>
             </View>
           )}
 
-          <TouchableOpacity style={styles.documentBtn} onPress={pickDocument} disabled={saving}>
+          <TouchableOpacity style={styles.documentBtn} onPress={pickVaccineDocument} disabled={saving}>
             <Ionicons name="add-circle-outline" size={18} color={palette.primary} />
-            <Text style={styles.documentBtnText}>Ajouter un document</Text>
+            <Text style={styles.documentBtnText}>
+              {vaccineDocument ? 'Changer le document' : 'Ajouter un document'}
+            </Text>
           </TouchableOpacity>
 
-          <Text style={styles.helperText}>PDF, images, documents Word acceptés (vaccins, certificats, etc.)</Text>
+          <Text style={styles.helperText}>PDF ou images (certificat de vaccination)</Text>
         </View>
 
         <View style={styles.infoCard}>
           <MaterialCommunityIcons name="shield-check-outline" size={20} color="#1D4ED8" />
-          <Text style={styles.infoText}>Ajoutez les vaccins et documents vétérinaires depuis la fiche du chien.</Text>
+          <Text style={styles.infoText}>Le certificat de vaccination sera visible sur le profil du chien.</Text>
         </View>
       </ScrollView>
+
+      {/* Modal Date Picker */}
+      <Modal visible={showDatePicker} transparent={true} animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.datePickerContainer}>
+            <View style={styles.datePickerHeader}>
+              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                <Text style={styles.datePickerHeaderText}>Annuler</Text>
+              </TouchableOpacity>
+              <Text style={styles.datePickerTitle}>Date de naissance</Text>
+              <TouchableOpacity onPress={() => {
+                setForm({ ...form, birthDate: selectedDate.getTime().toString() });
+                setShowDatePicker(false);
+              }}>
+                <Text style={[styles.datePickerHeaderText, { color: palette.primary, fontWeight: '700' }]}>OK</Text>
+              </TouchableOpacity>
+            </View>
+            <DatePickerSimple
+              date={selectedDate}
+              onDateChange={setSelectedDate}
+            />
+          </View>
+        </View>
+      </Modal>
 
       <View style={styles.bottomBar}>
         <TouchableOpacity
@@ -221,7 +328,7 @@ export default function AddDogScreen({ navigation }: Props) {
           disabled={!canSave}
           onPress={handleSave}
         >
-          {saving ? (
+          {saving || docLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.primaryText}>Enregistrer</Text>
@@ -229,6 +336,75 @@ export default function AddDogScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
     </SafeAreaView>
+  );
+}
+
+// Composant simple Date Picker
+function DatePickerSimple({ date, onDateChange }: { date: Date; onDateChange: (d: Date) => void }) {
+  const [tempDate, setTempDate] = useState(date);
+  const years = Array.from({ length: 30 }, (_, i) => new Date().getFullYear() - i);
+  const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+  const days = Array.from({ length: 31 }, (_, i) => i + 1);
+
+  const handleChange = (year: number, month: number, day: number) => {
+    const newDate = new Date(year, month, day);
+    setTempDate(newDate);
+    onDateChange(newDate);
+  };
+
+  return (
+    <View style={styles.datePickerContent}>
+      <View style={styles.datePickerColumn}>
+        <Text style={styles.datePickerLabel}>Jour</Text>
+        <ScrollView>
+          {days.map((d) => (
+            <TouchableOpacity
+              key={d}
+              style={[styles.datePickerOption, tempDate.getDate() === d && styles.datePickerOptionSelected]}
+              onPress={() => handleChange(tempDate.getFullYear(), tempDate.getMonth(), d)}
+            >
+              <Text style={[styles.datePickerOptionText, tempDate.getDate() === d && styles.datePickerOptionTextSelected]}>
+                {d}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      <View style={styles.datePickerColumn}>
+        <Text style={styles.datePickerLabel}>Mois</Text>
+        <ScrollView>
+          {months.map((m, i) => (
+            <TouchableOpacity
+              key={i}
+              style={[styles.datePickerOption, tempDate.getMonth() === i && styles.datePickerOptionSelected]}
+              onPress={() => handleChange(tempDate.getFullYear(), i, tempDate.getDate())}
+            >
+              <Text style={[styles.datePickerOptionText, tempDate.getMonth() === i && styles.datePickerOptionTextSelected]}>
+                {m}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      <View style={styles.datePickerColumn}>
+        <Text style={styles.datePickerLabel}>Année</Text>
+        <ScrollView>
+          {years.map((y) => (
+            <TouchableOpacity
+              key={y}
+              style={[styles.datePickerOption, tempDate.getFullYear() === y && styles.datePickerOptionSelected]}
+              onPress={() => handleChange(y, tempDate.getMonth(), tempDate.getDate())}
+            >
+              <Text style={[styles.datePickerOptionText, tempDate.getFullYear() === y && styles.datePickerOptionTextSelected]}>
+                {y}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    </View>
   );
 }
 
@@ -393,4 +569,128 @@ const styles = StyleSheet.create({
   },
   documentBtnText: { color: palette.primary, fontWeight: '600', fontSize: 14 },
   helperText: { color: palette.gray, fontSize: 12, fontStyle: 'italic' },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#F9FAFB',
+  },
+  dateButtonText: { color: palette.text, fontSize: 14 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  datePickerContainer: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '70%',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.border,
+  },
+  datePickerHeaderText: { fontSize: 14, color: palette.gray, fontWeight: '600' },
+  datePickerTitle: { fontSize: 16, fontWeight: '700', color: palette.text },
+  datePickerContent: {
+    flexDirection: 'row',
+    gap: 12,
+    height: 280,
+  },
+  datePickerColumn: {
+    flex: 1,
+    gap: 6,
+  },
+  datePickerLabel: { fontSize: 12, fontWeight: '600', color: palette.gray, marginBottom: 4 },
+  datePickerOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+  datePickerOptionSelected: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 8,
+  },
+  datePickerOptionText: { fontSize: 14, color: palette.gray },
+  datePickerOptionTextSelected: { color: palette.primary, fontWeight: '700' },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 12,
+    backgroundColor: '#F9FAFB',
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 50,
+  },
+  genderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#F9FAFB',
+  },
+  genderButtonText: { color: palette.text, fontSize: 14 },
+  genderPickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  genderPickerContainer: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  genderPickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.border,
+  },
+  genderPickerHeaderText: { fontSize: 14, color: palette.gray, fontWeight: '600' },
+  genderPickerTitle: { fontSize: 16, fontWeight: '700', color: palette.text },
+  genderPickerContent: {
+    gap: 8,
+  },
+  genderOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: '#F9FAFB',
+  },
+  genderOptionSelected: {
+    backgroundColor: '#EFF6FF',
+    borderColor: palette.primary,
+  },
+  genderOptionText: { fontSize: 14, color: palette.text, fontWeight: '600' },
+  genderOptionTextSelected: { color: palette.primary, fontWeight: '700' },
 });
