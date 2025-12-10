@@ -5,6 +5,7 @@ export type UserRoute =
   | 'mydog'
   | 'djanai'
   | 'clubDetail'
+  | 'educatorDetail'
   | 'booking'
   | 'homeTrainingBooking'
   | 'reviews'
@@ -78,18 +79,19 @@ export type UserStackParamList = {
   community: undefined;
   mydog: undefined;
   djanai: { previousPage?: UserRoute };
-  clubDetail: { clubId: number };
-  booking: { clubId: number };
-  homeTrainingBooking: { clubId: number };
-  reviews: { clubId?: number };
+  clubDetail: { clubId: string };
+  educatorDetail: { educatorId: string };
+  booking: { clubId?: string; educatorId?: string };
+  homeTrainingBooking: { clubId: string };
+  reviews: { clubId?: string };
   teacherDetail: { teacherId: number; clubId?: number; previousTarget?: RootRouteName };
   clubCommunity: { clubId: number };
   events: { clubId: number };
   chatRoom: { clubId: number; channelId: string; channelName: string };
   forum: { clubId: number; channelId?: string; channelName?: string };
   postDetail: { postId: number };
-  eventDetail: { eventId: number; clubId?: number };
-  eventBooking: { eventId: number };
+  eventDetail: { eventId: string; clubId?: string };
+  eventBooking: { eventId: string };
   dogProgression: { dogId: number };
   dogTasks: { dogId: number };
   dogBadges: { dogId: number };

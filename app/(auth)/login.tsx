@@ -4,6 +4,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { signInWithPopup } from 'firebase/auth';
+import { auth, googleProvider, facebookProvider } from '../../firebaseConfig';
 
 import { CheckboxRow, LabeledInput, PrimaryButton, authStyles, cardStyle, palette } from './AuthComponents';
 import { formatFirebaseAuthError, useAuth } from '@/context/AuthContext';
@@ -33,8 +35,19 @@ export default function LoginScreen() {
     }
   };
 
-  const handleSocial = (provider: 'google' | 'facebook') => {
-    Alert.alert('Fonction à venir', `Connexion ${provider} sera bientôt disponible.`);
+  const handleSocial = async (providerType: 'google' | 'facebook') => {
+    try {
+      setError('');
+      const selectedProvider = providerType === 'google' ? googleProvider : facebookProvider;
+      const result = await signInWithPopup(auth, selectedProvider);
+      // Auth state listener will handle the login and navigation
+    } catch (error: any) {
+      const errorMsg = formatFirebaseAuthError(error);
+      Alert.alert(
+        `Erreur lors de la connexion avec ${providerType === 'google' ? 'Google' : 'Facebook'}`,
+        errorMsg
+      );
+    }
   };
 
   return (
@@ -48,15 +61,16 @@ export default function LoginScreen() {
           </LinearGradient>
 
           <View style={[cardStyle, styles.loginCard]}>
-          <LabeledInput
-            label="Email"
-            value={email}
-            onChangeText={setEmail}
-            placeholder="votre.email@exemple.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            icon={<Ionicons name="mail-outline" size={18} color={palette.gray} />}
-          />
+            <View style={{ marginTop: 4 }} />
+            <LabeledInput
+              label="Email"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="votre.email@exemple.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              icon={<Ionicons name="mail-outline" size={18} color={palette.gray} />}
+            />
           <LabeledInput
             label="Mot de passe"
             value={password}
@@ -71,17 +85,16 @@ export default function LoginScreen() {
             }
           />
 
-          <View style={styles.rowBetween}>
-            <CheckboxRow
-              checked={rememberMe}
-              onToggle={() => setRememberMe((v) => !v)}
-              label="Se souvenir de moi"
-              accent={palette.primary}
-            />
-            <TouchableOpacity onPress={() => navigation.navigate('password-reset')}>
-              <Text style={styles.link}>Mot de passe oublié ?</Text>
-            </TouchableOpacity>
-          </View>
+          <CheckboxRow
+            checked={rememberMe}
+            onToggle={() => setRememberMe((v) => !v)}
+            label="Se souvenir de moi"
+            accent={palette.primary}
+          />
+
+          <TouchableOpacity onPress={() => navigation.navigate('password-reset')}>
+            <Text style={styles.link}>Mot de passe oublié ?</Text>
+          </TouchableOpacity>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -92,6 +105,13 @@ export default function LoginScreen() {
             loading={actionLoading}
             disabled={actionLoading}
           />
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Vous n'avez pas de compte ? </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('signupChoice')}>
+            <Text style={styles.footerLink}>Créer un compte</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.separatorRow}>
@@ -115,13 +135,6 @@ export default function LoginScreen() {
             <Text style={styles.socialText}>Continuer avec Facebook</Text>
           </TouchableOpacity>
         </View>
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Vous n'avez pas de compte ? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('signupChoice')}>
-            <Text style={styles.footerLink}>Créer un compte</Text>
-          </TouchableOpacity>
-        </View>
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
@@ -135,22 +148,23 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 24,
     paddingBottom: 24,
-    gap: 24,
+    gap: 16,
   },
   header: {
     width: '100%',
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     alignItems: 'center',
-    paddingTop: 60, // A bit more padding to account for the status bar
-    paddingBottom: 60,
-    marginBottom: -40, // Overlap effect
+    paddingTop: 24,
+    paddingBottom: 28,
+    marginBottom: 0,
     zIndex: 1,
   },
   logo: {
     width: 70,
     height: 70,
-    marginBottom: 12,
+    marginBottom: 8,
+    marginTop: -8,
   },
   headerTitle: {
     color: '#fff',
@@ -244,3 +258,5 @@ const styles = StyleSheet.create({
   footerText: { color: palette.gray, fontSize: 15 },
   footerLink: { color: palette.primary, fontWeight: '700', fontSize: 15 },
 });
+
+

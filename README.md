@@ -17,9 +17,10 @@ Interface Utilisateur:
 
 . Clubs
 
-- Fonction filtre qui ne s’affiche pas 
-- Recherche egalement 
-- Pour la page d’un club, manque les terrains, 
+- Fonction filtre qui ne s’affiche pas FAIT
+- Recherche egalement FAIT
+- Pour la page d’un club, manque les terrains, FAIT
+- Connexion avec BDD et link FAIT
 - Voir pour club suivit comment on avez fais avec bouton ou apres premiere seance ? 
 
 .Commu 

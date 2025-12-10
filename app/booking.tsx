@@ -1,9 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useMemo, useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useMemo, useState, useEffect } from 'react';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { doc, getDoc, Timestamp } from 'firebase/firestore';
 
 import { UserStackParamList } from '@/navigation/types';
+import { db } from '@/firebaseConfig';
+import { useFetchClubAllBookings } from '@/hooks/useFetchClubAllBookings';
 
 type Step = 'datetime' | 'info' | 'payment' | 'confirmation';
 
@@ -15,17 +18,6 @@ const palette = {
   border: '#E5E7EB',
 };
 
-const dates = [
-  { label: 'Lun 25 Oct', value: '2025-10-25' },
-  { label: 'Mar 26 Oct', value: '2025-10-26' },
-];
-
-const slots = [
-  { date: '2025-10-25', time: '09:00' },
-  { date: '2025-10-25', time: '10:00' },
-  { date: '2025-10-26', time: '14:00' },
-];
-
 type Props = NativeStackScreenProps<UserStackParamList, 'booking'>;
 
 export default function BookingScreen({ navigation, route }: Props) {
@@ -35,21 +27,94 @@ export default function BookingScreen({ navigation, route }: Props) {
   const [selectedTime, setSelectedTime] = useState('');
   const [subscribeClub, setSubscribeClub] = useState(true);
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', dogName: '' });
+  const [club, setClub] = useState<any>(null);
+  const [clubLoading, setClubLoading] = useState(true);
+  
+  // Récupérer les bookings du club
+  const { bookings, loading: bookingsLoading } = useFetchClubAllBookings(clubId);
+
+  // Récupérer les infos du club
+  useEffect(() => {
+    const fetchClub = async () => {
+      try {
+        const clubRef = doc(db, 'club', clubId);
+        const clubSnap = await getDoc(clubRef);
+        if (clubSnap.exists()) {
+          setClub(clubSnap.data());
+        }
+      } catch (err) {
+        console.error('Error fetching club:', err);
+      } finally {
+        setClubLoading(false);
+      }
+    };
+    fetchClub();
+  }, [clubId]);
+
+  // Générer les dates disponibles à partir des bookings
+  const dates = useMemo(() => {
+    if (bookings.length === 0) return [];
+    const datesSet = new Set<string>();
+    bookings.forEach((booking) => {
+      const date = booking.sessionDate instanceof Timestamp ? 
+        booking.sessionDate.toDate() : 
+        new Date(booking.sessionDate);
+      const dateStr = date.toISOString().split('T')[0];
+      datesSet.add(dateStr);
+    });
+    
+    return Array.from(datesSet)
+      .sort()
+      .map((dateStr) => {
+        const date = new Date(dateStr);
+        const label = date.toLocaleDateString('fr-FR', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+        });
+        return { label, value: dateStr };
+      });
+  }, [bookings]);
+
+  // Générer les créneaux disponibles pour la date sélectionnée
+  const slots = useMemo(() => {
+    if (!selectedDate) return [];
+    return bookings
+      .filter((booking) => {
+        const date = booking.sessionDate instanceof Timestamp ? 
+          booking.sessionDate.toDate() : 
+          new Date(booking.sessionDate);
+        return date.toISOString().split('T')[0] === selectedDate;
+      })
+      .map((booking) => {
+        const date = booking.sessionDate instanceof Timestamp ? 
+          booking.sessionDate.toDate() : 
+          new Date(booking.sessionDate);
+        const time = date.toLocaleTimeString('fr-FR', {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+        return {
+          date: selectedDate,
+          time,
+          price: booking.price,
+          duration: booking.duration,
+          bookingId: booking.id,
+        };
+      });
+  }, [selectedDate, bookings]);
 
   const canGoInfo = selectedDate !== '' && selectedTime !== '';
   const canGoPayment =
     formData.name.trim() && formData.email.trim() && formData.phone.trim() && formData.dogName.trim();
 
-  const club = useMemo(
-    () => ({ name: 'Canin Club Paris', address: '42 Avenue des Champs-Elysees, 75008 Paris' }),
-    [],
-  );
+  const clubData = club || { name: 'Club', address: 'Adresse' };
 
   if (step === 'confirmation') {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.navigate('clubDetail', { clubId })} style={styles.backButton}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={20} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Réservation confirmée</Text>
@@ -77,8 +142,8 @@ export default function BookingScreen({ navigation, route }: Props) {
               <Ionicons name="location-outline" size={18} color={palette.primary} />
               <View style={{ marginLeft: 10 }}>
                 <Text style={styles.label}>Lieu - Club</Text>
-                <Text style={styles.value}>{club.name}</Text>
-                <Text style={styles.helper}>{club.address}</Text>
+                <Text style={styles.value}>{clubData.name}</Text>
+                <Text style={styles.helper}>{clubData.address}</Text>
               </View>
             </View>
             <View style={styles.row}>
@@ -90,7 +155,7 @@ export default function BookingScreen({ navigation, route }: Props) {
             </View>
           </View>
 
-          <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.navigate('clubDetail', { clubId })}>
+          <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.goBack()}>
             <Text style={styles.primaryButtonText}>Retour à l'accueil</Text>
           </TouchableOpacity>
         </ScrollView>
@@ -101,12 +166,12 @@ export default function BookingScreen({ navigation, route }: Props) {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('clubDetail', { clubId })} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={20} color="#fff" />
         </TouchableOpacity>
         <View>
           <Text style={styles.headerTitle}>Réserver une séance</Text>
-          <Text style={styles.headerSub}>{club.name}</Text>
+          <Text style={styles.headerSub}>{clubData?.name || 'Club'}</Text>
         </View>
         <View style={{ width: 32 }} />
       </View>
@@ -130,7 +195,16 @@ export default function BookingScreen({ navigation, route }: Props) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {step === 'datetime' ? (
+        {bookingsLoading ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
+            <ActivityIndicator size="large" color={palette.primary} />
+            <Text style={[styles.label, { marginTop: 16 }]}>Chargement des créneaux...</Text>
+          </View>
+        ) : bookings.length === 0 ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
+            <Text style={[styles.label, { textAlign: 'center' }]}>Pas de créneaux disponibles pour le moment</Text>
+          </View>
+        ) : step === 'datetime' ? (
           <View style={{ gap: 16 }}>
             <View>
               <Text style={styles.title}>Choisissez une date</Text>
@@ -161,11 +235,9 @@ export default function BookingScreen({ navigation, route }: Props) {
               <View>
                 <Text style={styles.title}>Choisissez un horaire</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
-                  {slots
-                    .filter((s) => s.date === selectedDate)
-                    .map((s) => (
+                  {slots.map((s, i) => (
                       <TouchableOpacity
-                        key={s.time}
+                        key={i}
                         style={[styles.slot, selectedTime === s.time && styles.slotActive]}
                         onPress={() => setSelectedTime(s.time)}
                       >

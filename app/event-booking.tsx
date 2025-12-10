@@ -1,9 +1,11 @@
-import React, { useMemo, useState } from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { doc, getDoc, Timestamp } from 'firebase/firestore';
 
 import { UserStackParamList } from '@/navigation/types';
+import { db } from '@/firebaseConfig';
 
 const palette = {
   primary: '#41B6A6',
@@ -12,40 +14,72 @@ const palette = {
   border: '#E5E7EB',
 };
 
-const events = [
-  {
-    id: '1',
-    title: 'Stage Agility intensif',
-    date: '10 avr.',
-    time: '14:00',
-    location: 'Bois de Vincennes',
-    price: '29 €',
-    image: 'https://images.unsplash.com/photo-1557971779-95a20f2d0e4a?auto=format&fit=crop&w=800&q=80',
-    description: 'Atelier intensif pour progresser en agility avec des éducateurs expérimentés.',
-  },
-  {
-    id: '2',
-    title: 'Initiation obéissance chiots',
-    date: '12 avr.',
-    time: '10:00',
-    location: 'Parc Montsouris',
-    price: '19 €',
-    image: 'https://images.unsplash.com/photo-1529778873920-4da4926a72c2?auto=format&fit=crop&w=800&q=80',
-    description: 'Premiers pas en obéissance pour chiots, sociabilisation et bases du rappel.',
-  },
-];
-
 type Props = NativeStackScreenProps<UserStackParamList, 'eventBooking'>;
 
 export default function EventBookingScreen({ navigation, route }: Props) {
   const { eventId } = route.params;
-  const event = useMemo(
-    () => events.find((e) => e.id === String(eventId)) || events[0],
-    [eventId],
-  );
-
+  const [event, setEvent] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: '', email: '', dog: '' });
+
+  // Récupérer l'événement de Firebase
+  useEffect(() => {
+    const fetchEvent = async () => {
+      try {
+        setLoading(true);
+        const eventRef = doc(db, 'events', eventId);
+        const eventSnap = await getDoc(eventRef);
+        if (eventSnap.exists()) {
+          const eventData = eventSnap.data();
+          // Formater les données pour l'affichage
+          const startDate = eventData.startDate instanceof Timestamp ? 
+            eventData.startDate.toDate() : 
+            new Date(eventData.startDate);
+          const dateStr = startDate.toLocaleDateString('fr-FR', {
+            day: 'numeric',
+            month: 'short',
+          });
+          const timeStr = startDate.toLocaleTimeString('fr-FR', {
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+          setEvent({
+            id: eventSnap.id,
+            ...eventData,
+            dateFormatted: dateStr,
+            timeFormatted: timeStr,
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching event:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEvent();
+  }, [eventId]);
+
   const canBook = form.name && form.email && form.dog;
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={palette.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!event) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ color: palette.text }}>Événement non trouvé</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -59,20 +93,26 @@ export default function EventBookingScreen({ navigation, route }: Props) {
         </View>
 
         <View style={styles.hero}>
-          <Image source={{ uri: event.image }} style={styles.heroImage} />
+          <Image 
+            source={{ uri: event.image || 'https://via.placeholder.com/400x200?text=Event' }} 
+            style={styles.heroImage} 
+          />
           <View style={styles.heroBadge}>
-            <Text style={styles.heroBadgeText}>{event.date}</Text>
-            <Text style={styles.heroBadgeText}>{event.time}</Text>
+            <Text style={styles.heroBadgeText}>{event.dateFormatted}</Text>
+            <Text style={styles.heroBadgeText}>{event.timeFormatted}</Text>
           </View>
         </View>
 
         <Text style={styles.title}>{event.title}</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-          <Ionicons name="location-outline" size={16} color={palette.gray} />
-          <Text style={styles.sub}>{event.location}</Text>
-        </View>
-        <Text style={styles.price}>{event.price}</Text>
-        <Text style={styles.description}>{event.description}</Text>
+        {event.description && (
+          <>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <Ionicons name="information-circle-outline" size={16} color={palette.gray} />
+              <Text style={styles.sub}>{event.description}</Text>
+            </View>
+          </>
+        )}
+        <Text style={styles.price}>{event.price}€</Text>
 
         <View style={[styles.card, { marginTop: 16 }]}>
           <Text style={styles.cardTitle}>Informations</Text>
