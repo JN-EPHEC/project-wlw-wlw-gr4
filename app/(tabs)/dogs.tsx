@@ -1,11 +1,12 @@
-import React from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect } from 'react';
+import { ActivityIndicator, Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import UserBottomNav from '@/components/UserBottomNav';
 import { UserStackParamList } from '@/navigation/types';
+import { useDogs } from '@/hooks/useDogs';
 
 const colors = {
   primary: '#27b3a3',
@@ -15,33 +16,6 @@ const colors = {
   surface: '#ffffff',
   shadow: 'rgba(26, 51, 64, 0.12)',
 };
-
-const dogs = [
-  {
-    id: 1,
-    name: 'Max',
-    breed: 'Golden Retriever',
-    age: '3 ans',
-    weight: '32 kg',
-    vaccineStatus: 'À jour',
-    vermifugeStatus: 'Dans 2 mois',
-    vetDate: '15 Nov 2025',
-    image:
-      'https://images.unsplash.com/photo-1504595403659-9088ce801e29?auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    id: 2,
-    name: 'Luna',
-    breed: 'Border Collie',
-    age: '2 ans',
-    weight: '18 kg',
-    vaccineStatus: 'À jour',
-    vermifugeStatus: 'À jour',
-    vetDate: '28 Nov 2025',
-    image:
-      'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=600&q=80',
-  },
-];
 
 type DogsNavigationProp = NativeStackNavigationProp<UserStackParamList, 'mydog'>;
 
@@ -59,6 +33,15 @@ function StatusPill({ label, tone = 'success' }: { label: string; tone?: 'succes
 
 export default function DogsScreen() {
   const navigation = useNavigation<DogsNavigationProp>();
+  const { dogs, loading, error, loadDogs } = useDogs();
+
+  // Recharger les chiens quand la page se focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadDogs();
+    });
+    return unsubscribe;
+  }, [navigation, loadDogs]);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -66,7 +49,7 @@ export default function DogsScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.headerTitle}>Mes chiens</Text>
-            <Text style={styles.headerSubtitle}>{dogs.length} compagnons enregistrés</Text>
+            <Text style={styles.headerSubtitle}>{dogs.length} compagnon{dogs.length !== 1 ? 's' : ''} enregistré{dogs.length !== 1 ? 's' : ''}</Text>
           </View>
           <TouchableOpacity style={styles.addBtn} onPress={() => navigation.navigate('addDog')}>
             <Ionicons name="add" size={18} color={colors.primary} />
@@ -74,49 +57,69 @@ export default function DogsScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={{ paddingHorizontal: 16, paddingTop: 14, gap: 14 }}>
-          {dogs.map((dog) => (
-            <TouchableOpacity
-              key={dog.id}
-              style={styles.card}
-              activeOpacity={0.9}
-              onPress={() => navigation.navigate('dogProgression', { dogId: dog.id })}>
-              <View style={styles.cardTop}>
-                <View style={styles.avatarRing}>
-                  <Image source={{ uri: dog.image }} style={styles.avatar} />
+        {loading && dogs.length === 0 ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 }}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : error && dogs.length === 0 ? (
+          <View style={{ paddingHorizontal: 16, paddingTop: 20 }}>
+            <View style={styles.errorCard}>
+              <MaterialCommunityIcons name="alert-circle-outline" size={24} color="#991B1B" />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          </View>
+        ) : dogs.length === 0 ? (
+          <View style={{ paddingHorizontal: 16, paddingTop: 40, alignItems: 'center' }}>
+            <MaterialCommunityIcons name="paw-off" size={48} color={colors.textMuted} />
+            <Text style={{ color: colors.textMuted, fontSize: 16, marginTop: 12, fontWeight: '600' }}>Aucun chien enregistré</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 14, marginTop: 4 }}>Ajoutez votre premier chien pour commencer</Text>
+          </View>
+        ) : (
+          <View style={{ paddingHorizontal: 16, paddingTop: 14, gap: 14 }}>
+            {dogs.map((dog) => (
+              <TouchableOpacity
+                key={dog.id}
+                style={styles.card}
+                activeOpacity={0.9}
+                onPress={() => dog.id && navigation.navigate('dogDetail', { dogId: dog.id })}>
+                <View style={styles.cardTop}>
+                  <View style={styles.avatarRing}>
+                    {dog.photoUrl ? (
+                      <Image source={{ uri: dog.photoUrl }} style={styles.avatar} />
+                    ) : (
+                      <MaterialCommunityIcons name="paw" size={40} color={colors.primary} />
+                    )}
+                  </View>
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <Text style={styles.dogName}>{dog.name}</Text>
+                    <Text style={styles.dogBreed}>{dog.breed}</Text>
+                    <Text style={styles.meta}>
+                      {dog.birthDate} {dog.weight && `• ${dog.weight} kg`}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </View>
-                <View style={{ flex: 1, gap: 4 }}>
-                  <Text style={styles.dogName}>{dog.name}</Text>
-                  <Text style={styles.dogBreed}>{dog.breed}</Text>
-                  <Text style={styles.meta}>
-                    {dog.age} • {dog.weight}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-              </View>
 
-              <View style={styles.divider} />
+                <View style={styles.divider} />
 
-              <View style={styles.statusRow}>
-                <View style={styles.statusItem}>
-                  <Text style={styles.statusLabel}>Vaccins</Text>
-                  <StatusPill label={dog.vaccineStatus} tone="success" />
+                <View style={styles.statusRow}>
+                  <View style={styles.statusItem}>
+                    <Text style={styles.statusLabel}>Édition</Text>
+                    <Text style={styles.vetDate}>Modifier</Text>
+                  </View>
+                  <View style={styles.statusItem}>
+                    <Text style={styles.statusLabel}>Genre</Text>
+                    <Text style={styles.vetDate}>{dog.gender || '-'}</Text>
+                  </View>
+                  <View style={styles.statusItem}>
+                    <Text style={styles.statusLabel}>Infos</Text>
+                    <Text style={[styles.vetDate, { fontSize: 12 }]} numberOfLines={1}>{dog.otherInfo ? 'Oui' : 'Non'}</Text>
+                  </View>
                 </View>
-                <View style={styles.statusItem}>
-                  <Text style={styles.statusLabel}>Vermifuge</Text>
-                  <StatusPill
-                    label={dog.vermifugeStatus}
-                    tone={dog.vermifugeStatus === 'À jour' ? 'success' : 'warning'}
-                  />
-                </View>
-                <View style={styles.statusItem}>
-                  <Text style={styles.statusLabel}>Véto</Text>
-                  <Text style={styles.vetDate}>{dog.vetDate}</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </ScrollView>
       <UserBottomNav current="mydog" />
     </SafeAreaView>
@@ -187,4 +190,15 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   pillText: { fontWeight: '700', fontSize: 12 },
+  errorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  errorText: { color: '#991B1B', fontSize: 14, fontWeight: '600', flex: 1 },
 });
