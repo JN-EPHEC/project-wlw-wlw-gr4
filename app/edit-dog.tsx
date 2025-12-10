@@ -1,9 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Alert } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useDogs, Dog } from '@/hooks/useDogs';
+import * as DocumentPicker from 'expo-document-picker';
+import { doc, getDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
+import { db, storage } from '@/firebaseConfig';
+import { ref, deleteObject, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { useAuth } from '@/context/AuthContext';
+import { useRoute } from '@react-navigation/native';
+
+interface Dog {
+  id?: string;
+  name: string;
+  breed: string;
+  birthDate?: string;
+  gender?: string;
+  weight?: string;
+  height?: string;
+  photoUrl?: string;
+  otherInfo?: string;
+  vaccineFile?: string;
+  ownerId: string;
+  createdAt?: any;
+  updatedAt?: any;
+}
 
 const palette = {
   primary: '#41B6A6',
@@ -13,30 +34,49 @@ const palette = {
 };
 
 export default function EditDogScreen() {
-  const router = useRouter();
-  const { dogId } = useLocalSearchParams<{ dogId: string }>();
-  const { dogs, updateDog, deleteDog, loading: dbLoading, error: dbError } = useDogs();
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { user } = useAuth();
+  const dogId = (route.params as any)?.dogId;
 
   const [form, setForm] = useState<Partial<Dog>>({});
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<{ uri: string; name: string; mimeType: string } | null>(null);
+  const [documents, setDocuments] = useState<Array<{ uri: string; name: string; type: string }>>([]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const canSave = form.name && form.breed && !saving && !deleting;
 
-  // Charger les données du chien
+  // Charger les données du chien depuis Firestore
   useEffect(() => {
-    if (dogId && dogs.length > 0) {
-      const dog = dogs.find((d) => d.id === dogId);
-      if (dog) {
-        setForm(dog);
-        setPhoto(dog.photoUrl || null);
+    const loadDog = async () => {
+      if (!dogId) return;
+      try {
+        setInitialLoading(true);
+        setError(null);
+        const docRef = doc(db, 'Chien', dogId);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const data = docSnap.data() as Dog;
+          setForm(data);
+          setPhoto(data.photoUrl || null);
+        } else {
+          setError('Chien non trouvé');
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Erreur lors du chargement';
+        setError(message);
+      } finally {
+        setInitialLoading(false);
       }
-      setInitialLoading(false);
-    }
-  }, [dogId, dogs]);
+    };
+
+    loadDog();
+  }, [dogId]);
 
   const pickImage = async () => {
     try {
@@ -61,24 +101,65 @@ export default function EditDogScreen() {
     }
   };
 
+  const pickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/*', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+      });
+
+      if (result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setDocuments([
+          ...documents,
+          {
+            uri: asset.uri,
+            name: asset.name,
+            type: asset.mimeType || 'application/octet-stream',
+          },
+        ]);
+      }
+    } catch (err) {
+      Alert.alert('Erreur', 'Impossible de sélectionner un document');
+    }
+  };
+
+  const removeDocument = (index: number) => {
+    setDocuments(documents.filter((_, i) => i !== index));
+  };
+
   const handleSave = async () => {
     if (!dogId) return;
     try {
       setSaving(true);
-      await updateDog(
-        dogId,
-        {
-          name: form.name,
-          breed: form.breed,
-          birthDate: form.birthDate,
-          gender: form.gender,
-          weight: form.weight,
-          otherInfo: form.otherInfo,
-        },
-        photoFile || undefined
-      );
+      let photoUrl = form.photoUrl;
+
+      // Upload nouvelle photo si présente
+      if (photoFile) {
+        const response = await fetch(photoFile.uri);
+        const blob = await response.blob();
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).slice(2);
+        const extension = photoFile.name.split('.').pop() || 'jpg';
+        const storagePath = `dogs/${user?.uid}/${timestamp}_${random}.${extension}`;
+        const storageRef = ref(storage, storagePath);
+        const uploadResult = await uploadBytes(storageRef, blob);
+        photoUrl = await getDownloadURL(uploadResult.ref);
+      }
+
+      const docRef = doc(db, 'Chien', dogId);
+      await updateDoc(docRef, {
+        name: form.name,
+        breed: form.breed,
+        birthDate: form.birthDate,
+        gender: form.gender,
+        weight: form.weight,
+        otherInfo: form.otherInfo,
+        ...(photoUrl && { photoUrl }),
+        updatedAt: Timestamp.now(),
+      });
+
       Alert.alert('Succès', 'Chien modifié avec succès');
-      router.back();
+      navigation.goBack();
     } catch (err) {
       Alert.alert('Erreur', err instanceof Error ? err.message : 'Erreur lors de la modification');
     } finally {
@@ -95,9 +176,20 @@ export default function EditDogScreen() {
         onPress: async () => {
           try {
             setDeleting(true);
-            await deleteDog(dogId, form.photoUrl);
+
+            // Supprimer la photo si présente
+            if (form.photoUrl) {
+              try {
+                const storageRef = ref(storage, form.photoUrl);
+                await deleteObject(storageRef);
+              } catch {
+                // Ignorer les erreurs de suppression de photo
+              }
+            }
+
+            await deleteDoc(doc(db, 'Chien', dogId));
             Alert.alert('Succès', 'Chien supprimé avec succès');
-            router.back();
+            navigation.goBack();
           } catch (err) {
             Alert.alert('Erreur', err instanceof Error ? err.message : 'Erreur lors de la suppression');
           } finally {
@@ -109,11 +201,11 @@ export default function EditDogScreen() {
     ]);
   };
 
-  if (initialLoading || dbLoading) {
+  if (initialLoading) {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.back} disabled={true}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back} disabled={false}>
             <Ionicons name="arrow-back" size={20} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Modifier le chien</Text>
@@ -126,10 +218,27 @@ export default function EditDogScreen() {
     );
   }
 
+  if (error) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
+            <Ionicons name="arrow-back" size={20} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Modifier le chien</Text>
+          <View style={{ width: 32 }} />
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16 }}>
+          <Text style={{ color: '#DC2626', fontSize: 16, textAlign: 'center' }}>{error}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back} disabled={saving || deleting}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back} disabled={saving || deleting}>
           <Ionicons name="arrow-back" size={20} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Modifier le chien</Text>
@@ -137,12 +246,6 @@ export default function EditDogScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {dbError && (
-          <View style={styles.errorCard}>
-            <Text style={styles.errorText}>{dbError}</Text>
-          </View>
-        )}
-
         <View style={styles.photoCard}>
           <View style={styles.photoCircle}>
             {photo ? (
@@ -194,6 +297,38 @@ export default function EditDogScreen() {
           height={110}
           editable={!saving && !deleting}
         />
+
+        <View style={styles.divider} />
+
+        <View style={{ gap: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <MaterialCommunityIcons name="file-document-outline" size={20} color={palette.primary} />
+            <Text style={styles.sectionTitle}>Vaccinations & Documents</Text>
+          </View>
+
+          {documents.length > 0 && (
+            <View style={{ gap: 10 }}>
+              {documents.map((doc, index) => (
+                <View key={index} style={styles.documentItem}>
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <Text style={styles.documentName} numberOfLines={1}>{doc.name}</Text>
+                    <Text style={styles.documentType}>{doc.type.split('/')[0]}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => removeDocument(index)} disabled={saving || deleting}>
+                    <Ionicons name="close-circle" size={24} color="#DC2626" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
+          <TouchableOpacity style={styles.documentBtn} onPress={pickDocument} disabled={saving || deleting}>
+            <Ionicons name="add-circle-outline" size={18} color={palette.primary} />
+            <Text style={styles.documentBtnText}>Ajouter un document</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.helperText}>PDF, images, documents Word acceptés (vaccins, certificats, etc.)</Text>
+        </View>
 
         <View style={styles.infoCard}>
           <MaterialCommunityIcons name="shield-check-outline" size={20} color="#1D4ED8" />
@@ -375,4 +510,31 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   outlineDangerText: { color: '#DC2626', fontWeight: '700' },
+  divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 8 },
+  sectionTitle: { color: palette.text, fontSize: 16, fontWeight: '700' },
+  documentItem: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: palette.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  documentName: { color: palette.text, fontSize: 14, fontWeight: '600' },
+  documentType: { color: palette.gray, fontSize: 12 },
+  documentBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: palette.primary,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    justifyContent: 'center',
+  },
+  documentBtnText: { color: palette.primary, fontWeight: '600', fontSize: 14 },
+  helperText: { color: palette.gray, fontSize: 12, fontStyle: 'italic' },
 });

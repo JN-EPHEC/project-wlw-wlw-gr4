@@ -3,6 +3,7 @@ import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, Touchable
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 
 import { UserStackParamList } from '@/navigation/types';
 import { useDogs } from '@/hooks/useDogs';
@@ -28,6 +29,7 @@ export default function AddDogScreen({ navigation }: Props) {
   });
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<{ uri: string; name: string; mimeType: string } | null>(null);
+  const [documents, setDocuments] = useState<Array<{ uri: string; name: string; type: string }>>([]);
   const [saving, setSaving] = useState(false);
 
   const canSave = form.name && form.breed && !saving && !dbLoading;
@@ -53,6 +55,32 @@ export default function AddDogScreen({ navigation }: Props) {
     } catch (err) {
       Alert.alert('Erreur', 'Impossible de sélectionner une image');
     }
+  };
+
+  const pickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/*', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+      });
+
+      if (result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setDocuments([
+          ...documents,
+          {
+            uri: asset.uri,
+            name: asset.name,
+            type: asset.mimeType || 'application/octet-stream',
+          },
+        ]);
+      }
+    } catch (err) {
+      Alert.alert('Erreur', 'Impossible de sélectionner un document');
+    }
+  };
+
+  const removeDocument = (index: number) => {
+    setDocuments(documents.filter((_, i) => i !== index));
   };
 
   const handleSave = async () => {
@@ -148,6 +176,38 @@ export default function AddDogScreen({ navigation }: Props) {
           height={110}
           editable={!saving}
         />
+
+        <View style={styles.divider} />
+
+        <View style={{ gap: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <MaterialCommunityIcons name="file-document-outline" size={20} color={palette.primary} />
+            <Text style={styles.sectionTitle}>Vaccinations & Documents</Text>
+          </View>
+
+          {documents.length > 0 && (
+            <View style={{ gap: 10 }}>
+              {documents.map((doc, index) => (
+                <View key={index} style={styles.documentItem}>
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <Text style={styles.documentName} numberOfLines={1}>{doc.name}</Text>
+                    <Text style={styles.documentType}>{doc.type.split('/')[0]}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => removeDocument(index)} disabled={saving}>
+                    <Ionicons name="close-circle" size={24} color="#DC2626" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
+          <TouchableOpacity style={styles.documentBtn} onPress={pickDocument} disabled={saving}>
+            <Ionicons name="add-circle-outline" size={18} color={palette.primary} />
+            <Text style={styles.documentBtnText}>Ajouter un document</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.helperText}>PDF, images, documents Word acceptés (vaccins, certificats, etc.)</Text>
+        </View>
 
         <View style={styles.infoCard}>
           <MaterialCommunityIcons name="shield-check-outline" size={20} color="#1D4ED8" />
@@ -306,4 +366,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 8 },
+  sectionTitle: { color: palette.text, fontSize: 16, fontWeight: '700' },
+  documentItem: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: palette.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  documentName: { color: palette.text, fontSize: 14, fontWeight: '600' },
+  documentType: { color: palette.gray, fontSize: 12 },
+  documentBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: palette.primary,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    justifyContent: 'center',
+  },
+  documentBtnText: { color: palette.primary, fontWeight: '600', fontSize: 14 },
+  helperText: { color: palette.gray, fontSize: 12, fontStyle: 'italic' },
 });

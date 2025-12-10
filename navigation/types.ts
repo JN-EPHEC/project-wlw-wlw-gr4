@@ -27,6 +27,7 @@ export type UserRoute =
   | 'settings'
   | 'bookings'
   | 'addDog'
+  | 'dogDetail'
   | 'dogs'
   | 'followedClubs'
   | 'djanaiResults'
@@ -100,11 +101,13 @@ export type UserStackParamList = {
   settings: undefined;
   bookings: undefined;
   addDog: undefined;
+  dogDetail: { dogId: string };
   editDog: { dogId: string };
   dogs: undefined;
   followedClubs: undefined;
-  djanaiResults: { profile?: Record<string, unknown>; previousPage?: UserRoute };
-  'djanai-program': undefined;
+  djanaiResults: { profile?: Record<string, unknown>; previousPage?: UserRoute; dogId?: string; dogName?: string };
+  DjanaiLoadingScreen: { dogId?: string };
+  'djanai-program': { dogId?: string };
 };
 
 export type ClubStackParamList = {

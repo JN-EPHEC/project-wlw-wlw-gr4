@@ -81,7 +81,7 @@ export default function DogsScreen() {
                 key={dog.id}
                 style={styles.card}
                 activeOpacity={0.9}
-                onPress={() => dog.id && navigation.navigate('editDog', { dogId: dog.id })}>
+                onPress={() => dog.id && navigation.navigate('dogDetail', { dogId: dog.id })}>
                 <View style={styles.cardTop}>
                   <View style={styles.avatarRing}>
                     {dog.photoUrl ? (
