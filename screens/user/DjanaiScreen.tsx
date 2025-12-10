@@ -1,20 +1,18 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React from 'react';
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 import { UserStackParamList } from '@/navigation/types';
 
 type Props = NativeStackScreenProps<UserStackParamList, 'djanai'>;
 
 export default function DjanaiScreen({ navigation, route }: Props) {
+  const nav = useNavigation();
   const previousPage = route.params?.previousPage;
 
   const handleBack = () => {
-    if (previousPage) {
-      navigation.navigate({ name: previousPage, params: {} } as any);
-    } else {
-      navigation.navigate('home');
-    }
+    nav.goBack();
   };
 
   return (

@@ -25,6 +25,7 @@ import AccountDogsScreen from '@/screens/user/AccountDogsScreen';
 import BookingsScreen from '@/screens/user/BookingsScreen';
 import DjanaiProgramScreen from '@/screens/user/DjanaiProgramScreen';
 import DjanaiResultsScreen from '@/screens/user/DjanaiResultsScreen';
+import DjanaiLoadingScreen from '@/screens/user/DjanaiLoadingScreen';
 import DjanaiScreen from '@/screens/user/DjanaiScreen';
 import DogBadgesScreen from '@/screens/user/DogBadgesScreen';
 import DogProgressionScreen from '@/screens/user/DogProgressionScreen';
@@ -34,6 +35,8 @@ import SettingsScreen from '@/screens/user/SettingsScreen';
 import VerifiedScreen from '@/screens/user/VerifiedScreen';
 import { UserStackParamList } from '@/navigation/types';
 import AddDogScreen from '@/app/add-dog';
+import EditDogScreen from '@/app/edit-dog';
+import DogDetailPage from '@/app/DogDetailPage';
 
 const Stack = createNativeStackNavigator<UserStackParamList>();
 
@@ -61,6 +64,8 @@ export default function UserStack() {
       <Stack.Screen name="dogTasks" component={DogTasksScreen} />
       <Stack.Screen name="dogBadges" component={DogBadgesScreen} />
       <Stack.Screen name="addDog" component={AddDogScreen} />
+      <Stack.Screen name="dogDetail" component={DogDetailPage} />
+      <Stack.Screen name="editDog" component={EditDogScreen} />
       <Stack.Screen name="account" component={AccountScreen} />
       <Stack.Screen name="ratingInvitation" component={RatingInvitationScreen} />
       <Stack.Screen name="rating" component={RatingScreen} />
@@ -71,6 +76,7 @@ export default function UserStack() {
       <Stack.Screen name="dogs" component={AccountDogsScreen} />
       <Stack.Screen name="followedClubs" component={FollowedClubsScreen} />
       <Stack.Screen name="djanaiResults" component={DjanaiResultsScreen} />
+      <Stack.Screen name="DjanaiLoadingScreen" component={DjanaiLoadingScreen} />
       <Stack.Screen name="djanai-program" component={DjanaiProgramScreen} />
     </Stack.Navigator>
   );
