@@ -10,6 +10,7 @@ import BookingScreen from '@/app/booking';
 import ChatRoomScreen from '@/app/chat-room';
 import ClubCommunityScreen from '@/app/club-community';
 import ClubDetailScreen from '@/app/club-detail';
+import EducatorDetailScreen from '@/app/educator-detail';
 import EventBookingScreen from '@/app/event-booking';
 import EventDetailScreen from '@/app/event-detail';
 import EventsListScreen from '@/app/events-list';
@@ -49,6 +50,7 @@ export default function UserStack() {
       <Stack.Screen name="mydog" component={DogsScreen} />
       <Stack.Screen name="djanai" component={DjanaiScreen} />
       <Stack.Screen name="clubDetail" component={ClubDetailScreen} />
+      <Stack.Screen name="educatorDetail" component={EducatorDetailScreen} />
       <Stack.Screen name="booking" component={BookingScreen} />
       <Stack.Screen name="homeTrainingBooking" component={HomeTrainingBookingScreen} />
       <Stack.Screen name="reviews" component={ReviewsScreen} />

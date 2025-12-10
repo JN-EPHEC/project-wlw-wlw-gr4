@@ -15,6 +15,12 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import UserBottomNav from '@/components/UserBottomNav';
 import { UserStackParamList } from '@/navigation/types';
+import FiltersModal from '@/components/FiltersModal';
+import { useClubFilters } from '@/hooks/useClubFilters';
+import { useFetchClubs, filterClubs, Club } from '@/hooks/useFetchClubs';
+import { useFetchEducators, Educator } from '@/hooks/useFetchEducators';
+import { useFetchEvents, Event } from '@/hooks/useFetchEvents';
+import { useFavorites } from '@/hooks/useFavorites';
 
 const palette = {
   primary: '#2DB7A4',
@@ -29,8 +35,8 @@ const palette = {
 
 type ClubsNavigationProp = NativeStackNavigationProp<UserStackParamList, 'clubs'>;
 
-type CardBase = {
-  id: number;
+type CardBase = Club | Educator | Event | {
+  id: number | string;
   title: string;
   subtitle: string;
   image: string;
@@ -44,172 +50,159 @@ type CardBase = {
   tagLabel?: string;
 };
 
-const favoriteCards: CardBase[] = [
-  {
-    id: 201,
-    title: 'Compétition Régionale Agility',
-    subtitle: 'Par Agility Pro',
-    image: 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=600&q=80',
-    badge: 'Event',
-    distance: '3 km',
-    rating: 4.8,
-    reviews: 127,
-    price: '25 €',
-    tagColor: '#8B5CF6',
-    tagLabel: '20 participants',
-  },
-  {
-    id: 101,
-    title: 'Canin Club Paris',
-    subtitle: 'Dressage',
-    image: 'https://images.unsplash.com/photo-1505623774485-923554bb2792?auto=format&fit=crop&w=600&q=80',
-    rating: 4.8,
-    reviews: 127,
-    distance: '1.2 km',
-    verified: true,
-    price: '€€',
-  },
-];
+const favoriteCards: CardBase[] = [];
 
-const boosted: CardBase[] = [
-  {
-    id: 102,
-    title: 'Elite Dog Training',
-    subtitle: 'Compétition',
-    image: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=600&q=80',
-    rating: 4.9,
-    reviews: 245,
-    distance: '0.8 km',
-    verified: true,
-    price: '€€€',
-    badge: 'Premium',
-  },
-  {
-    id: 103,
-    title: 'Champions',
-    subtitle: 'Agility Pro',
-    image: 'https://images.unsplash.com/photo-1525253013412-55c1a69a5738?auto=format&fit=crop&w=600&q=80',
-    rating: 4.8,
-    reviews: 189,
-    distance: '1.5 km',
-    verified: true,
-    price: '€€',
-    badge: 'Boosté',
-  },
-];
-
-const homeTrainers: CardBase[] = [
-  {
-    id: 301,
-    title: 'Marie Dupont',
-    subtitle: 'Éducation positive',
-    image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=600&q=80',
-    rating: 4.9,
-    reviews: 87,
-    distance: '1.2 km',
-    price: '40 €/h',
-    tagLabel: '3 ans exp.',
-    tagColor: '#E5E7EB',
-  },
-  {
-    id: 302,
-    title: 'Jean Martin',
-    subtitle: 'Comportement',
-    image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=600&q=80',
-    rating: 4.8,
-    reviews: 124,
-    distance: '2.4 km',
-    price: '45 €/h',
-    tagLabel: '6 ans exp.',
-    tagColor: '#E5E7EB',
-  },
-];
-
-const nearClubs: CardBase[] = [
-  {
-    id: 104,
-    title: 'Canin Club Paris',
-    subtitle: 'Dressage',
-    image: 'https://images.unsplash.com/photo-1525253013412-55c1a69a5738?auto=format&fit=crop&w=600&q=80',
-    rating: 4.8,
-    reviews: 127,
-    distance: '1.2 km',
-    verified: true,
-    price: '€€',
-  },
-  {
-    id: 105,
-    title: 'Agility Pro',
-    subtitle: 'Sport canin',
-    image: 'https://images.unsplash.com/photo-1507146426996-ef05306b995a?auto=format&fit=crop&w=600&q=80',
-    rating: 4.9,
-    reviews: 108,
-    distance: '1.8 km',
-    verified: true,
-    price: '€€€',
-  },
-];
-
-const newClubs: CardBase[] = [
-  {
-    id: 106,
-    title: 'Dog Academy Plus',
-    subtitle: 'Obéissance',
-    image: 'https://images.unsplash.com/photo-1517423440428-a5a00ad493e8?auto=format&fit=crop&w=600&q=80',
-    rating: 4.5,
-    reviews: 12,
-    distance: '2.8 km',
-    price: '€€',
-    badge: 'Nouveau',
-  },
-  {
-    id: 107,
-    title: 'Puppy Paradise',
-    subtitle: 'Socialisation',
-    image: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=600&q=80',
-    rating: 4.8,
-    reviews: 23,
-    distance: '3.1 km',
-    price: '€€',
-    badge: 'Nouveau',
-  },
-];
-
-const agility: CardBase[] = [
-  {
-    id: 108,
-    title: 'Agility Champions',
-    subtitle: 'Agility Pro',
-    image: 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=600&q=80',
-    rating: 4.9,
-    reviews: 132,
-    distance: '1.8 km',
-    price: '€€€',
-    verified: true,
-  },
-  {
-    id: 109,
-    title: 'Speed Dogs',
-    subtitle: 'Sport canin',
-    image: 'https://images.unsplash.com/photo-1525253013412-55c1a69a5738?auto=format&fit=crop&w=600&q=80',
-    rating: 4.7,
-    reviews: 90,
-    distance: '2.5 km',
-    price: '€€',
-  },
-];
+const homeTrainers: CardBase[] = [];
 
 export default function ClubsScreen() {
   const navigation = useNavigation<ClubsNavigationProp>();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
-  const favorites = useMemo(() => [101, 201, 301, 108], []);
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Récupérer les données depuis Firebase
+  const { clubs, loading: clubsLoading, error: clubsError } = useFetchClubs();
+  const { educators, loading: educatorsLoading, error: educatorsError } = useFetchEducators();
+  const { events, loading: eventsLoading, error: eventsError } = useFetchEvents();
+  const { favorites, isFavorite, toggleFavorite } = useFavorites();
+  
+  const loading = clubsLoading || educatorsLoading || eventsLoading;
+  const error = clubsError || educatorsError || eventsError;
+  
+  const {
+    filters,
+    updateDistance,
+    updatePriceRange,
+    updateSpecialties,
+    updateMinRating,
+    toggleVerifiedOnly,
+    resetFilters,
+  } = useClubFilters();
+
+  // Filtrer les clubs en fonction des critères sélectionnés
+  const filteredClubs = useMemo(() => {
+    return filterClubs(
+      clubs,
+      filters.distance,
+      filters.priceRange,
+      filters.specialties,
+      filters.minRating,
+      filters.verifiedOnly,
+      query
+    );
+  }, [clubs, filters, query]);
+
+  // Combiner toutes les données selon le filtre sélectionné
+  const displayedItems = useMemo(() => {
+    switch (filter) {
+      case 'clubs':
+        return filteredClubs;
+      case 'trainers':
+        return educators.filter(edu => {
+          if (query.trim()) {
+            const q = query.toLowerCase();
+            return edu.title?.toLowerCase().includes(q) || edu.subtitle?.toLowerCase().includes(q);
+          }
+          return true;
+        });
+      case 'events':
+        return events.filter(evt => {
+          if (query.trim()) {
+            const q = query.toLowerCase();
+            return evt.title?.toLowerCase().includes(q) || evt.description?.toLowerCase().includes(q);
+          }
+          return true;
+        });
+      case 'all':
+      default:
+        return [...filteredClubs, ...educators, ...events];
+    }
+  }, [filter, filteredClubs, educators, events, query]);
+
+  // Récupérer les favoris de tous les types
+  const favoriteItems = useMemo(() => {
+    return [...clubs, ...educators, ...events].filter(item => isFavorite(item.id as string));
+  }, [clubs, educators, events, isFavorite]);
+
+  const getNumericId = (id: string | number): number => {
+    if (typeof id === 'number') return id;
+    // Pour les IDs Firestore (string), créer un hash numérique déterministe
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+      const char = id.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convertir en entier 32-bit
+    }
+    return Math.abs(hash % 100000) + 1000;
+  };
+
+  const getSectionTitles = () => {
+    switch (filter) {
+      case 'clubs':
+        return {
+          boosted: 'Clubs Boostés',
+          favorites: 'Mes clubs favoris',
+          near: 'Clubs près de vous',
+          new: 'Nouveaux clubs',
+          special: 'Clubs spécialisés',
+        };
+      case 'trainers':
+        return {
+          boosted: 'Dresseurs populaires',
+          favorites: 'Mes dresseurs favoris',
+          near: 'Dresseurs près de vous',
+          new: 'Nouveaux dresseurs',
+          special: 'Dresseurs spécialisés',
+        };
+      case 'events':
+        return {
+          boosted: 'Événements populaires',
+          favorites: 'Mes événements',
+          near: 'Événements à proximité',
+          new: 'Événements à venir',
+          special: 'Événements spécialisés',
+        };
+      case 'all':
+      default:
+        return {
+          boosted: 'Clubs Boostés',
+          favorites: 'Mes favoris',
+          near: 'Clubs près de vous',
+          new: 'Nouveaux clubs',
+          special: 'Agility & Sport canin',
+        };
+    }
+  };
+
+  const getItemType = (item: CardBase): 'club' | 'educator' | 'event' => {
+    // Vérifier par les propriétés spécifiques de chaque type
+    if ('startDate' in item) return 'event';
+    if ('experienceYears' in item) return 'educator';
+    if ('priceLevel' in item) return 'club';
+    // Par défaut, déduire du type de données
+    return 'club';
+  };
+
+  const titles = getSectionTitles();
 
   const handleCardPress = (card: CardBase) => {
-    if (card.id >= 200) {
-      navigation.navigate('eventDetail', { eventId: card.id, clubId: card.id });
+    const itemType = getItemType(card);
+    
+    console.log('🔗 [clubs] Card pressed:', {
+      cardId: card.id,
+      itemType,
+      cardData: card,
+    });
+    
+    if (itemType === 'event') {
+      console.log('🎉 [clubs] Navigating to eventDetail with ID:', card.id);
+      navigation.navigate('eventDetail', { eventId: card.id as string, clubId: card.id as string });
+    } else if (itemType === 'educator') {
+      console.log('👨‍🏫 [clubs] Navigating to educatorDetail with ID:', card.id);
+      navigation.navigate('educatorDetail', { educatorId: card.id as string });
     } else {
-      navigation.navigate('clubDetail', { clubId: card.id });
+      console.log('📍 [clubs] Navigating to clubDetail with ID:', card.id);
+      navigation.navigate('clubDetail', { clubId: card.id as string });
     }
   };
 
@@ -249,11 +242,11 @@ export default function ClubsScreen() {
           <Text style={styles.smallTitle} numberOfLines={1}>
             {item.title}
           </Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => toggleFavorite(item.id as string, getItemType(item))}>
             <Ionicons
-              name={favorites.includes(item.id) ? 'heart' : 'heart-outline'}
+              name={isFavorite(item.id as string) ? 'heart' : 'heart-outline'}
               size={16}
-              color={favorites.includes(item.id) ? palette.orange : palette.gray}
+              color={isFavorite(item.id as string) ? palette.orange : palette.gray}
             />
           </TouchableOpacity>
         </View>
@@ -289,16 +282,16 @@ export default function ClubsScreen() {
   const TileCard = ({ item }: { item: CardBase }) => (
     <TouchableOpacity style={styles.tileCard} activeOpacity={0.9} onPress={() => handleCardPress(item)}>
       <Image source={{ uri: item.image }} style={styles.tileImage} />
-      {item.badge ? (
+      {('badge' in item && item.badge) ? (
         <View style={[styles.badgePill, { backgroundColor: '#FFF1EB' }]}>
-          <Text style={[styles.badgePillText, { color: palette.orange }]}>{item.badge}</Text>
+          <Text style={[styles.badgePillText, { color: palette.orange }]}>{'badge' in item ? item.badge : ''}</Text>
         </View>
       ) : null}
-      <TouchableOpacity style={styles.favFab}>
+      <TouchableOpacity style={styles.favFab} onPress={() => toggleFavorite(item.id as string, getItemType(item))}>
         <Ionicons
-          name={favorites.includes(item.id) ? 'heart' : 'heart-outline'}
+          name={isFavorite(item.id as string) ? 'heart' : 'heart-outline'}
           size={16}
-          color={favorites.includes(item.id) ? palette.orange : '#fff'}
+          color={isFavorite(item.id as string) ? palette.orange : '#fff'}
         />
       </TouchableOpacity>
       <View style={{ padding: 10, gap: 6 }}>
@@ -323,9 +316,9 @@ export default function ClubsScreen() {
           ) : null}
         </View>
         <View style={styles.metaRow}>
-          {item.tagLabel ? (
-            <View style={[styles.badgeSoft, { backgroundColor: item.tagColor ?? '#E0F2F1' }]}>
-              <Text style={[styles.badgeSoftText, { color: palette.text }]}>{item.tagLabel}</Text>
+          {'tagLabel' in item && item.tagLabel ? (
+            <View style={[styles.badgeSoft, { backgroundColor: ('tagColor' in item ? item.tagColor : '#E0F2F1') ?? '#E0F2F1' }]}>
+              <Text style={[styles.badgeSoftText, { color: palette.text }]}>{'tagLabel' in item ? item.tagLabel : ''}</Text>
             </View>
           ) : null}
           {item.verified ? (
@@ -355,7 +348,9 @@ export default function ClubsScreen() {
                 onChangeText={setQuery}
                 style={{ flex: 1, color: palette.text }}
               />
-              <Ionicons name="options-outline" size={18} color="#9CA3AF" />
+              <TouchableOpacity onPress={() => setShowFilters(true)}>
+                <Ionicons name="options-outline" size={18} color="#9CA3AF" />
+              </TouchableOpacity>
             </View>
             <View style={styles.heroCards}>
               <TouchableOpacity style={styles.heroCard} activeOpacity={0.9}>
@@ -384,55 +379,94 @@ export default function ClubsScreen() {
             <Chip label="Évènements" active={filter === 'events'} onPress={() => setFilter('events')} />
           </View>
 
-          <Section title="Clubs Boostés">
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-              {boosted.map((item) => (
-                <TileCard key={item.id} item={item} />
-              ))}
-            </ScrollView>
+          <Section title={titles.boosted}>
+            {loading ? (
+              <Text style={styles.loadingText}>Chargement...</Text>
+            ) : displayedItems.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                {displayedItems.slice(0, 4).map((item) => (
+                  <TileCard key={item.id} item={item as any} />
+                ))}
+              </ScrollView>
+            ) : (
+              <Text style={styles.emptyText}>Aucun résultat</Text>
+            )}
           </Section>
 
-          <Section title="Mes favoris">
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-              {favoriteCards.map((item) => (
-                <TileCard key={item.id} item={item} />
-              ))}
-            </ScrollView>
+          <Section title={titles.favorites}>
+            {loading ? (
+              <Text style={styles.loadingText}>Chargement...</Text>
+            ) : favoriteItems.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                {favoriteItems.slice(0, 4).map((item) => (
+                  <TileCard key={item.id} item={item as any} />
+                ))}
+              </ScrollView>
+            ) : (
+              <Text style={styles.emptyText}>Vous n'avez pas encore de favoris</Text>
+            )}
           </Section>
 
-          <Section title="Éducateurs à domicile" action={() => navigation.navigate('home')}>
-            <View style={styles.grid2}>
-              {homeTrainers.map((item) => (
-                <SmallCard key={item.id} item={item} />
-              ))}
-            </View>
+          <Section title={titles.near} action={() => navigation.navigate('home')}>
+            {loading ? (
+              <Text style={styles.loadingText}>Chargement...</Text>
+            ) : displayedItems.length > 0 ? (
+              <View style={styles.grid2}>
+                {displayedItems.slice(0, 6).map((item) => (
+                  <SmallCard key={item.id} item={item as any} />
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.emptyText}>Aucun résultat</Text>
+            )}
           </Section>
 
-          <Section title="Clubs près de vous" action={() => navigation.navigate('home')}>
-            <View style={styles.grid2}>
-              {nearClubs.map((item) => (
-                <SmallCard key={item.id} item={item} />
-              ))}
-            </View>
+          <Section title={titles.new}>
+            {loading ? (
+              <Text style={styles.loadingText}>Chargement...</Text>
+            ) : displayedItems.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                {displayedItems.slice(4, 8).map((item) => (
+                  <TileCard key={item.id} item={item as any} />
+                ))}
+              </ScrollView>
+            ) : (
+              <Text style={styles.emptyText}>Aucun résultat</Text>
+            )}
           </Section>
 
-          <Section title="Nouveaux clubs">
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-              {newClubs.map((item) => (
-                <TileCard key={item.id} item={item} />
-              ))}
-            </ScrollView>
-          </Section>
-
-          <Section title="Agility & Sport canin" action={() => navigation.navigate('home')}>
-            <View style={styles.grid2}>
-              {agility.map((item) => (
-                <SmallCard key={item.id} item={item} />
-              ))}
-            </View>
+          <Section title={titles.special}>
+            {loading ? (
+              <Text style={styles.loadingText}>Chargement...</Text>
+            ) : displayedItems.length > 0 ? (
+              <View style={styles.grid2}>
+                {displayedItems.slice(0, 4).map((item) => (
+                  <SmallCard key={item.id} item={item as any} />
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.emptyText}>Aucun résultat</Text>
+            )}
           </Section>
         </View>
       </ScrollView>
+      
+      <FiltersModal
+        visible={showFilters}
+        filters={filters}
+        onClose={() => setShowFilters(false)}
+        onUpdateDistance={updateDistance}
+        onUpdatePriceRange={updatePriceRange}
+        onUpdateSpecialties={updateSpecialties}
+        onUpdateMinRating={updateMinRating}
+        onToggleVerified={toggleVerifiedOnly}
+        onReset={resetFilters}
+        onApply={() => {
+          // Ici on va implémenter le filtrage des clubs
+          setShowFilters(false);
+        }}
+      />
+      
       <UserBottomNav current="clubs" />
     </SafeAreaView>
   );
@@ -547,4 +581,7 @@ const styles = StyleSheet.create({
   smallTitle: { color: palette.text, fontWeight: '700', fontSize: 14 },
   smallSubtitle: { color: palette.gray, fontSize: 12 },
   smallMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
+  loadingText: { color: palette.gray, fontSize: 14, textAlign: 'center', paddingVertical: 16 },
+  errorText: { color: '#DC2626', fontSize: 14, textAlign: 'center', paddingVertical: 16 },
+  emptyText: { color: palette.gray, fontSize: 14, textAlign: 'center', paddingVertical: 16 },
 });
