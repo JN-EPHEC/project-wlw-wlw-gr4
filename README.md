@@ -28,8 +28,9 @@ Interface Utilisateur:
 
 .Chien
 
-- Revoir le formulaire pour crée un chien, il manque pour la race un menu déroulé comme avant a voir si on remet ? 
-- Toute la partie BDD
+- Revoir le formulaire pour crée un chien, il manque pour la race un menu déroulé comme avant a voir si on remet ? FAIT
+- Toute la partie BDD FAIT
+- Manquera la liaison avec IA et BDD pour que tout soit bon avec programme
 
 .Profil
 
