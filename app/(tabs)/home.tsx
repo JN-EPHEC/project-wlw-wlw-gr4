@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Dimensions,
   Image,
@@ -10,9 +10,13 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from 'react-native';
 
 import UserBottomNav from '@/components/UserBottomNav';
+import { useBoostedClubs } from '@/hooks/useBoostedClubs';
+import { useUpcomingUserEvents } from '@/hooks/useUpcomingUserEvents';
+import { useUserUpcomingBookings } from '@/hooks/useUserUpcomingBookings';
 
 const { width } = Dimensions.get('window');
 
@@ -63,6 +67,7 @@ const boostedClubs = [
     rating: 4.9,
     verified: true,
     distance: '0.8 km',
+    city: 'Paris',
     speciality: 'Compétition',
     image: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=800&q=80',
   },
@@ -72,31 +77,13 @@ const boostedClubs = [
     rating: 4.8,
     verified: true,
     distance: '1.5 km',
+    city: 'Versailles',
     speciality: 'Agility Pro',
     image: 'https://images.unsplash.com/photo-1534361960057-19889db9621e?auto=format&fit=crop&w=800&q=80',
   },
 ];
 
-const upcomingEvents = [
-  {
-    id: 1,
-    title: 'Stage Agility intensif',
-    date: '10 avr.',
-    time: '14:00',
-    location: 'Bois de Vincennes',
-    participants: 24,
-    image: 'https://images.unsplash.com/photo-1557971779-95a20f2d0e4a?auto=format&fit=crop&w=800&q=80',
-  },
-  {
-    id: 2,
-    title: 'Initiation obéissance chiots',
-    date: '12 avr.',
-    time: '10:00',
-    location: 'Parc Montsouris',
-    participants: 18,
-    image: 'https://images.unsplash.com/photo-1529778873920-4da4926a72c2?auto=format&fit=crop&w=800&q=80',
-  },
-];
+
 
 const upcomingTrainings = [
   {
@@ -155,6 +142,14 @@ const palette = {
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
+  const { clubs: boostedClubsData, loading: clubsLoading } = useBoostedClubs();
+  const { events: userEvents, loading: eventsLoading } = useUpcomingUserEvents();
+  const { bookings: userBookings, hasBookings } = useUserUpcomingBookings();
+
+  // Utiliser les données Firebase si disponibles, sinon fallback vide
+  const displayedClubs = boostedClubsData.length > 0 ? boostedClubsData : boostedClubs;
+  const displayedEvents = userEvents.length > 0 ? userEvents : [];
+  const displayedTrainings = hasBookings ? userBookings : [];
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -224,35 +219,41 @@ export default function HomeScreen() {
             </View>
             <Text style={styles.link}>Voir tout</Text>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-            {boostedClubs.map((club) => (
-              <TouchableOpacity key={club.id} style={[styles.boostCard, { width: width * 0.8 }]}>
-                <Image source={{ uri: club.image }} style={styles.boostImage} />
-                <View style={[StyleSheet.absoluteFill, styles.boostOverlay]} />
-                <View style={styles.boostBadge}>
-                  <MaterialCommunityIcons name="lightning-bolt" size={14} color="#fff" />
-                  <Text style={styles.boostBadgeText}>Boosté</Text>
-                </View>
-                <View style={styles.boostRating}>
-                  <MaterialCommunityIcons name="star" size={14} color="#E9B782" />
-                  <Text style={styles.boostRatingText}>{club.rating}</Text>
-                </View>
-                <View style={styles.boostContent}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={styles.boostTitle}>{club.name}</Text>
-                    {club.verified ? (
-                      <MaterialCommunityIcons name="check-decagram" size={18} color="#fff" style={{ marginLeft: 6 }} />
-                    ) : null}
+          {clubsLoading ? (
+            <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={palette.primary} />
+            </View>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+              {displayedClubs.map((club) => (
+                <TouchableOpacity key={club.id} style={[styles.boostCard, { width: width * 0.8 }]}>
+                  <Image source={{ uri: club.image }} style={styles.boostImage} />
+                  <View style={[StyleSheet.absoluteFill, styles.boostOverlay]} />
+                  <View style={styles.boostBadge}>
+                    <MaterialCommunityIcons name="lightning-bolt" size={14} color="#fff" />
+                    <Text style={styles.boostBadgeText}>Boosté</Text>
                   </View>
-                  <Text style={styles.boostSub}>{club.speciality}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="location-outline" size={14} color="#fff" />
-                    <Text style={styles.boostSub}>{club.distance}</Text>
+                  <View style={styles.boostRating}>
+                    <MaterialCommunityIcons name="star" size={14} color="#E9B782" />
+                    <Text style={styles.boostRatingText}>{club.rating}</Text>
                   </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+                  <View style={styles.boostContent}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={styles.boostTitle}>{club.name}</Text>
+                      {club.verified ? (
+                        <MaterialCommunityIcons name="check-decagram" size={18} color="#fff" style={{ marginLeft: 6 }} />
+                      ) : null}
+                    </View>
+                    <Text style={styles.boostSub}>{club.speciality}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="location-outline" size={14} color="#fff" />
+                      <Text style={styles.boostSub}>{club.distance} • {club.city}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
 
           {/* Événements */}
           <View style={styles.sectionHeader}>
@@ -262,30 +263,42 @@ export default function HomeScreen() {
             </View>
             <Text style={styles.link}>Calendrier</Text>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-            {upcomingEvents.map((event) => (
-              <TouchableOpacity key={event.id} style={[styles.eventCard, { width: width * 0.6 }]}>
-                <Image source={{ uri: event.image }} style={styles.eventImage} />
-                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: 16 }]} />
-                <View style={styles.eventBadge}>
-                  <Text style={styles.eventBadgeText}>
-                    {event.date} · {event.time}
-                  </Text>
-                </View>
-                <View style={styles.eventContent}>
-                  <Text style={styles.eventTitle}>{event.title}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="location-outline" size={14} color="#E5E7EB" />
-                    <Text style={styles.eventSub}>{event.location}</Text>
+          {eventsLoading ? (
+            <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={palette.primary} />
+            </View>
+          ) : displayedEvents.length === 0 ? (
+            <View style={{ paddingVertical: 30, alignItems: 'center' }}>
+              <Ionicons name="calendar-outline" size={40} color={palette.gray} />
+              <Text style={{ color: palette.gray, fontSize: 14, marginTop: 12, fontWeight: '600' }}>Aucun événement prévu</Text>
+              <Text style={{ color: palette.gray, fontSize: 12, marginTop: 4 }}>Les événements à venir s'afficheront ici</Text>
+            </View>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+              {displayedEvents.map((event) => (
+                <TouchableOpacity key={event.id} style={[styles.eventCard, { width: width * 0.6 }]}>
+                  <Image source={{ uri: event.image }} style={styles.eventImage} />
+                  <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: 16 }]} />
+                  <View style={styles.eventBadge}>
+                    <Text style={styles.eventBadgeText}>
+                      {event.date} · {event.time}
+                    </Text>
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="people-outline" size={14} color="#E5E7EB" />
-                    <Text style={styles.eventSub}>{event.participants} participants</Text>
+                  <View style={styles.eventContent}>
+                    <Text style={styles.eventTitle}>{event.title}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="location-outline" size={14} color="#E5E7EB" />
+                      <Text style={styles.eventSub}>{event.location}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="people-outline" size={14} color="#E5E7EB" />
+                      <Text style={styles.eventSub}>{event.participants} participants</Text>
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
 
           {/* Prochaines séances */}
           <View style={styles.sectionHeader}>
@@ -295,46 +308,54 @@ export default function HomeScreen() {
             </View>
             <Text style={styles.link}>Réserver</Text>
           </View>
-          <View style={{ gap: 12 }}>
-            {upcomingTrainings.map((t) => (
-              <View
-                key={t.id}
-                style={[
-                  styles.trainingCard,
-                  { borderLeftColor: t.status === 'confirmed' ? palette.primary : '#E9B782' },
-                ]}
-              >
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={styles.trainingTitle}>{t.title}</Text>
-                    <View
-                      style={[
-                        styles.statusChip,
-                        t.status === 'confirmed' ? styles.statusConfirmed : styles.statusPending,
-                      ]}
-                    >
-                      <Text
+          {!hasBookings ? (
+            <View style={{ paddingVertical: 30, alignItems: 'center' }}>
+              <MaterialCommunityIcons name="calendar-blank" size={40} color={palette.gray} />
+              <Text style={{ color: palette.gray, fontSize: 14, marginTop: 12, fontWeight: '600' }}>Pas encore de séance</Text>
+              <Text style={{ color: palette.gray, fontSize: 12, marginTop: 4 }}>Découvrez nos clubs et réservez votre première séance</Text>
+            </View>
+          ) : (
+            <View style={{ gap: 12 }}>
+              {displayedTrainings.map((t) => (
+                <View
+                  key={t.id}
+                  style={[
+                    styles.trainingCard,
+                    { borderLeftColor: t.status === 'confirmed' ? palette.primary : '#E9B782' },
+                  ]}
+                >
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={styles.trainingTitle}>{t.title}</Text>
+                      <View
                         style={[
-                          styles.statusChipText,
-                          t.status === 'confirmed' ? { color: '#166534' } : { color: '#92400E' },
+                          styles.statusChip,
+                          t.status === 'confirmed' ? styles.statusConfirmed : styles.statusPending,
                         ]}
                       >
-                        {t.status === 'confirmed' ? 'Confirmé' : 'En attente'}
-                      </Text>
+                        <Text
+                          style={[
+                            styles.statusChipText,
+                            t.status === 'confirmed' ? { color: '#166534' } : { color: '#92400E' },
+                          ]}
+                        >
+                          {t.status === 'confirmed' ? 'Confirmé' : 'En attente'}
+                        </Text>
+                      </View>
                     </View>
+                    <Text style={styles.trainingSub}>{t.club}</Text>
+                    <Text style={styles.trainingMeta}>
+                      avec {t.trainer} · {t.dog}
+                    </Text>
                   </View>
-                  <Text style={styles.trainingSub}>{t.club}</Text>
-                  <Text style={styles.trainingMeta}>
-                    avec {t.trainer} · {t.dog}
-                  </Text>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.trainingDate}>{t.date}</Text>
+                    <Text style={styles.trainingMeta}>{t.time}</Text>
+                  </View>
                 </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.trainingDate}>{t.date}</Text>
-                  <Text style={styles.trainingMeta}>{t.time}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
+              ))}
+            </View>
+          )}
 
           {/* Exercices du jour */}
           <View style={styles.sectionHeader}>
