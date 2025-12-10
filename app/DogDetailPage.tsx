@@ -9,24 +9,33 @@ import {
   ActivityIndicator,
   Alert,
   SafeAreaView,
+  Linking,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/firebaseConfig';
 import { useAuth } from '@/context/AuthContext';
+import { useDogs } from '@/hooks/useDogs';
 
 interface Dog {
   id?: string;
   name: string;
   breed: string;
-  birthDate?: string;
+  birthDate?: string | number;
   gender?: string;
   weight?: string;
   height?: string;
   photoUrl?: string;
   otherInfo?: string;
-  vaccineFile?: string;
+  vaccineFile?: {
+    id: string;
+    name: string;
+    type: string;
+    url: string;
+    uploadedAt?: any;
+    size?: number;
+  };
   ownerId: string;
   createdAt?: any;
   updatedAt?: any;
@@ -47,6 +56,7 @@ export default function DogDetailPage() {
   const route = useRoute();
   const { user } = useAuth();
   const dogId = (route.params as any)?.dogId;
+  const { deleteDog, loading: deleteLoading } = useDogs();
 
   const [dog, setDog] = useState<Dog | null>(null);
   const [loading, setLoading] = useState(true);
@@ -89,11 +99,23 @@ export default function DogDetailPage() {
   }, [dogId]);
 
   // Fonction pour calculer l'âge à partir de la date de naissance
-  const calculateAge = (birthDate: string | undefined) => {
+  const calculateAge = (birthDate: string | number | undefined) => {
     if (!birthDate) return 'Non renseigné';
 
     try {
-      const birth = new Date(birthDate);
+      let birth: Date;
+      
+      if (typeof birthDate === 'number') {
+        birth = new Date(birthDate);
+      } else if (typeof birthDate === 'string' && !isNaN(Number(birthDate))) {
+        // String numérique (comme '1734000000000')
+        birth = new Date(parseInt(birthDate, 10));
+      } else {
+        birth = new Date(birthDate);
+      }
+      
+      if (isNaN(birth.getTime())) return 'Date invalide';
+      
       const today = new Date();
       let age = today.getFullYear() - birth.getFullYear();
       const monthDiff = today.getMonth() - birth.getMonth();
@@ -110,6 +132,57 @@ export default function DogDetailPage() {
       return `${age} ans`;
     } catch {
       return 'Date invalide';
+    }
+  };
+
+  // Fonction pour ouvrir le certificat
+  const openCertificate = async () => {
+    if (!dog?.vaccineFile?.url) {
+      Alert.alert('Erreur', 'Aucun certificat disponible');
+      return;
+    }
+
+    try {
+      const url = dog.vaccineFile.url;
+      await Linking.openURL(url);
+    } catch (err) {
+      Alert.alert('Erreur', 'Impossible d\'ouvrir le certificat');
+      console.error(err);
+    }
+  };
+
+  // Formater la date d'upload
+  const formatUploadDate = (uploadedAt: any) => {
+    if (!uploadedAt) return 'Date inconnue';
+    try {
+      let date: Date;
+      if (uploadedAt.toDate) {
+        // Firestore Timestamp
+        date = uploadedAt.toDate();
+      } else if (typeof uploadedAt === 'number') {
+        date = new Date(uploadedAt);
+      } else {
+        date = new Date(uploadedAt);
+      }
+      return date.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' });
+    } catch {
+      return 'Date invalide';
+    }
+  };
+
+  // Fonction pour supprimer le chien
+  const handleDeleteDog = async () => {
+    if (!dog?.id) return;
+    
+    try {
+      await deleteDog(dog.id, dog.photoUrl);
+      Alert.alert('Succès', 'Profil du chien supprimé avec succès');
+      navigation.goBack();
+    } catch (err) {
+      Alert.alert('Erreur', 'Impossible de supprimer le profil du chien');
+      console.error('Erreur suppression chien:', err);
+    } finally {
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -309,6 +382,34 @@ export default function DogDetailPage() {
             ))}
           </View>
 
+          {/* Certificates */}
+          <Text style={styles.sectionTitle}>Documents & Certificats</Text>
+          {dog?.vaccineFile ? (
+            <View style={styles.certificateCard}>
+              <View style={styles.certificateHeader}>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={styles.certificateName}>{dog.vaccineFile.name}</Text>
+                  <Text style={styles.certificateDate}>
+                    Ajouté le {formatUploadDate(dog.vaccineFile.uploadedAt)}
+                  </Text>
+                </View>
+                <MaterialCommunityIcons name="file-pdf-box" size={32} color={palette.primary} />
+              </View>
+              <TouchableOpacity
+                style={styles.certificateButton}
+                onPress={openCertificate}
+              >
+                <Ionicons name="download-outline" size={16} color="#fff" />
+                <Text style={styles.certificateButtonText}>Voir le document</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.noCertificateCard}>
+              <MaterialCommunityIcons name="file-document-outline" size={24} color={palette.gray} />
+              <Text style={styles.noCertificateText}>Aucun certificat disponible</Text>
+            </View>
+          )}
+
           {/* Health & Tracking */}
           <Text style={styles.sectionTitle}>Santé & suivi</Text>
           <View style={styles.healthGrid}>
@@ -494,13 +595,17 @@ export default function DogDetailPage() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.button, styles.deleteButton]}
-                  onPress={() => {
-                    // Logique de suppression à implémenter
-                    setShowDeleteConfirm(false);
-                  }}
+                  onPress={handleDeleteDog}
+                  disabled={deleteLoading}
                 >
-                  <MaterialCommunityIcons name="trash-can" size={16} color="white" />
-                  <Text style={styles.buttonText}>Supprimer</Text>
+                  {deleteLoading ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="trash-can" size={16} color="white" />
+                      <Text style={styles.buttonText}>Supprimer</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
@@ -985,5 +1090,54 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: palette.gray,
     lineHeight: 15,
+  },
+  certificateCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: palette.border,
+    gap: 12,
+  },
+  certificateHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  certificateName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: palette.text,
+  },
+  certificateDate: {
+    fontSize: 12,
+    color: palette.gray,
+  },
+  certificateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: palette.primary,
+    borderRadius: 10,
+    paddingVertical: 10,
+  },
+  certificateButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  noCertificateCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 14,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: palette.border,
+    alignItems: 'center',
+    gap: 8,
+  },
+  noCertificateText: {
+    fontSize: 14,
+    color: palette.gray,
   },
 });

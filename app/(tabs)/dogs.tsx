@@ -19,6 +19,34 @@ const colors = {
 
 type DogsNavigationProp = NativeStackNavigationProp<UserStackParamList, 'mydog'>;
 
+function calculateAge(birthDate: string | number | undefined): string {
+  if (!birthDate) return 'Non renseigné';
+  try {
+    let birth: Date;
+    if (typeof birthDate === 'number') {
+      birth = new Date(birthDate);
+    } else if (typeof birthDate === 'string' && !isNaN(Number(birthDate))) {
+      birth = new Date(parseInt(birthDate, 10));
+    } else {
+      birth = new Date(birthDate);
+    }
+    if (isNaN(birth.getTime())) return 'Date invalide';
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    if (age === 0) {
+      const months = monthDiff < 0 ? 12 + monthDiff : monthDiff;
+      return `${months} mois`;
+    }
+    return `${age} ans`;
+  } catch {
+    return 'Date invalide';
+  }
+}
+
 function StatusPill({ label, tone = 'success' }: { label: string; tone?: 'success' | 'warning' }) {
   const palette =
     tone === 'warning'
@@ -94,7 +122,7 @@ export default function DogsScreen() {
                     <Text style={styles.dogName}>{dog.name}</Text>
                     <Text style={styles.dogBreed}>{dog.breed}</Text>
                     <Text style={styles.meta}>
-                      {dog.birthDate} {dog.weight && `• ${dog.weight} kg`}
+                      {calculateAge(dog.birthDate)} {dog.weight && `• ${dog.weight} kg`}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
