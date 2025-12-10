@@ -2,7 +2,6 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useMemo, useState } from 'react';
 import {
-  Modal,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -10,282 +9,165 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator,
+  Modal,
 } from 'react-native';
 
 import { ClubStackParamList } from '@/navigation/types';
+import { useAuth } from '@/context/AuthContext';
+import { createCommunityChannel } from '@/hooks/useCreateChannel';
+import { useCommunityChannels } from '@/hooks/useCommunityChannels';
 
 const palette = {
   primary: '#41B6A6',
-  terracotta: '#F28B6F',
   text: '#1F2937',
   gray: '#6B7280',
   border: '#E5E7EB',
 };
 
-type Channel = {
-  id: string;
-  name: string;
-  description: string;
-  type: 'announcement' | 'public' | 'private';
-  members: number;
-  unread: number;
-  lastMessage: string;
-  lastTime: string;
-};
-
-const channelsSeed: Channel[] = [
-  {
-    id: 'announcements',
-    name: 'Annonces officielles',
-    description: 'Seuls les éducateurs peuvent publier',
-    type: 'announcement',
-    members: 127,
-    unread: 3,
-    lastMessage: 'Nouvelle session ce samedi...',
-    lastTime: 'Il y a 2h',
-  },
-  {
-    id: 'general',
-    name: 'Discussion générale',
-    description: 'Chat général du club',
-    type: 'public',
-    members: 127,
-    unread: 12,
-    lastMessage: "Sophie: Quelqu'un pour une balade...",
-    lastTime: 'Il y a 5 min',
-  },
-  {
-    id: 'events',
-    name: 'Événements',
-    description: 'Organisation des événements',
-    type: 'public',
-    members: 89,
-    unread: 5,
-    lastMessage: 'Marc: RDV samedi 10h ?',
-    lastTime: 'Il y a 30 min',
-  },
-  {
-    id: 'tips',
-    name: 'Astuces & Conseils',
-    description: 'Partage de conseils',
-    type: 'public',
-    members: 102,
-    unread: 8,
-    lastMessage: 'Emma: Nouveau tutoriel rappel',
-    lastTime: 'Il y a 1 h',
-  },
-  {
-    id: 'beginners',
-    name: 'Débutants',
-    description: 'Questions des nouveaux',
-    type: 'public',
-    members: 45,
-    unread: 2,
-    lastMessage: 'Julie: Comment apprendre le assis ?',
-    lastTime: 'Il y a 2 h',
-  },
-  {
-    id: 'staff',
-    name: 'Staff',
-    description: 'Équipe du club uniquement',
-    type: 'private',
-    members: 8,
-    unread: 0,
-    lastMessage: 'Pierre: Réunion demain ?',
-    lastTime: 'Hier',
-  },
-];
-
 type Props = NativeStackScreenProps<ClubStackParamList, 'clubChannels'>;
 
-export default function ClubChannelsScreen({ navigation }: Props) {
-  const [channels, setChannels] = useState<Channel[]>(channelsSeed);
-  const [showModal, setShowModal] = useState(false);
-  const [draft, setDraft] = useState({ name: '', description: '', type: 'public' as Channel['type'] });
+export default function ClubChannelsScreen({ navigation, route }: Props) {
+  const { user } = useAuth();
+  const clubId = (route.params as any)?.clubId || user?.uid;
+  
+  const { channels, loading } = useCommunityChannels(clubId);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [channelName, setChannelName] = useState('');
+  const [channelDesc, setChannelDesc] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+
+  // Affiche les canaux de type 'chat' (discussion générale)
+  const discussionChannels = useMemo(() => {
+    return channels.filter((c) => c.type === 'chat');
+  }, [channels]);
 
   const stats = useMemo(
     () => ({
-      total: channels.length,
-      publics: channels.filter((c) => c.type === 'public').length,
-      unread: channels.reduce((sum, c) => sum + c.unread, 0),
+      total: discussionChannels.length,
     }),
-    [channels]
+    [discussionChannels]
   );
 
-  const goToChannel = (ch: Channel) => {
-    navigation.navigate('clubChannelChat', { channelId: ch.id, channelName: ch.name });
+  const goToChannel = (channelId: string, channelName: string) => {
+    navigation.navigate('clubChannelChat', { channelId, channelName });
   };
 
-  const handleCreate = () => {
-    if (!draft.name.trim()) return;
-    const next: Channel = {
-      id: draft.name.toLowerCase().replace(/\s+/g, '-'),
-      name: draft.name.trim(),
-      description: draft.description.trim() || 'Nouveau salon',
-      type: draft.type,
-      members: 0,
-      unread: 0,
-      lastMessage: 'Nouveau salon créé',
-      lastTime: 'À l’instant',
-    };
-    setChannels([next, ...channels]);
-    setDraft({ name: '', description: '', type: 'public' });
-    setShowModal(false);
+  const handleCreateChannel = async () => {
+    if (!channelName.trim()) return;
+    
+    setIsCreating(true);
+    try {
+      await createCommunityChannel({
+        clubId,
+        name: channelName,
+        description: channelDesc,
+        type: 'chat',
+        createdBy: user?.uid || '',
+      });
+
+      setChannelName('');
+      setChannelDesc('');
+      setShowCreateModal(false);
+    } catch (error) {
+      console.error('Erreur lors de la création du salon:', error);
+    } finally {
+      setIsCreating(false);
+    }
   };
 
-  const renderChannelCard = (channel: Channel, variant: 'announcement' | 'public' | 'private') => {
-    const isAnnouncement = variant === 'announcement';
-    const isPrivate = variant === 'private';
-    const cardStyle =
-      isAnnouncement
-        ? styles.cardAnnouncement
-        : isPrivate
-        ? styles.cardPrivate
-        : styles.cardDefault;
-
+  if (loading) {
     return (
-      <TouchableOpacity
-        key={channel.id}
-        style={[styles.card, cardStyle]}
-        activeOpacity={0.9}
-        onPress={() => goToChannel(channel)}
-      >
-        <View style={styles.cardIconWrapper}>
-          {isAnnouncement ? (
-            <MaterialCommunityIcons name="bell-outline" size={22} color="#fff" />
-          ) : isPrivate ? (
-            <MaterialCommunityIcons name="lock-outline" size={22} color="#7C3AED" />
-          ) : (
-            <MaterialCommunityIcons name="pound" size={20} color="#4B5563" />
-          )}
+      <SafeAreaView style={styles.safe}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={palette.primary} />
         </View>
-        <View style={{ flex: 1 }}>
-          <View style={styles.cardHeader}>
-            <View>
-              <Text style={styles.cardTitle}>{channel.name}</Text>
-              <Text
-                style={[
-                  styles.cardDesc,
-                  isAnnouncement && { color: palette.terracotta },
-                  isPrivate && { color: '#7C3AED' },
-                ]}
-              >
-                {channel.description}
-              </Text>
-            </View>
-            {channel.unread > 0 ? (
-              <View
-                style={[
-                  styles.badge,
-                  {
-                    backgroundColor: isAnnouncement
-                      ? palette.terracotta
-                      : isPrivate
-                      ? '#7C3AED'
-                      : '#EF4444',
-                  },
-                ]}
-              >
-                <Text style={[styles.badgeText, { color: '#fff' }]}>{channel.unread}</Text>
-              </View>
-            ) : null}
-          </View>
-          <Text style={styles.cardLast}>{channel.lastMessage}</Text>
-          <View style={styles.metaRow}>
-            <Text style={styles.cardMeta}>{channel.lastTime}</Text>
-            <Text style={styles.cardMeta}>·</Text>
-            <Text style={styles.cardMeta}>
-              <Ionicons name="people-outline" size={12} color={palette.gray} /> {channel.members}
-            </Text>
-          </View>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={palette.gray} />
-      </TouchableOpacity>
+      </SafeAreaView>
     );
-  };
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => navigation.navigate('clubCommunity', {})}
-          >
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.navigate('clubCommunity', {})}>
             <Ionicons name="arrow-back" size={20} color="#fff" />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>Salons de discussion</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <MaterialCommunityIcons name="message-text-outline" size={16} color="#fff" />
-              <Text style={styles.headerSub}>Gérez vos salons</Text>
+              <MaterialCommunityIcons name="pound" size={16} color="#fff" />
+              <Text style={styles.headerSub}>Discussions avec les membres</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.addBtn} onPress={() => setShowModal(true)}>
-            <Ionicons name="add" size={22} color="#4B5563" />
+          <TouchableOpacity style={styles.createBtn} onPress={() => setShowCreateModal(true)}>
+            <Ionicons name="add" size={22} color={palette.primary} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.statsCard}>
           <View style={styles.stat}>
             <Text style={styles.statValue}>{stats.total}</Text>
-            <Text style={styles.statLabel}>Salons</Text>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{stats.publics}</Text>
-            <Text style={styles.statLabel}>Publics</Text>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{stats.unread}</Text>
-            <Text style={styles.statLabel}>Non lus</Text>
+            <Text style={styles.statLabel}>Salon(s)</Text>
           </View>
         </View>
 
-        <View style={{ padding: 16, gap: 16 }}>
-          <View>
-            <View style={styles.sectionHeader}>
-              <MaterialCommunityIcons name="bell-outline" size={18} color={palette.terracotta} />
-              <Text style={styles.sectionTitle}>Annonces</Text>
-            </View>
-            {channels
-              .filter((c) => c.type === 'announcement')
-              .map((c) => renderChannelCard(c, 'announcement'))}
+        <View style={{ padding: 16, gap: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <MaterialCommunityIcons name="pound" size={18} color={palette.primary} />
+            <Text style={styles.sectionTitle}>Salons disponibles</Text>
           </View>
 
-          <View>
-            <View style={styles.sectionHeader}>
-              <MaterialCommunityIcons name="pound" size={18} color="#4B5563" />
-              <Text style={styles.sectionTitle}>Salons publics</Text>
+          {discussionChannels.length === 0 ? (
+            <View style={styles.emptyState}>
+              <MaterialCommunityIcons name="pound" size={48} color={palette.gray} />
+              <Text style={styles.emptyText}>Aucun salon disponible</Text>
+              <Text style={styles.emptySubText}>Créez votre premier salon pour commencer</Text>
             </View>
-            <View style={{ gap: 8 }}>
-              {channels
-                .filter((c) => c.type === 'public')
-                .map((c) => renderChannelCard(c, 'public'))}
-            </View>
-          </View>
+          ) : (
+            discussionChannels.map((channel) => (
+              <TouchableOpacity
+                key={channel.id}
+                style={styles.card}
+                activeOpacity={0.9}
+                onPress={() => goToChannel(channel.id, channel.name)}
+              >
+                <View style={styles.channelIcon}>
+                  <MaterialCommunityIcons name="pound" size={20} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitle}>{channel.name}</Text>
+                  <Text style={styles.cardDesc}>{channel.description || 'Canal de discussion'}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={palette.gray} />
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
 
-          <View>
-            <View style={styles.sectionHeader}>
-              <MaterialCommunityIcons name="lock-outline" size={18} color="#7C3AED" />
-              <Text style={styles.sectionTitle}>Salons privés</Text>
-            </View>
-            <View style={{ gap: 8 }}>
-              {channels
-                .filter((c) => c.type === 'private')
-                .map((c) => renderChannelCard(c, 'private'))}
+        <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+          <View style={styles.infoCard}>
+            <MaterialCommunityIcons name="information-outline" size={18} color={palette.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.infoTitle}>Salons de discussion</Text>
+              <Text style={styles.infoText}>
+                Discutez avec les membres de votre club dans les salons disponibles.
+              </Text>
             </View>
           </View>
         </View>
       </ScrollView>
 
-      <Modal transparent visible={showModal} animationType="slide">
+      {/* Modal de création de salon */}
+      <Modal transparent visible={showCreateModal} animationType="slide">
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Nouveau salon</Text>
-              <TouchableOpacity onPress={() => setShowModal(false)}>
+              <TouchableOpacity onPress={() => setShowCreateModal(false)}>
                 <Ionicons name="close" size={22} color={palette.gray} />
               </TouchableOpacity>
             </View>
@@ -293,46 +175,40 @@ export default function ClubChannelsScreen({ navigation }: Props) {
               <View>
                 <Text style={styles.label}>Nom du salon</Text>
                 <TextInput
-                  value={draft.name}
-                  onChangeText={(text) => setDraft({ ...draft, name: text })}
-                  placeholder="Ex: questions-débutants"
+                  value={channelName}
+                  onChangeText={setChannelName}
+                  placeholder="Ex: Astuces & conseils..."
                   style={styles.input}
                   placeholderTextColor={palette.gray}
+                  editable={!isCreating}
                 />
               </View>
               <View>
-                <Text style={styles.label}>Description</Text>
+                <Text style={styles.label}>Description (optionnel)</Text>
                 <TextInput
-                  value={draft.description}
-                  onChangeText={(text) => setDraft({ ...draft, description: text })}
+                  value={channelDesc}
+                  onChangeText={setChannelDesc}
                   placeholder="Décrivez le but du salon..."
-                  style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
+                  style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
                   multiline
                   placeholderTextColor={palette.gray}
+                  editable={!isCreating}
                 />
               </View>
-              <View>
-                <Text style={styles.label}>Type de salon</Text>
-                <View style={styles.typeRow}>
-                  {(['public', 'private'] as Channel['type'][]).map((type) => {
-                    const active = draft.type === type;
-                    return (
-                      <TouchableOpacity
-                        key={type}
-                        style={[styles.typePill, active && styles.typePillActive]}
-                        onPress={() => setDraft({ ...draft, type })}
-                      >
-                        <Text style={[styles.typePillText, active && styles.typePillTextActive]}>
-                          {type === 'public' ? 'Public' : 'Privé'}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-              <TouchableOpacity style={styles.publishBtn} onPress={handleCreate} activeOpacity={0.9}>
-                <MaterialCommunityIcons name="pound" size={18} color="#fff" />
-                <Text style={styles.publishText}>Créer le salon</Text>
+              <TouchableOpacity
+                style={[styles.createSubmitBtn, isCreating && { opacity: 0.6 }]}
+                onPress={handleCreateChannel}
+                activeOpacity={0.9}
+                disabled={isCreating}
+              >
+                {isCreating ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="plus" size={18} color="#fff" />
+                    <Text style={styles.createSubmitText}>Créer le salon</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -343,9 +219,12 @@ export default function ClubChannelsScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F8FAFC' },
+  safe: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
   header: {
-    backgroundColor: '#4B5563',
+    backgroundColor: palette.primary,
     paddingHorizontal: 16,
     paddingTop: 18,
     paddingBottom: 16,
@@ -360,13 +239,11 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: 'rgba(255,255,255,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: { color: '#fff', fontSize: 20, fontWeight: '700' },
-  headerSub: { color: '#E5E7EB', fontSize: 12 },
-  addBtn: {
+  createBtn: {
     width: 40,
     height: 40,
     borderRadius: 12,
@@ -374,10 +251,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  headerSub: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+  },
   statsCard: {
     marginTop: 12,
-    marginHorizontal: 16,
     backgroundColor: '#fff',
+    marginHorizontal: 16,
     borderRadius: 14,
     padding: 12,
     flexDirection: 'row',
@@ -385,61 +271,98 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     borderWidth: 1,
     borderColor: palette.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
   },
-  stat: { flex: 1, alignItems: 'center', gap: 4 },
-  statValue: { color: palette.text, fontWeight: '700', fontSize: 16 },
-  statLabel: { color: palette.gray, fontSize: 12 },
-  divider: { width: 1, height: 32, backgroundColor: palette.border, marginHorizontal: 10 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  sectionTitle: { color: palette.text, fontWeight: '700', fontSize: 16 },
+  stat: {
+    alignItems: 'center',
+    flex: 1,
+    gap: 4,
+  },
+  statValue: {
+    color: palette.text,
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  statLabel: {
+    color: palette.gray,
+    fontSize: 12,
+  },
+  sectionTitle: {
+    color: palette.text,
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    gap: 12,
+  },
+  emptyText: {
+    color: palette.text,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptySubText: {
+    color: palette.gray,
+    fontSize: 13,
+  },
   card: {
     flexDirection: 'row',
-    gap: 12,
-    alignItems: 'flex-start',
+    alignItems: 'center',
     backgroundColor: '#fff',
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
     borderColor: palette.border,
+    gap: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowRadius: 4,
     elevation: 2,
   },
-  cardAnnouncement: {
-    borderColor: '#F28B6F66',
-    backgroundColor: '#FFF1EB',
-  },
-  cardDefault: {
-    borderColor: palette.border,
-  },
-  cardPrivate: {
-    borderColor: '#C4B5FD',
-    backgroundColor: '#F5F3FF',
-  },
-  cardIconWrapper: {
-    width: 46,
-    height: 46,
+  channelIcon: {
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    backgroundColor: '#F1F5F9',
-    alignItems: 'center',
+    backgroundColor: palette.primary,
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  cardTitle: { color: palette.text, fontWeight: '700', fontSize: 15 },
-  cardDesc: { color: palette.gray, fontSize: 12, marginTop: 2 },
-  cardLast: { color: palette.text, marginTop: 8 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
-  cardMeta: { color: palette.gray, fontSize: 12 },
-  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 },
-  badgeText: { fontWeight: '700', fontSize: 12 },
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
+  cardTitle: {
+    color: palette.text,
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  cardDesc: {
+    color: palette.gray,
+    fontSize: 12,
+    marginTop: 4,
+  },
+  infoCard: {
+    flexDirection: 'row',
+    gap: 10,
+    backgroundColor: '#E0F2FE',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  infoTitle: {
+    color: palette.text,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  infoText: {
+    color: palette.text,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
+  },
   modalCard: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 16,
@@ -447,9 +370,21 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
   },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  modalTitle: { color: palette.text, fontWeight: '700', fontSize: 16 },
-  label: { color: palette.text, fontWeight: '600', marginBottom: 6 },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  modalTitle: {
+    color: palette.text,
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  label: {
+    color: palette.text,
+    marginBottom: 6,
+    fontWeight: '600',
+  },
   input: {
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
@@ -459,26 +394,17 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     color: palette.text,
   },
-  typeRow: { flexDirection: 'row', gap: 8 },
-  typePill: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: palette.border,
-    alignItems: 'center',
-  },
-  typePillActive: { backgroundColor: '#ECFEFF', borderColor: palette.primary },
-  typePillText: { color: palette.text, fontWeight: '600' },
-  typePillTextActive: { color: palette.primary },
-  publishBtn: {
+  createSubmitBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#4B5563',
+    backgroundColor: palette.primary,
     paddingVertical: 12,
     borderRadius: 12,
   },
-  publishText: { color: '#fff', fontWeight: '700' },
+  createSubmitText: {
+    color: '#fff',
+    fontWeight: '700',
+  },
 });

@@ -8,6 +8,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -16,6 +17,7 @@ import ClubBottomNav from '@/components/ClubBottomNav';
 import { formatFirebaseAuthError, useAuth } from '@/context/AuthContext';
 import { resetToHome } from '@/navigation/navigationRef';
 import { ClubStackParamList } from '@/navigation/types';
+import { useClubData } from '@/hooks/useClubData';
 
 const palette = {
   primary: '#E9B782',
@@ -24,33 +26,10 @@ const palette = {
   border: '#E5E7EB',
 };
 
-const clubData = {
-  name: 'Club Canin Paris 15',
-  legalName: 'Association Club Canin Paris 15',
-  siret: '123 456 789 00010',
-  description:
-    "Club canin professionnel spécialisé dans l'éducation canine, l'agility et l'obéissance depuis plus de 15 ans.",
-  email: 'contact@clubcaninparis15.fr',
-  phone: '01 23 45 67 89',
-  address: '123 Rue de la République, 75015 Paris',
-  website: 'www.clubcaninparis15.fr',
-  openingHours: 'Lun-Sam: 9h-19h · Dim: 9h-13h',
-  rating: 4.8,
-  totalReviews: 156,
-  memberSince: 'Janvier 2020',
-};
-
-const services = ['Éducation canine', 'Agility', 'Obéissance', 'Comportementalisme'];
-
-const initialTerrains = [
-  { id: 1, name: 'Terrain principal', address: '123 Rue de la République, 75015 Paris', type: 'Agility', isDefault: true },
-  { id: 2, name: 'Terrain de dressage', address: '45 Avenue du Parc, 75015 Paris', type: 'Éducation', isDefault: false },
-];
-
 type Props = NativeStackScreenProps<ClubStackParamList, 'clubProfile'>;
 
 export default function ClubProfileScreen({ navigation }: Props) {
-  const { logout, deleteAccount, actionLoading } = useAuth();
+  const { logout, deleteAccount, actionLoading, profile } = useAuth();
   const [settings, setSettings] = useState({
     acceptNewMembers: true,
     showPhonePublic: true,
@@ -60,9 +39,19 @@ export default function ClubProfileScreen({ navigation }: Props) {
     requireDeposit: true,
   });
   const [bankConnected, setBankConnected] = useState(false);
-  const [terrains] = useState(initialTerrains);
   const [error, setError] = useState<string | null>(null);
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
+
+  // Récupère les données du club depuis le profile (Firebase)
+  const clubProfile = (profile as any)?.profile || {};
+  const clubName = clubProfile?.clubName || 'Mon Club';
+  const legalName = clubProfile?.legalName || '';
+  const siret = clubProfile?.siret || '';
+  const description = clubProfile?.description || '';
+  const email = clubProfile?.email || clubProfile?.email || profile?.email || '';
+  const phone = clubProfile?.phone || '';
+  const address = clubProfile?.address || '';
+  const website = clubProfile?.website || '';
 
   const handleLogout = async () => {
     await logout();
@@ -99,18 +88,14 @@ export default function ClubProfileScreen({ navigation }: Props) {
               <Ionicons name="camera-outline" size={14} color={palette.primary} />
             </View>
           </View>
-          <Text style={styles.headerTitle}>{clubData.name}</Text>
+          <Text style={styles.headerTitle}>{clubName}</Text>
           <View style={styles.headerBadges}>
             <View style={styles.verified}>
               <Ionicons name="checkmark-circle" size={14} color="#fff" />
               <Text style={styles.verifiedText}>Vérifié</Text>
             </View>
-            <View style={styles.rating}>
-              <Ionicons name="star" size={14} color="#FACC15" />
-              <Text style={styles.ratingText}>{clubData.rating} ({clubData.totalReviews})</Text>
-            </View>
           </View>
-          <Text style={styles.headerSub}>Membre depuis {clubData.memberSince}</Text>
+          <Text style={styles.headerSub}>Profil club</Text>
         </View>
 
         <View style={{ padding: 16, gap: 16 }}>
@@ -130,9 +115,9 @@ export default function ClubProfileScreen({ navigation }: Props) {
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Informations générales</Text>
             <View style={{ gap: 10, marginTop: 10 }}>
-              <Text style={styles.infoText}>{clubData.legalName}</Text>
-              <Text style={styles.infoText}>SIRET : {clubData.siret}</Text>
-              <Text style={styles.infoText}>{clubData.description}</Text>
+              <Text style={styles.infoText}>{legalName}</Text>
+              {siret ? <Text style={styles.infoText}>SIRET : {siret}</Text> : null}
+              <Text style={styles.infoText}>{description}</Text>
             </View>
           </View>
 
@@ -140,67 +125,36 @@ export default function ClubProfileScreen({ navigation }: Props) {
             <Text style={styles.sectionTitle}>Coordonnées</Text>
             <View style={styles.lineItem}>
               <Ionicons name="mail-outline" size={18} color={palette.primary} />
-              <Text style={styles.infoText}>{clubData.email}</Text>
+              <Text style={styles.infoText}>{email}</Text>
             </View>
             <View style={styles.lineItem}>
               <Ionicons name="call-outline" size={18} color={palette.primary} />
-              <Text style={styles.infoText}>{clubData.phone}</Text>
+              <Text style={styles.infoText}>{phone}</Text>
             </View>
             <View style={styles.lineItem}>
               <Ionicons name="location-outline" size={18} color={palette.primary} />
-              <Text style={styles.infoText}>{clubData.address}</Text>
+              <Text style={styles.infoText}>{address}</Text>
             </View>
-            <View style={styles.lineItem}>
-              <Ionicons name="globe-outline" size={18} color={palette.primary} />
-              <Text style={[styles.infoText, { color: '#2563EB' }]}>{clubData.website}</Text>
-            </View>
-            <View style={styles.lineItem}>
-              <Ionicons name="time-outline" size={18} color={palette.primary} />
-              <Text style={styles.infoText}>{clubData.openingHours}</Text>
-            </View>
+            {website && (
+              <View style={styles.lineItem}>
+                <Ionicons name="globe-outline" size={18} color={palette.primary} />
+                <Text style={[styles.infoText, { color: '#2563EB' }]}>{website}</Text>
+              </View>
+            )}
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Services proposés</Text>
-            <View style={styles.chips}>
-              {services.map((service) => (
-                <View key={service} style={styles.chip}>
-                  <Text style={styles.chipText}>{service}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.sectionTitle}>Terrains</Text>
-              <View style={styles.addBtn}>
-                <Ionicons name="add" size={16} color={palette.primary} />
-                <Text style={styles.addText}>Ajouter</Text>
+          {clubProfile?.services && clubProfile.services.length > 0 && (
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>Services proposés</Text>
+              <View style={styles.chips}>
+                {(clubProfile.services as string[]).map((service) => (
+                  <View key={service} style={styles.chip}>
+                    <Text style={styles.chipText}>{service}</Text>
+                  </View>
+                ))}
               </View>
             </View>
-            <View style={{ gap: 12 }}>
-              {terrains.map((terrain) => (
-                <View key={terrain.id} style={styles.terrainCard}>
-                  <View style={styles.terrainIcon}>
-                    <Ionicons name="map-outline" size={18} color={palette.primary} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <Text style={styles.cardTitle}>{terrain.name}</Text>
-                      {terrain.isDefault ? (
-                        <View style={styles.badge}>
-                          <Text style={styles.badgeText}>Par défaut</Text>
-                        </View>
-                      ) : null}
-                    </View>
-                    <Text style={styles.cardMeta}>{terrain.address}</Text>
-                    <Text style={styles.cardMeta}>{terrain.type}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </View>
+          )}
 
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Paramètres généraux</Text>

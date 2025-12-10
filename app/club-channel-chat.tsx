@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -7,11 +7,16 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { ClubStackParamList } from '@/navigation/types';
+import { useAuth } from '@/context/AuthContext';
+import { useCommunityMessages } from '@/hooks/useCommunityMessages';
+import { useCommunityMembers } from '@/hooks/useCommunityMembers';
+import { useClubPermissions } from '@/hooks/useClubPermissions';
 
 const palette = {
   primary: '#41B6A6',
@@ -22,90 +27,82 @@ const palette = {
 };
 
 type ChatMessage = {
-  id: number;
-  user: string;
-  userRole: string;
-  message: string;
-  time: string;
+  id: string;
+  createdBy: string;
+  text: string;
+  createdAt: number;
   isClubStaff: boolean;
+  userName?: string;
 };
-
-const seedMessages: ChatMessage[] = [
-  {
-    id: 1,
-    user: 'Éducateur',
-    userRole: 'Éducateur',
-    message:
-      "Bonjour à tous ! N'oubliez pas la session de groupe ce samedi à 14h.",
-    time: '10:30',
-    isClubStaff: true,
-  },
-  {
-    id: 2,
-    user: 'Membre',
-    userRole: 'Membre',
-    message: 'Bonjour ! Est-ce qu’il faut apporter quelque chose ?',
-    time: '10:32',
-    isClubStaff: false,
-  },
-  {
-    id: 3,
-    user: 'Éducateur',
-    userRole: 'Éducateur',
-    message: 'Apportez des friandises et de l’eau pour votre chien. On fournit le matériel !',
-    time: '10:35',
-    isClubStaff: true,
-  },
-  {
-    id: 4,
-    user: 'Membre',
-    userRole: 'Membre',
-    message: 'Super ! Nous serons là.',
-    time: '10:40',
-    isClubStaff: false,
-  },
-  {
-    id: 5,
-    user: 'Membre',
-    userRole: 'Membre',
-    message:
-      "Question : c'est adapté pour un chien réactif ? Mon chien a encore du mal avec les autres chiens...",
-    time: '11:15',
-    isClubStaff: false,
-  },
-  {
-    id: 6,
-    user: 'Éducateur',
-    userRole: 'Éducateur',
-    message:
-      'Oui ! On travaillera justement sur la socialisation. Je serai là pour vous accompagner.',
-    time: '11:20',
-    isClubStaff: true,
-  },
-];
 
 type Props = NativeStackScreenProps<ClubStackParamList, 'clubChannelChat'>;
 
 export default function ClubChannelChatScreen({ navigation, route }: Props) {
-  const channelId = route.params.channelId;
-  const channelName = route.params.channelName;
-  const [messages, setMessages] = useState<ChatMessage[]>(seedMessages);
+  const { clubId, channelId, channelName } = route.params;
+  const { user, profile } = useAuth();
   const [value, setValue] = useState('');
 
-  const isAnnouncementChannel = useMemo(() => channelId === 'announcements', [channelId]);
+  // Get messages and send functionality
+  const {
+    messages,
+    loading: messagesLoading,
+    error: messagesError,
+    sendMessage,
+    isSending,
+  } = useCommunityMessages(channelId, user?.uid || '', 30);
 
-  const handleSend = () => {
+  // Get community members to check permissions
+  const { members, loading: membersLoading } = useCommunityMembers(clubId);
+
+  // Get club permissions for current user
+  const { permissions, loading: permissionsLoading } = useClubPermissions(
+    clubId,
+    user?.uid || '',
+    (profile as any)?.role || 'user',
+    []
+  );
+
+  const isAnnouncementChannel = useMemo(
+    () => channelName?.toLowerCase().includes('annonce'),
+    [channelName]
+  );
+
+  // Format Firestore messages to display format
+  const displayMessages: ChatMessage[] = messages.map((msg) => ({
+    id: msg.id,
+    createdBy: msg.createdBy,
+    text: msg.text,
+    createdAt: msg.createdAt,
+    isClubStaff: members.some((m) => m.id === msg.createdBy),
+    userName: msg.createdBy.substring(0, 1).toUpperCase(),
+  }));
+
+  const handleSend = async () => {
     if (!value.trim()) return;
-    const next: ChatMessage = {
-      id: messages.length + 1,
-      user: 'Vous',
-      userRole: 'Staff',
-      message: value.trim(),
-      time: 'Maintenant',
-      isClubStaff: true,
-    };
-    setMessages([...messages, next]);
+
+    // Check permissions for announcements
+    if (isAnnouncementChannel && !permissions.canPostInAnnouncements) {
+      alert("Vous n'avez pas la permission de publier une annonce");
+      return;
+    }
+
+    await sendMessage(value.trim());
     setValue('');
+  };
+
+  const formatTime = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'À l\'instant';
+    if (diffMins < 60) return `Il y a ${diffMins}m`;
+    if (diffHours < 24) return `Il y a ${diffHours}h`;
+    if (diffDays < 7) return `Il y a ${diffDays}j`;
+    return date.toLocaleDateString('fr-FR');
   };
 
   return (
@@ -113,10 +110,15 @@ export default function ClubChannelChatScreen({ navigation, route }: Props) {
       <View
         style={[
           styles.header,
-          isAnnouncementChannel ? { backgroundColor: palette.terracotta } : { backgroundColor: '#4B5563' },
+          isAnnouncementChannel
+            ? { backgroundColor: palette.terracotta }
+            : { backgroundColor: '#4B5563' },
         ]}
       >
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.navigate('clubChannels')}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.navigate('clubChannels' as any)}
+        >
           <Ionicons name="arrow-back" size={20} color="#fff" />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
@@ -128,37 +130,52 @@ export default function ClubChannelChatScreen({ navigation, route }: Props) {
             )}
             <Text style={styles.headerTitle}>{channelName}</Text>
           </View>
-          <Text style={styles.headerSub}>127 membres</Text>
+          <Text style={styles.headerSub}>{members.length} membres</Text>
         </View>
       </View>
 
-      <ScrollView
-        style={styles.messages}
-        contentContainerStyle={{ padding: 16, gap: 14 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {messages.map((msg) => (
-          <View key={msg.id} style={styles.messageRow}>
-            <View style={[styles.avatar, msg.isClubStaff && styles.avatarStaff]}>
-              <Text style={styles.avatarText}>{msg.user.charAt(0)}</Text>
+      {messagesLoading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={palette.primary} />
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.messages}
+          contentContainerStyle={{ padding: 16, gap: 14 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {displayMessages.length === 0 ? (
+            <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 40 }}>
+              <MaterialCommunityIcons name="chat-outline" size={48} color={palette.gray} />
+              <Text style={{ color: palette.gray, marginTop: 12, fontSize: 14 }}>
+                Aucun message pour le moment
+              </Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                <Text style={styles.user}>{msg.user}</Text>
-                {msg.isClubStaff ? (
-                  <View style={styles.roleBadge}>
-                    <Text style={styles.roleText}>{msg.userRole}</Text>
+          ) : (
+            displayMessages.map((msg) => (
+              <View key={msg.id} style={styles.messageRow}>
+                <View style={[styles.avatar, msg.isClubStaff && styles.avatarStaff]}>
+                  <Text style={styles.avatarText}>{msg.userName}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                    <Text style={styles.user}>{msg.createdBy}</Text>
+                    {msg.isClubStaff ? (
+                      <View style={styles.roleBadge}>
+                        <Text style={styles.roleText}>Équipe</Text>
+                      </View>
+                    ) : null}
+                    <Text style={styles.time}>{formatTime(msg.createdAt)}</Text>
                   </View>
-                ) : null}
-                <Text style={styles.time}>{msg.time}</Text>
+                  <View style={styles.bubble}>
+                    <Text style={styles.bubbleText}>{msg.text}</Text>
+                  </View>
+                </View>
               </View>
-              <View style={styles.bubble}>
-                <Text style={styles.bubbleText}>{msg.message}</Text>
-              </View>
-            </View>
-          </View>
-        ))}
-      </ScrollView>
+            ))
+          )}
+        </ScrollView>
+      )}
 
       <View style={styles.inputBar}>
         {isAnnouncementChannel ? (
@@ -176,9 +193,16 @@ export default function ClubChannelChatScreen({ navigation, route }: Props) {
           <TextInput
             value={value}
             onChangeText={setValue}
-            placeholder={isAnnouncementChannel ? 'Écrivez une annonce...' : 'Écrivez un message...'}
+            placeholder={
+              isAnnouncementChannel
+                ? permissions.canPostInAnnouncements
+                  ? 'Écrivez une annonce...'
+                  : 'Vous ne pouvez pas poster ici'
+                : 'Écrivez un message...'
+            }
             placeholderTextColor={palette.gray}
             style={styles.input}
+            editable={!isSending}
           />
           <TouchableOpacity style={styles.iconBtn}>
             <Ionicons name="happy-outline" size={20} color={palette.gray} />
@@ -186,12 +210,20 @@ export default function ClubChannelChatScreen({ navigation, route }: Props) {
           <TouchableOpacity
             style={[
               styles.sendBtn,
-              isAnnouncementChannel ? { backgroundColor: palette.terracotta } : { backgroundColor: palette.primary },
+              isAnnouncementChannel
+                ? { backgroundColor: palette.terracotta }
+                : { backgroundColor: palette.primary },
+              isSending && { opacity: 0.6 },
             ]}
             onPress={handleSend}
             activeOpacity={0.9}
+            disabled={isSending}
           >
-            <Ionicons name="send" size={18} color="#fff" />
+            {isSending ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons name="send" size={18} color="#fff" />
+            )}
           </TouchableOpacity>
         </View>
       </View>

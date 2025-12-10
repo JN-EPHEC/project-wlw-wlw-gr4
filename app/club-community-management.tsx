@@ -1,9 +1,13 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 
+import ClubBottomNav from '@/components/ClubBottomNav';
 import { ClubStackParamList } from '@/navigation/types';
+import { useCommunityChannels } from '@/hooks/useCommunityChannels';
+import { useCommunityMembers } from '@/hooks/useCommunityMembers';
+import { useAuth } from '@/context/AuthContext';
 
 const palette = {
   primary: '#E9B782',
@@ -14,30 +18,35 @@ const palette = {
 
 type Props = NativeStackScreenProps<ClubStackParamList, 'clubCommunity'>;
 
-export default function ClubCommunityManagementScreen({ navigation }: Props) {
-  const stats = {
-    announcements: 5,
-    unreadAnnouncements: 2,
-    upcomingEvents: 4,
-    channels: 6,
-    members: 127,
-    unreadMessages: 30,
-  };
+export default function ClubCommunityManagementScreen({ navigation, route }: Props) {
+  const { user } = useAuth();
+  // On récupère le clubId depuis la route ou du contexte
+  const clubId = (route.params as any)?.clubId || user?.uid;
+  
+  const { channels, loading: channelsLoading } = useCommunityChannels(clubId);
+  const { members, loading: membersLoading } = useCommunityMembers(clubId);
+
+  if (channelsLoading || membersLoading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={palette.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const handleNavigate = (screen: keyof ClubStackParamList, params?: object) =>
     navigation.navigate({ name: screen, params: params as any });
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={styles.headerRow}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => handleNavigate('clubHome')}>
-              <Ionicons name="arrow-back" size={20} color="#fff" />
-            </TouchableOpacity>
             <View>
               <Text style={styles.headerTitle}>Ma communauté</Text>
-              <Text style={styles.headerSub}>Gérez votre communauté</Text>
+              <Text style={styles.headerSub}>{channels.length} canaux • {members.length} membres</Text>
             </View>
           </View>
         </View>
@@ -46,89 +55,68 @@ export default function ClubCommunityManagementScreen({ navigation }: Props) {
           <View style={styles.quickItem}>
             <View style={styles.quickIcon}>
               <Ionicons name="people-outline" size={16} color={palette.primary} />
-              <Text style={styles.quickValue}>{stats.members}</Text>
+              <Text style={styles.quickValue}>{members.length}</Text>
             </View>
             <Text style={styles.quickLabel}>Membres</Text>
           </View>
           <View style={styles.quickItem}>
             <View style={styles.quickIcon}>
               <MaterialCommunityIcons name="pound" size={16} color={palette.primary} />
-              <Text style={styles.quickValue}>{stats.channels}</Text>
+              <Text style={styles.quickValue}>{channels.length}</Text>
             </View>
-            <Text style={styles.quickLabel}>Salons</Text>
-          </View>
-          <View style={styles.quickItem}>
-            <View style={styles.quickIcon}>
-              <Ionicons name="chatbubbles-outline" size={16} color={palette.primary} />
-              <Text style={styles.quickValue}>{stats.unreadMessages}</Text>
-            </View>
-            <Text style={styles.quickLabel}>Non lus</Text>
+            <Text style={styles.quickLabel}>Canaux</Text>
           </View>
         </View>
 
         <View style={styles.container}>
+          {/* Annonces */}
           <TouchableOpacity
             style={[styles.card, styles.cardTerracotta]}
             activeOpacity={0.9}
-            onPress={() => handleNavigate('clubAnnouncements')}>
+            onPress={() => handleNavigate('clubAnnouncements')}
+          >
             <View style={styles.cardIconTerracotta}>
               <MaterialCommunityIcons name="bell-outline" size={28} color="#fff" />
             </View>
             <View style={styles.cardBody}>
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle}>Annonces</Text>
-                {stats.unreadAnnouncements > 0 ? (
-                  <View style={[styles.badge, { backgroundColor: '#F28B6F' }]}>
-                    <Text style={[styles.badgeText, { color: '#fff' }]}>{stats.unreadAnnouncements} nouvelles</Text>
-                  </View>
-                ) : null}
               </View>
               <Text style={styles.cardMeta}>Gérez les annonces officielles du club</Text>
-              <Text style={[styles.cardMeta, { color: '#F97316' }]}>{stats.announcements} annonces publiées</Text>
+              <Text style={[styles.cardMeta, { color: '#F97316' }]}>
+                {channels.filter((c) => c.type === 'announcements').length} canal(aux)
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={palette.gray} />
           </TouchableOpacity>
 
+          {/* Salons de discussion */}
           <TouchableOpacity
-            style={[styles.card, styles.cardTurquoise]}
+            style={styles.card}
             activeOpacity={0.9}
-            onPress={() => handleNavigate('clubEventsManagement')}>
-            <View style={styles.cardIconTurquoise}>
-              <MaterialCommunityIcons name="calendar-month-outline" size={28} color="#fff" />
-            </View>
-            <View style={styles.cardBody}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>Événements</Text>
-                <View style={[styles.badge, { backgroundColor: '#41B6A6' }]}>
-                  <Text style={[styles.badgeText, { color: '#fff' }]}>{stats.upcomingEvents} à venir</Text>
-                </View>
-              </View>
-              <Text style={styles.cardMeta}>Créez et gérez vos événements</Text>
-              <Text style={[styles.cardMeta, { color: '#0F766E' }]}>Balade en forêt - Sam 28 Oct</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={palette.gray} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.card} activeOpacity={0.9} onPress={() => handleNavigate('clubChannels')}>
+            onPress={() => handleNavigate('clubChannels')}
+          >
             <View style={styles.cardIconGray}>
               <MaterialCommunityIcons name="pound" size={28} color="#fff" />
             </View>
             <View style={styles.cardBody}>
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle}>Salons de discussion</Text>
-                {stats.unreadMessages > 0 ? (
-                  <View style={[styles.badge, { backgroundColor: '#EF4444' }]}>
-                    <Text style={[styles.badgeText, { color: '#fff' }]}>{stats.unreadMessages}</Text>
-                  </View>
-                ) : null}
               </View>
               <Text style={styles.cardMeta}>Discutez avec vos membres</Text>
-              <Text style={styles.cardMeta}>{stats.channels} salons actifs</Text>
+              <Text style={styles.cardMeta}>
+                {channels.filter((c) => c.type === 'chat').length} salon(s) actif(s)
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={palette.gray} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.card, styles.cardPurple]} activeOpacity={0.9} onPress={() => handleNavigate('clubMembers')}>
+          {/* Membres */}
+          <TouchableOpacity
+            style={[styles.card, styles.cardPurple]}
+            activeOpacity={0.9}
+            onPress={() => handleNavigate('clubMembers')}
+          >
             <View style={styles.cardIconPurple}>
               <Ionicons name="people" size={26} color="#fff" />
             </View>
@@ -136,53 +124,17 @@ export default function ClubCommunityManagementScreen({ navigation }: Props) {
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle}>Membres</Text>
                 <View style={[styles.badge, { backgroundColor: '#7C3AED' }]}>
-                  <Text style={[styles.badgeText, { color: '#fff' }]}>{stats.members}</Text>
+                  <Text style={[styles.badgeText, { color: '#fff' }]}>{members.length}</Text>
                 </View>
               </View>
               <Text style={styles.cardMeta}>Gérez les membres de votre communauté</Text>
-              <Text style={[styles.cardMeta, { color: '#6D28D9' }]}>Modération et permissions</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={palette.gray} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.card, styles.cardTurquoise]}
-            activeOpacity={0.9}
-            onPress={() => handleNavigate('clubAppointments')}>
-            <View style={styles.cardIconTurquoise}>
-              <Ionicons name="calendar-outline" size={26} color="#fff" />
-            </View>
-            <View style={styles.cardBody}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>Rendez-vous</Text>
-                <View style={[styles.badge, { backgroundColor: '#41B6A6' }]}>
-                  <Text style={[styles.badgeText, { color: '#fff' }]}>{stats.upcomingEvents}</Text>
-                </View>
-              </View>
-              <Text style={styles.cardMeta}>Consultez les demandes et plannings</Text>
-              <Text style={[styles.cardMeta, { color: '#0F766E' }]}>Demandes à domicile incluses</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={palette.gray} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.card, styles.cardTerracotta]}
-            activeOpacity={0.9}
-            onPress={() => handleNavigate('clubLeaderboard')}>
-            <View style={styles.cardIconTerracotta}>
-              <MaterialCommunityIcons name="trophy-outline" size={28} color="#fff" />
-            </View>
-            <View style={styles.cardBody}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>Classement</Text>
-              </View>
-              <Text style={styles.cardMeta}>Voir votre position inter-clubs</Text>
-              <Text style={[styles.cardMeta, { color: '#C2410C' }]}>Booster ma visibilité</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={palette.gray} />
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <ClubBottomNav current="clubCommunity" />
     </SafeAreaView>
   );
 }
@@ -205,112 +157,90 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-  },
   headerTitle: {
     color: '#fff',
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
   },
   headerSub: {
-    color: '#F1F5F9',
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
     marginTop: 2,
   },
   quickRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 14,
-    backgroundColor: '#FFF7ED',
-    borderBottomWidth: 1,
-    borderBottomColor: '#FDE68A',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    gap: 12,
   },
   quickItem: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
   },
   quickIcon: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   quickValue: {
-    color: palette.text,
+    fontSize: 20,
     fontWeight: '700',
+    color: palette.primary,
   },
   quickLabel: {
-    color: palette.gray,
     fontSize: 12,
+    color: palette.gray,
+    fontWeight: '500',
   },
   container: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     gap: 12,
   },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
     backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: palette.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderRadius: 12,
+    padding: 12,
+    gap: 12,
   },
   cardTerracotta: {
-    borderColor: '#F28B6F66',
-    backgroundColor: '#FFF1EB',
-  },
-  cardTurquoise: {
-    borderColor: '#41B6A666',
-    backgroundColor: '#ECFEFF',
+    borderLeftWidth: 4,
+    borderLeftColor: '#F28B6F',
   },
   cardPurple: {
-    borderColor: '#C4B5FD',
-    backgroundColor: '#F5F3FF',
+    borderLeftWidth: 4,
+    borderLeftColor: '#7C3AED',
   },
   cardIconTerracotta: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     backgroundColor: '#F28B6F',
-    alignItems: 'center',
     justifyContent: 'center',
-  },
-  cardIconTurquoise: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    backgroundColor: '#41B6A6',
     alignItems: 'center',
-    justifyContent: 'center',
   },
   cardIconGray: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    backgroundColor: '#4B5563',
-    alignItems: 'center',
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#6B7280',
     justifyContent: 'center',
+    alignItems: 'center',
   },
   cardIconPurple: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     backgroundColor: '#7C3AED',
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
   },
   cardBody: {
     flex: 1,
@@ -320,23 +250,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
   },
   cardTitle: {
-    color: palette.text,
+    fontSize: 14,
     fontWeight: '700',
-    fontSize: 15,
+    color: palette.text,
   },
   cardMeta: {
+    fontSize: 12,
     color: palette.gray,
-    fontSize: 13,
   },
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 10,
+    borderRadius: 6,
+    backgroundColor: palette.primary,
   },
   badgeText: {
-    fontWeight: '700',
-    fontSize: 12,
+    fontSize: 10,
+    fontWeight: '600',
   },
 });

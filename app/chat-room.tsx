@@ -1,9 +1,22 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+} from 'react-native';
 
 import { UserStackParamList } from '@/navigation/types';
+import { useAuth } from '@/context/AuthContext';
+import { useCommunityMessages } from '@/hooks/useCommunityMessages';
+import { useCommunityMembers } from '@/hooks/useCommunityMembers';
+import { useClubPermissions } from '@/hooks/useClubPermissions';
 
 const palette = {
   primary: '#41B6A6',
@@ -12,86 +25,78 @@ const palette = {
   border: '#E5E7EB',
 };
 
-type Message = {
-  id: number;
-  user: string;
-  avatar: string;
-  message: string;
-  time: string;
-  isEducator: boolean;
-  userRole?: string;
-  reactions?: { [emoji: string]: number };
-};
-
-const announcementMessages: Message[] = [
-  {
-    id: 1,
-    user: 'Sophie Martin',
-    userRole: 'Éducatrice',
-    avatar: 'SM',
-    message:
-      'Nouvelle session de groupe ce samedi !\n\nSession spéciale pour tous les niveaux. Inscriptions ouvertes jusqu’à vendredi soir.\n\nHoraire : 14h-16h\nTarif : 25€',
-    time: 'Il y a 2h',
-    isEducator: true,
-    reactions: { '👍': 12, '🔥': 8 },
-  },
-  {
-    id: 2,
-    user: 'Lucas Dubois',
-    userRole: 'Éducateur',
-    avatar: 'LD',
-    message: 'Rappel : le club sera fermé lundi prochain pour maintenance.\n\nMerci de votre compréhension !',
-    time: 'Hier',
-    isEducator: true,
-    reactions: { '👍': 23 },
-  },
-];
-
-const regularMessages: Message[] = [
-  {
-    id: 1,
-    user: 'Sophie Martin',
-    userRole: 'Éducatrice',
-    avatar: 'SM',
-    message: 'Bonjour à tous ! Rappel important pour la séance de demain.',
-    time: '10:30',
-    isEducator: true,
-  },
-  {
-    id: 2,
-    user: 'Marc Dubois',
-    avatar: 'MD',
-    message: 'Merci Sophie ! À quelle heure exactement ?',
-    time: '10:32',
-    isEducator: false,
-  },
-  {
-    id: 3,
-    user: 'Sophie Martin',
-    userRole: 'Éducatrice',
-    avatar: 'SM',
-    message: 'À 14h comme d’habitude. N’oubliez pas d’apporter des friandises !',
-    time: '10:35',
-    isEducator: true,
-  },
-];
-
 type Props = NativeStackScreenProps<UserStackParamList, 'chatRoom'>;
 
 export default function ChatRoomScreen({ navigation, route }: Props) {
   const { clubId, channelId, channelName } = route.params;
+  const { user, profile } = useAuth();
   const [newMessage, setNewMessage] = useState('');
-  const isAnnouncement = channelId === 'announcements';
-  const messages = isAnnouncement ? announcementMessages : regularMessages;
+
+  // Get messages and send functionality
+  const {
+    messages,
+    loading: messagesLoading,
+    error: messagesError,
+    sendMessage,
+    isSending,
+  } = useCommunityMessages(channelId, user?.uid || '', 30);
+
+  // Get community members
+  const { members, loading: membersLoading } = useCommunityMembers(clubId);
+
+  // Get permissions
+  const { permissions, loading: permissionsLoading } = useClubPermissions(
+    clubId,
+    user?.uid || '',
+    (profile as any)?.role || 'user',
+    []
+  );
+
+  const isAnnouncement = useMemo(
+    () => channelName?.toLowerCase().includes('annonce'),
+    [channelName]
+  );
+
+  const handleSend = async () => {
+    if (!newMessage.trim()) return;
+
+    if (isAnnouncement && !permissions.canPostInAnnouncements) {
+      alert("Vous n'avez pas la permission de publier une annonce");
+      return;
+    }
+
+    await sendMessage(newMessage.trim());
+    setNewMessage('');
+  };
+
+  const formatTime = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'À l\'instant';
+    if (diffMins < 60) return `Il y a ${diffMins}m`;
+    if (diffHours < 24) return `Il y a ${diffHours}h`;
+    if (diffDays < 7) return `Il y a ${diffDays}j`;
+    return date.toLocaleDateString('fr-FR');
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('clubCommunity', { clubId })} style={styles.iconBtn}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('clubCommunity', { clubId })}
+          style={styles.iconBtn}
+        >
           <Ionicons name="arrow-back" size={20} color="#fff" />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>{channelName ?? (isAnnouncement ? 'Annonces' : 'Salon general')}</Text>
+          <Text style={styles.headerTitle}>
+            {channelName ?? (isAnnouncement ? 'Annonces' : 'Salon général')}
+          </Text>
           <Text style={styles.headerSub}>{messages.length} messages</Text>
         </View>
         <TouchableOpacity style={styles.iconBtn}>
@@ -99,32 +104,45 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {messages.map((msg) => (
-          <View key={msg.id} style={[styles.message, msg.isEducator && styles.messageEducator]}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{msg.avatar}</Text>
+      {messagesLoading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={palette.primary} />
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {messages.length === 0 ? (
+            <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 40 }}>
+              <MaterialCommunityIcons name="chat-outline" size={48} color={palette.gray} />
+              <Text style={{ color: palette.gray, marginTop: 12, fontSize: 14 }}>
+                Aucun message pour le moment
+              </Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.author}>{msg.user}</Text>
-                {msg.isEducator ? <View style={styles.badge}><Text style={styles.badgeText}>Éducateur</Text></View> : null}
-              </View>
-              <Text style={styles.meta}>{msg.time}</Text>
-              <Text style={styles.body}>{msg.message}</Text>
-              {msg.reactions ? (
-                <View style={styles.reactions}>
-                  {Object.entries(msg.reactions).map(([emoji, count]) => (
-                    <View key={emoji} style={styles.reactionChip}>
-                      <Text style={styles.reactionText}>{emoji} {count}</Text>
+          ) : (
+            messages.map((msg) => {
+              const isEducator = members.some((m) => m.id === msg.createdBy);
+              return (
+                <View key={msg.id} style={[styles.message, isEducator && styles.messageEducator]}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{msg.createdBy.substring(0, 1).toUpperCase()}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={styles.author}>{msg.createdBy}</Text>
+                      {isEducator ? (
+                        <View style={styles.badge}>
+                          <Text style={styles.badgeText}>Équipe</Text>
+                        </View>
+                      ) : null}
                     </View>
-                  ))}
+                    <Text style={styles.meta}>{formatTime(msg.createdAt)}</Text>
+                    <Text style={styles.body}>{msg.text}</Text>
+                  </View>
                 </View>
-              ) : null}
-            </View>
-          </View>
-        ))}
-      </ScrollView>
+              );
+            })
+          )}
+        </ScrollView>
+      )}
 
       <View style={styles.inputBar}>
         <TouchableOpacity style={styles.iconBtnAlt}>
@@ -136,12 +154,28 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
         <TextInput
           value={newMessage}
           onChangeText={setNewMessage}
-          placeholder="Écrire un message..."
+          placeholder={
+            isAnnouncement
+              ? permissions.canPostInAnnouncements
+                ? 'Écrivez une annonce...'
+                : 'Vous ne pouvez pas poster ici'
+              : 'Écrire un message...'
+          }
           placeholderTextColor="#9CA3AF"
           style={styles.input}
+          editable={!isSending}
+          multiline
         />
-        <TouchableOpacity style={styles.sendBtn} onPress={() => setNewMessage('')}>
-          <Ionicons name="send" size={18} color="#fff" />
+        <TouchableOpacity
+          style={[styles.sendBtn, isSending && { opacity: 0.6 }]}
+          onPress={handleSend}
+          disabled={isSending}
+        >
+          {isSending ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Ionicons name="send" size={18} color="#fff" />
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -197,14 +231,6 @@ const styles = StyleSheet.create({
   badgeText: { color: palette.primary, fontWeight: '700', fontSize: 11 },
   meta: { color: palette.gray, fontSize: 12 },
   body: { color: palette.text, fontSize: 14, marginTop: 4 },
-  reactions: { flexDirection: 'row', gap: 6, marginTop: 6 },
-  reactionChip: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  reactionText: { color: palette.text, fontWeight: '600', fontSize: 12 },
   inputBar: {
     position: 'absolute',
     left: 0,
@@ -213,7 +239,7 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: '#fff',
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     gap: 8,
     borderTopWidth: 1,
     borderColor: palette.border,
@@ -227,6 +253,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     color: palette.text,
+    maxHeight: 100,
   },
   iconBtnAlt: { padding: 8, borderRadius: 10, backgroundColor: '#fff' },
   sendBtn: {
