@@ -57,11 +57,44 @@ export default function AccountScreen() {
   const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
   const [followedClubsCount, setFollowedClubsCount] = useState(0);
+  const [realClubs, setRealClubs] = useState<any[]>([]);
 
   useEffect(() => {
-    // Compter les clubs favoris
+    // Compter les clubs favoris et charger les données
     const clubCount = Array.from(favorites.values()).filter(type => type === 'club').length;
     setFollowedClubsCount(clubCount);
+
+    // Charger les clubs favoris réels
+    const loadClubs = async () => {
+      try {
+        const clubIds = Array.from(favorites.entries())
+          .filter(([, type]) => type === 'club')
+          .map(([itemId]) => itemId);
+
+        if (clubIds.length === 0) {
+          setRealClubs([]);
+          return;
+        }
+
+        const clubsData: any[] = [];
+        for (const clubId of clubIds.slice(0, 3)) { // Limiter à 3 clubs pour la page compte
+          const clubDoc = await getDoc(doc(db, 'club', clubId));
+          if (clubDoc.exists()) {
+            clubsData.push({
+              id: clubDoc.id,
+              name: clubDoc.data().name || 'Sans nom',
+              icon: '🏆',
+            });
+          }
+        }
+
+        setRealClubs(clubsData);
+      } catch (err) {
+        console.error('Erreur lors du chargement des clubs:', err);
+      }
+    };
+
+    loadClubs();
   }, [favorites]);
 
   const profileData = useMemo(() => ((profile as any)?.profile ?? {}) as Record<string, any>, [profile]);
@@ -244,16 +277,24 @@ export default function AccountScreen() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Clubs suivis</Text>
             <TouchableOpacity onPress={() => navigation.navigate('followedClubs')}>
-              <Text style={styles.sectionLink}>Découvrir</Text>
+              <Text style={styles.sectionLink}>Voir tout</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.clubsRow}>
-            {clubs.slice(0, 3).map((club, idx) => (
-              <View key={club.id ?? idx} style={styles.clubCard}>
-                <Text style={styles.clubIcon}>{club.icon ?? '🏆'}</Text>
-                <Text style={styles.clubName}>{club.name}</Text>
-              </View>
-            ))}
+            {realClubs && realClubs.length > 0 ? (
+              realClubs.map((club, idx) => (
+                <TouchableOpacity
+                  key={club.id ?? idx}
+                  style={styles.clubCard}
+                  onPress={() => navigation.navigate('clubDetail', { clubId: club.id })}
+                >
+                  <Text style={styles.clubIcon}>{club.icon ?? '🏆'}</Text>
+                  <Text style={styles.clubName}>{club.name}</Text>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <Text style={styles.emptyClubs}>Aucun club suivi</Text>
+            )}
           </View>
         </View>
 
@@ -448,6 +489,7 @@ const styles = StyleSheet.create({
   },
   clubIcon: { fontSize: 20 },
   clubName: { color: palette.text, fontSize: 12, textAlign: 'center' },
+  emptyClubs: { color: palette.gray, fontSize: 13, textAlign: 'center' },
   error: { color: '#DC2626', fontSize: 13, textAlign: 'center', marginBottom: 8 },
   logoutButton: {
     marginTop: 8,
