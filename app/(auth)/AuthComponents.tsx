@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 2,
   },
-  checkboxLabel: { color: palette.text, fontSize: 14, fontWeight: '700' },
+  checkboxLabel: { color: palette.text, fontSize: 14, fontWeight: '700', marginTop: 2 },
   checkboxDescription: { color: palette.gray, fontSize: 12, marginTop: 4, lineHeight: 18 },
   infoCard: {
     flexDirection: 'row',
