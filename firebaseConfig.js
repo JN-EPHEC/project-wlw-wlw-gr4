@@ -1,11 +1,9 @@
 import { initializeApp } from "firebase/app";
-import { FacebookAuthProvider, getAuth, getReactNativePersistence, initializeAuth } from "firebase/auth";
+import { FacebookAuthProvider, GoogleAuthProvider, getAuth, getReactNativePersistence, initializeAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
-
-// Import du config Firebase
 import { firebaseConfig } from "./firebase_env";
 
 // Initialiser Firebase
@@ -21,8 +19,11 @@ export const storage = getStorage(app);
 export const db = getFirestore(app);
 
 // Facebook Auth Provider
-export const provider = new FacebookAuthProvider();
+export const facebookProvider = new FacebookAuthProvider();
 
+// Google Auth Provider
+export const googleProvider = new GoogleAuthProvider();
 
-// Export default
+export const provider = facebookProvider;
+
 export default app;
