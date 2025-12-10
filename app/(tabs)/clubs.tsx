@@ -21,6 +21,7 @@ import { useFetchClubs, filterClubs, Club } from '@/hooks/useFetchClubs';
 import { useFetchEducators, Educator } from '@/hooks/useFetchEducators';
 import { useFetchEvents, Event } from '@/hooks/useFetchEvents';
 import { useFavorites } from '@/hooks/useFavorites';
+import { useBoostedClubsList } from '@/hooks/useBoostedClubsList';
 
 const palette = {
   primary: '#2DB7A4',
@@ -64,10 +65,11 @@ export default function ClubsScreen() {
   const { clubs, loading: clubsLoading, error: clubsError } = useFetchClubs();
   const { educators, loading: educatorsLoading, error: educatorsError } = useFetchEducators();
   const { events, loading: eventsLoading, error: eventsError } = useFetchEvents();
+  const { boostedClubs, loading: boostedLoading, error: boostedError } = useBoostedClubsList();
   const { favorites, isFavorite, toggleFavorite } = useFavorites();
   
-  const loading = clubsLoading || educatorsLoading || eventsLoading;
-  const error = clubsError || educatorsError || eventsError;
+  const loading = clubsLoading || educatorsLoading || eventsLoading || boostedLoading;
+  const error = clubsError || educatorsError || eventsError || boostedError;
   
   const {
     filters,
@@ -174,6 +176,19 @@ export default function ClubsScreen() {
     }
   };
 
+  const getSectionIcon = (section: string) => {
+    const icons: { [key: string]: { icon: string; color: string } } = {
+      boosted: { icon: 'lightning-bolt', color: palette.orange },
+      favorites: { icon: 'heart', color: '#EF4444' },
+      near: { icon: 'map-marker', color: palette.primary },
+      new: { icon: 'star-circle', color: palette.purple },
+      special: { icon: 'target', color: '#F59E0B' },
+      events: { icon: 'calendar', color: palette.primary },
+      trainers: { icon: 'account-tie', color: '#8B5CF6' },
+    };
+    return icons[section] || { icon: 'circle', color: palette.gray };
+  };
+
   const getItemType = (item: CardBase): 'club' | 'educator' | 'event' => {
     // Vérifier par les propriétés spécifiques de chaque type
     if ('startDate' in item) return 'event';
@@ -209,15 +224,24 @@ export default function ClubsScreen() {
   const Section = ({
     title,
     action,
+    icon,
+    iconColor,
     children,
   }: {
     title: string;
     action?: () => void;
+    icon?: string;
+    iconColor?: string;
     children: React.ReactNode;
   }) => (
     <View style={{ gap: 10 }}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{title}</Text>
+        <View style={styles.sectionTitleRow}>
+          {icon && (
+            <MaterialCommunityIcons name={icon as any} size={18} color={iconColor || palette.primary} />
+          )}
+          <Text style={styles.sectionTitle}>{title}</Text>
+        </View>
         {action ? (
           <TouchableOpacity onPress={action}>
             <Text style={styles.link}>Voir tout</Text>
@@ -237,8 +261,8 @@ export default function ClubsScreen() {
   const SmallCard = ({ item }: { item: CardBase }) => (
     <TouchableOpacity style={styles.smallCard} activeOpacity={0.9} onPress={() => handleCardPress(item)}>
       <Image source={{ uri: item.image }} style={styles.smallImage} />
-      <View style={{ flex: 1, gap: 4 }}>
-        <View style={styles.smallMetaRow}>
+      <View style={styles.smallContent}>
+        <View style={styles.smallCardHeader}>
           <Text style={styles.smallTitle} numberOfLines={1}>
             {item.title}
           </Text>
@@ -254,27 +278,29 @@ export default function ClubsScreen() {
           {item.subtitle}
         </Text>
         <View style={styles.smallMetaRow}>
-          {item.rating ? (
-            <View style={styles.inline}>
-              <MaterialCommunityIcons name="star" size={14} color="#F59E0B" />
-              <Text style={styles.subMeta}>
-                {item.rating} ({item.reviews})
-              </Text>
-            </View>
-          ) : null}
-          {item.distance ? (
-            <View style={styles.inline}>
-              <Ionicons name="location-outline" size={12} color={palette.gray} />
-              <Text style={styles.subMeta}>{item.distance}</Text>
-            </View>
-          ) : null}
+          <View style={styles.smallMetaLeft}>
+            {item.rating ? (
+              <View style={styles.inline}>
+                <MaterialCommunityIcons name="star" size={14} color="#F59E0B" />
+                <Text style={styles.subMeta}>
+                  {item.rating} ({item.reviews})
+                </Text>
+              </View>
+            ) : null}
+            {item.distance ? (
+              <View style={styles.inline}>
+                <Ionicons name="location-outline" size={12} color={palette.gray} />
+                <Text style={styles.subMeta}>{item.distance}</Text>
+              </View>
+            ) : null}
+            {item.price ? <Text style={styles.subMeta}>{item.price}</Text> : null}
+          </View>
           {item.verified ? (
             <View style={styles.badgeSoft}>
               <Text style={styles.badgeSoftText}>Verified</Text>
             </View>
           ) : null}
         </View>
-        {item.price ? <Text style={styles.subMeta}>{item.price}</Text> : null}
       </View>
     </TouchableOpacity>
   );
@@ -294,40 +320,40 @@ export default function ClubsScreen() {
           color={isFavorite(item.id as string) ? palette.orange : '#fff'}
         />
       </TouchableOpacity>
-      <View style={{ padding: 10, gap: 6 }}>
+      <View style={styles.tileContent}>
         <Text style={styles.tileTitle} numberOfLines={2}>
           {item.title}
         </Text>
         <Text style={styles.tileSubtitle}>{item.subtitle}</Text>
         <View style={styles.metaRow}>
-          {item.rating ? (
-            <View style={styles.inline}>
-              <MaterialCommunityIcons name="star" size={14} color="#F59E0B" />
-              <Text style={styles.subMeta}>
-                {item.rating} ({item.reviews})
-              </Text>
-            </View>
-          ) : null}
-          {item.distance ? (
-            <View style={styles.inline}>
-              <Ionicons name="location-outline" size={12} color={palette.gray} />
-              <Text style={styles.subMeta}>{item.distance}</Text>
-            </View>
-          ) : null}
-        </View>
-        <View style={styles.metaRow}>
-          {'tagLabel' in item && item.tagLabel ? (
-            <View style={[styles.badgeSoft, { backgroundColor: ('tagColor' in item ? item.tagColor : '#E0F2F1') ?? '#E0F2F1' }]}>
-              <Text style={[styles.badgeSoftText, { color: palette.text }]}>{'tagLabel' in item ? item.tagLabel : ''}</Text>
-            </View>
-          ) : null}
+          <View style={styles.tileMetaLeft}>
+            {item.rating ? (
+              <View style={styles.inline}>
+                <MaterialCommunityIcons name="star" size={14} color="#F59E0B" />
+                <Text style={styles.subMeta}>
+                  {item.rating} ({item.reviews})
+                </Text>
+              </View>
+            ) : null}
+            {item.distance ? (
+              <View style={styles.inline}>
+                <Ionicons name="location-outline" size={12} color={palette.gray} />
+                <Text style={styles.subMeta}>{item.distance}</Text>
+              </View>
+            ) : null}
+            {item.price ? <Text style={styles.subMeta}>{item.price}</Text> : null}
+          </View>
           {item.verified ? (
             <View style={styles.badgeSoft}>
               <Text style={styles.badgeSoftText}>Verified</Text>
             </View>
           ) : null}
-          {item.price ? <Text style={styles.subMeta}>{item.price}</Text> : null}
         </View>
+        {'tagLabel' in item && item.tagLabel ? (
+          <View style={[styles.badgeSoft, { backgroundColor: ('tagColor' in item ? item.tagColor : '#E0F2F1') ?? '#E0F2F1', marginTop: 8 }]}>
+            <Text style={[styles.badgeSoftText, { color: palette.text }]}>{'tagLabel' in item ? item.tagLabel : ''}</Text>
+          </View>
+        ) : null}
       </View>
     </TouchableOpacity>
   );
@@ -379,21 +405,35 @@ export default function ClubsScreen() {
             <Chip label="Évènements" active={filter === 'events'} onPress={() => setFilter('events')} />
           </View>
 
-          <Section title={titles.boosted}>
+          <Section 
+            title={titles.boosted}
+            icon={getSectionIcon('boosted').icon}
+            iconColor={getSectionIcon('boosted').color}
+          >
             {loading ? (
               <Text style={styles.loadingText}>Chargement...</Text>
-            ) : displayedItems.length > 0 ? (
+            ) : filter === 'all' && boostedClubs.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                {boostedClubs.map((item) => (
+                  <TileCard key={item.id} item={item as any} />
+                ))}
+              </ScrollView>
+            ) : filter !== 'all' && displayedItems.length > 0 ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
                 {displayedItems.slice(0, 4).map((item) => (
                   <TileCard key={item.id} item={item as any} />
                 ))}
               </ScrollView>
             ) : (
-              <Text style={styles.emptyText}>Aucun résultat</Text>
+              <Text style={styles.emptyText}>{filter === 'all' ? 'Aucun club boosté disponible' : 'Aucun résultat'}</Text>
             )}
           </Section>
 
-          <Section title={titles.favorites}>
+          <Section 
+            title={titles.favorites}
+            icon={getSectionIcon('favorites').icon}
+            iconColor={getSectionIcon('favorites').color}
+          >
             {loading ? (
               <Text style={styles.loadingText}>Chargement...</Text>
             ) : favoriteItems.length > 0 ? (
@@ -407,7 +447,52 @@ export default function ClubsScreen() {
             )}
           </Section>
 
-          <Section title={titles.near} action={() => navigation.navigate('home')}>
+          {filter === 'all' && (
+            <>
+              <Section 
+                title="Événements à venir"
+                icon={getSectionIcon('events').icon}
+                iconColor={getSectionIcon('events').color}
+              >
+                {eventsLoading ? (
+                  <Text style={styles.loadingText}>Chargement...</Text>
+                ) : events.length > 0 ? (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                    {events.slice(0, 4).map((item) => (
+                      <TileCard key={item.id} item={item as any} />
+                    ))}
+                  </ScrollView>
+                ) : (
+                  <Text style={styles.emptyText}>Aucun événement à venir</Text>
+                )}
+              </Section>
+
+              <Section 
+                title="Dresseurs populaires"
+                icon={getSectionIcon('trainers').icon}
+                iconColor={getSectionIcon('trainers').color}
+              >
+                {educatorsLoading ? (
+                  <Text style={styles.loadingText}>Chargement...</Text>
+                ) : educators.length > 0 ? (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                    {educators.slice(0, 4).map((item) => (
+                      <TileCard key={item.id} item={item as any} />
+                    ))}
+                  </ScrollView>
+                ) : (
+                  <Text style={styles.emptyText}>Aucun dresseur disponible</Text>
+                )}
+              </Section>
+            </>
+          )}
+
+          <Section 
+            title={titles.near}
+            action={() => navigation.navigate('home')}
+            icon={getSectionIcon('near').icon}
+            iconColor={getSectionIcon('near').color}
+          >
             {loading ? (
               <Text style={styles.loadingText}>Chargement...</Text>
             ) : displayedItems.length > 0 ? (
@@ -421,7 +506,11 @@ export default function ClubsScreen() {
             )}
           </Section>
 
-          <Section title={titles.new}>
+          <Section 
+            title={titles.new}
+            icon={getSectionIcon('new').icon}
+            iconColor={getSectionIcon('new').color}
+          >
             {loading ? (
               <Text style={styles.loadingText}>Chargement...</Text>
             ) : displayedItems.length > 0 ? (
@@ -435,7 +524,11 @@ export default function ClubsScreen() {
             )}
           </Section>
 
-          <Section title={titles.special}>
+          <Section 
+            title={titles.special}
+            icon={getSectionIcon('special').icon}
+            iconColor={getSectionIcon('special').color}
+          >
             {loading ? (
               <Text style={styles.loadingText}>Chargement...</Text>
             ) : displayedItems.length > 0 ? (
@@ -518,6 +611,7 @@ const styles = StyleSheet.create({
   chipText: { color: palette.gray, fontWeight: '600' },
   chipTextActive: { color: palette.primary, fontWeight: '700' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionTitle: { color: palette.text, fontSize: 16, fontWeight: '800' },
   link: { color: palette.primary, fontWeight: '700' },
   tileCard: {
@@ -530,6 +624,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   tileImage: { width: '100%', height: 120 },
+  tileContent: { padding: 12, gap: 8 },
   favFab: {
     position: 'absolute',
     top: 8,
@@ -543,7 +638,8 @@ const styles = StyleSheet.create({
   },
   tileTitle: { color: palette.text, fontWeight: '700', fontSize: 15 },
   tileSubtitle: { color: palette.gray, fontSize: 12 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  tileMetaLeft: { flexDirection: 'column', gap: 4, flex: 1 },
+  metaRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
   inline: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   subMeta: { color: palette.gray, fontSize: 12 },
   badgeSoft: {
@@ -570,7 +666,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     overflow: 'hidden',
-    gap: 6,
     shadowColor: '#000',
     shadowOpacity: 0.04,
     shadowOffset: { width: 0, height: 4 },
@@ -578,9 +673,12 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   smallImage: { width: '100%', height: 120 },
-  smallTitle: { color: palette.text, fontWeight: '700', fontSize: 14 },
-  smallSubtitle: { color: palette.gray, fontSize: 12 },
-  smallMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
+  smallContent: { flex: 1, paddingHorizontal: 12, paddingVertical: 12, gap: 8 },
+  smallCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  smallTitle: { color: palette.text, fontWeight: '700', fontSize: 14, flex: 1 },
+  smallSubtitle: { color: palette.gray, fontSize: 12, marginTop: 2 },
+  smallMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginTop: 6 },
+  smallMetaLeft: { flexDirection: 'column', gap: 4, flex: 1 },
   loadingText: { color: palette.gray, fontSize: 14, textAlign: 'center', paddingVertical: 16 },
   errorText: { color: '#DC2626', fontSize: 14, textAlign: 'center', paddingVertical: 16 },
   emptyText: { color: palette.gray, fontSize: 14, textAlign: 'center', paddingVertical: 16 },
