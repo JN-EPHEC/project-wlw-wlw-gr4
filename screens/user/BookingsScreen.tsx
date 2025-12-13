@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   SafeAreaView,
   StyleSheet,
@@ -7,16 +7,59 @@ import {
   View,
   FlatList,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useUserUpcomingBookings } from '@/hooks/useUserUpcomingBookings';
+import { useUpdateBooking } from '@/hooks/useUpdateBooking';
 
 import { UserStackParamList } from '@/navigation/types';
 
 type Props = NativeStackScreenProps<UserStackParamList, 'bookings'>;
 
 export default function BookingsScreen({ navigation }: Props) {
-  const { bookings, loading, error } = useUserUpcomingBookings();
+  const { bookings, loading, error, loadUserBookings } = useUserUpcomingBookings();
+  const { updateBooking, loading: updateLoading } = useUpdateBooking();
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  const handleAcceptBooking = async (bookingId: string) => {
+    try {
+      setUpdatingId(bookingId);
+      await updateBooking(bookingId, { status: 'confirmed' });
+      Alert.alert('Succès', 'Réservation confirmée!');
+      setTimeout(() => loadUserBookings(), 500);
+    } catch (err) {
+      Alert.alert('Erreur', 'Impossible de confirmer la réservation');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleRefuseBooking = async (bookingId: string) => {
+    Alert.alert(
+      'Confirmer le refus',
+      'Êtes-vous sûr de vouloir refuser cette réservation?',
+      [
+        { text: 'Annuler', onPress: () => {} },
+        {
+          text: 'Refuser',
+          onPress: async () => {
+            try {
+              setUpdatingId(bookingId);
+              await updateBooking(bookingId, { status: 'refused' });
+              Alert.alert('Succès', 'Réservation refusée');
+              setTimeout(() => loadUserBookings(), 500);
+            } catch (err) {
+              Alert.alert('Erreur', 'Impossible de refuser la réservation');
+            } finally {
+              setUpdatingId(null);
+            }
+          },
+          style: 'destructive',
+        },
+      ]
+    );
+  };
 
   if (loading) {
     return (
@@ -87,37 +130,97 @@ export default function BookingsScreen({ navigation }: Props) {
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
           <View style={styles.bookingCard}>
+            {/* Header avec titre et statut */}
             <View style={styles.cardHeader}>
-              <View>
-                <Text style={styles.clubName}>{item.clubName}</Text>
-                <Text style={styles.trainerName}>{item.trainerName}</Text>
-              </View>
-              <View
-                style={[
-                  styles.statusBadge,
-                  item.status === 'confirmed'
-                    ? styles.statusConfirmed
-                    : item.status === 'pending'
-                      ? styles.statusPending
-                      : styles.statusCancelled,
-                ]}
-              >
-                <Text style={styles.statusText}>
-                  {item.status === 'confirmed'
-                    ? 'Confirmée'
-                    : item.status === 'pending'
-                      ? 'En attente'
-                      : 'Annulée'}
-                </Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.courseTitle}>{item.title}</Text>
+                <View style={styles.statusBadge}>
+                  <Text style={[
+                    styles.statusText,
+                    item.status === 'confirmed' && { color: '#059669' },
+                    item.status === 'pending' && { color: '#D97706' },
+                    item.status === 'cancelled' && { color: '#DC2626' },
+                  ]}>
+                    {item.status === 'confirmed'
+                      ? '✓ Confirmée'
+                      : item.status === 'pending'
+                        ? '⏳ En attente'
+                        : '✕ Annulée'}
+                  </Text>
+                </View>
               </View>
             </View>
-            <View style={styles.cardDetails}>
-              <Text style={styles.detail}>
-                📅 {new Date(item.date).toLocaleDateString('fr-FR')}
-              </Text>
-              <Text style={styles.detail}>🕐 {item.time}</Text>
-              <Text style={styles.detail}>🐕 {item.dogName}</Text>
+
+            {/* Club info */}
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Club:</Text>
+              <Text style={styles.infoValue}>{item.club}</Text>
             </View>
+
+            {/* Trainer info */}
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Éducateur:</Text>
+              <Text style={styles.infoValue}>{item.trainer}</Text>
+            </View>
+
+            {/* Date, time, dog */}
+            <View style={styles.detailsSection}>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailIcon}>📅</Text>
+                <Text style={styles.detailText}>{item.date}</Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailIcon}>🕐</Text>
+                <Text style={styles.detailText}>{item.time}</Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailIcon}>🐕</Text>
+                <Text style={styles.detailText}>{item.dog}</Text>
+              </View>
+            </View>
+
+            {/* Action buttons */}
+            {item.status === 'pending' && (
+              <View style={styles.actionButtons}>
+                <TouchableOpacity 
+                  style={[styles.actionBtn, styles.acceptBtn]}
+                  onPress={() => handleAcceptBooking(item.id)}
+                  disabled={updatingId === item.id || updateLoading}
+                >
+                  {updatingId === item.id && updateLoading ? (
+                    <ActivityIndicator size="small" color="#059669" />
+                  ) : (
+                    <Text style={styles.acceptBtnText}>Accepter</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.actionBtn, styles.refuseBtn]}
+                  onPress={() => handleRefuseBooking(item.id)}
+                  disabled={updatingId === item.id || updateLoading}
+                >
+                  {updatingId === item.id && updateLoading ? (
+                    <ActivityIndicator size="small" color="#DC2626" />
+                  ) : (
+                    <Text style={styles.refuseBtnText}>Refuser</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+            {item.status === 'confirmed' && (
+              <View style={styles.actionButtons}>
+                <TouchableOpacity 
+                  style={[styles.actionBtn, styles.refuseBtn]}
+                  onPress={() => handleRefuseBooking(item.id)}
+                  disabled={updatingId === item.id || updateLoading}
+                >
+                  {updatingId === item.id && updateLoading ? (
+                    <ActivityIndicator size="small" color="#DC2626" />
+                  ) : (
+                    <Text style={styles.refuseBtnText}>Refuser</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
       />
@@ -143,23 +246,110 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   exploreButtonText: { color: '#FFF', fontWeight: '600', textAlign: 'center' },
-  listContent: { padding: 16, gap: 12 },
+  listContent: { padding: 16, gap: 12, paddingBottom: 32 },
   bookingCard: {
     backgroundColor: '#FFF',
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderLeftWidth: 4,
+    borderLeftColor: '#41B6A6',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     gap: 12,
   },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  clubName: { fontSize: 16, fontWeight: '700', color: '#1F2937', marginBottom: 4 },
-  trainerName: { fontSize: 14, color: '#6B7280' },
-  statusBadge: { paddingVertical: 4, paddingHorizontal: 12, borderRadius: 6 },
-  statusConfirmed: { backgroundColor: '#D1FAE5' },
-  statusPending: { backgroundColor: '#FEF3C7' },
-  statusCancelled: { backgroundColor: '#FEE2E2' },
-  statusText: { fontSize: 12, fontWeight: '600' },
-  cardDetails: { gap: 8 },
-  detail: { fontSize: 14, color: '#4B5563' },
+  courseTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  statusBadge: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  infoLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  infoValue: {
+    fontSize: 14,
+    color: '#1F2937',
+    fontWeight: '500',
+    flex: 1,
+    textAlign: 'right',
+  },
+  detailsSection: {
+    gap: 10,
+    paddingVertical: 8,
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  detailIcon: {
+    fontSize: 16,
+  },
+  detailText: {
+    fontSize: 13,
+    color: '#4B5563',
+    fontWeight: '500',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  actionBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  acceptBtn: {
+    backgroundColor: '#D1FAE5',
+  },
+  acceptBtnText: {
+    color: '#059669',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  refuseBtn: {
+    backgroundColor: '#FEE2E2',
+  },
+  refuseBtnText: {
+    color: '#DC2626',
+    fontWeight: '600',
+    fontSize: 13,
+  },
 });

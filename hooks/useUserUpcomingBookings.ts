@@ -39,9 +39,9 @@ export function useUserUpcomingBookings() {
       setLoading(true);
       setError(null);
 
-      // Récupérer les bookings de l'utilisateur
+      // Récupérer les bookings de l'utilisateur (utiliser array-contains pour userIds)
       const bookingsCollection = collection(db, 'Bookings');
-      const q = query(bookingsCollection, where('userId', '==', user.uid));
+      const q = query(bookingsCollection, where('userIds', 'array-contains', user.uid));
       const snapshot = await getDocs(q);
 
       const now = new Date();
@@ -52,16 +52,17 @@ export function useUserUpcomingBookings() {
         const data = bookingDoc.data();
         let bookingDate: Date | null = null;
 
-        if (data.bookingDate) {
-          if (data.bookingDate.toDate) {
-            bookingDate = data.bookingDate.toDate();
-          } else if (typeof data.bookingDate === 'number') {
-            bookingDate = new Date(data.bookingDate);
+        // Utiliser sessionDate au lieu de bookingDate
+        if (data.sessionDate) {
+          if (data.sessionDate.toDate) {
+            bookingDate = data.sessionDate.toDate();
+          } else if (typeof data.sessionDate === 'number') {
+            bookingDate = new Date(data.sessionDate);
           }
         }
 
-        // Filtrer seulement les bookings futurs et non annulés
-        if (bookingDate && bookingDate > now && data.status !== 'cancelled') {
+        // Filtrer seulement les bookings futurs et non annulés/refusés
+        if (bookingDate && bookingDate > now && !['cancelled', 'rejected', 'refused'].includes(data.status)) {
           // Récupérer les infos du club
           let clubName = 'Club inconnu';
           if (data.clubId) {
@@ -75,16 +76,23 @@ export function useUserUpcomingBookings() {
             }
           }
 
-          // Récupérer les infos du chien
+          // Récupérer le nom du premier chien
           let dogName = 'Chien inconnu';
-          if (data.dogId) {
+          if (data.dogIds && data.dogIds.length > 0) {
+            dogName = data.dogIds[0]; // Utiliser directement le dogId qui est le nom
+          }
+
+          // Récupérer le nom complet de l'éducateur
+          let educatorName = 'Éducateur inconnu';
+          if (data.educatorId) {
             try {
-              const dogDoc = await getDoc(doc(db, 'Chien', data.dogId));
-              if (dogDoc.exists()) {
-                dogName = dogDoc.data().name || 'Chien inconnu';
+              const educatorDoc = await getDoc(doc(db, 'educators', data.educatorId));
+              if (educatorDoc.exists()) {
+                const educatorData = educatorDoc.data();
+                educatorName = `${educatorData.firstName || ''} ${educatorData.lastName || ''}`.trim() || 'Éducateur';
               }
             } catch (err) {
-              console.error('Erreur récupération chien:', err);
+              console.error('Erreur récupération éducateur:', err);
             }
           }
 
@@ -97,14 +105,14 @@ export function useUserUpcomingBookings() {
 
           upcomingBookings.push({
             id: bookingDoc.id,
-            title: data.title || data.courseTitle || 'Séance',
-            status: data.status || 'confirmed',
+            title: data.title || 'Séance',
+            status: data.status || 'pending',
             club: clubName,
-            trainer: data.trainerName || data.trainer || 'Entraîneur',
+            trainer: educatorName,
             dog: dogName,
             date: dateStr,
             time: timeStr,
-            bookingDate: data.bookingDate,
+            bookingDate: data.sessionDate,
           });
         }
       }
