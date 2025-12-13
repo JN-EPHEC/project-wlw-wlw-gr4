@@ -328,12 +328,16 @@ export default function ClubAppointmentsScreen({ navigation }: Props) {
   };
 
   const openModifyHomeRequestModal = (booking: BookingDisplay) => {
-    setModifyingRequestId(booking.id);
-    setModifyFormData({
-      sessionDate: booking.sessionDate instanceof Timestamp ? booking.sessionDate.toDate() : new Date(booking.sessionDate),
-      educatorId: booking.educatorId || '',
-    });
-    setModifyHomeRequestVisible(true);
+    setShowHomeRequests(false); // Fermer la modal des demandes
+    setTimeout(() => {
+      // Attendre que la première modal se ferme avant d'ouvrir la deuxième
+      setModifyingRequestId(booking.id);
+      setModifyFormData({
+        sessionDate: booking.sessionDate instanceof Timestamp ? booking.sessionDate.toDate() : new Date(booking.sessionDate),
+        educatorId: booking.educatorId || '',
+      });
+      setModifyHomeRequestVisible(true);
+    }, 300);
   };
 
   const handleModifyHomeRequest = async () => {
@@ -351,6 +355,10 @@ export default function ClubAppointmentsScreen({ navigation }: Props) {
       });
       Alert.alert('Succès', 'Demande modifiée et renvoyée au client');
       setModifyHomeRequestVisible(false);
+      // Rouvrir la modal des demandes après 300ms
+      setTimeout(() => {
+        setShowHomeRequests(true);
+      }, 300);
     } catch (err) {
       Alert.alert('Erreur', 'Impossible de modifier la demande');
       console.error(err);
