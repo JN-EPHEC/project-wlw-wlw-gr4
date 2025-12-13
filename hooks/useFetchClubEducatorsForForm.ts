@@ -55,10 +55,10 @@ export const useFetchClubEducatorsForForm = (clubId: string | null): UseFetchClu
         }
 
         // Récupérer les données de chaque éducateur
-        const promises = educatorIds.map(educatorId =>
+        const promises = educatorIds.map((educatorId: string) =>
           new Promise<EducatorOption | null>(async (resolve) => {
             try {
-              const educatorRef = doc(db, 'educators', id);
+              const educatorRef = doc(db, 'educators', educatorId);
               const educatorSnap = await getDoc(educatorRef);
               if (educatorSnap.exists()) {
                 const data = educatorSnap.data();
@@ -72,7 +72,7 @@ export const useFetchClubEducatorsForForm = (clubId: string | null): UseFetchClu
                 resolve(null);
               }
             } catch (err) {
-              console.error('❌ Error fetching educator', id, err);
+              console.error('❌ Error fetching educator', educatorId, err);
               resolve(null);
             }
           })
