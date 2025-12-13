@@ -365,7 +365,7 @@ export default function ClubDetailScreen({ navigation, route }: Props) {
                     >
                       <View style={{ flex: 1 }}>
                         <Text style={styles.courseTitle}>
-                          {isBooking ? 'Séance privée' : item.title}
+                          {isBooking ? (item.isGroupCourse ? item.title : 'Séance privée') : item.title}
                         </Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 8 }}>
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -433,7 +433,7 @@ export default function ClubDetailScreen({ navigation, route }: Props) {
                     <View key={item.id} style={styles.courseCardInfo}>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.courseTitle}>
-                          {isBooking ? 'Séance privée' : item.title}
+                          {isBooking ? (item.isGroupCourse ? item.title : 'Séance privée') : item.title}
                         </Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 8 }}>
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>

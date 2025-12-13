@@ -9,10 +9,14 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from 'react-native';
+import { Timestamp } from 'firebase/firestore';
 
 import TeacherBottomNav from '@/components/TeacherBottomNav';
 import { TeacherStackParamList } from '@/navigation/types';
+import { useFetchEducatorBookings } from '@/hooks/useFetchEducatorBookings';
+import { BookingDisplay } from '@/types/Booking';
 
 const palette = {
   primary: '#F28B6F',
@@ -22,51 +26,11 @@ const palette = {
   accent: '#41B6A6',
 };
 
-const planning = {
-  today: [
-    {
-      id: 1,
-      time: '09:00',
-      dog: 'Nova',
-      client: 'Marie Dupont',
-      type: 'Coaching chiot',
-      place: 'Parc Monceau',
-      status: 'confirmed',
-    },
-    {
-      id: 2,
-      time: '11:30',
-      dog: 'Rex',
-      client: 'Thomas Petit',
-      type: 'Agility groupe',
-      place: 'Club Vincennes',
-      status: 'confirmed',
-    },
-    {
-      id: 3,
-      time: '15:00',
-      dog: 'Luna',
-      client: 'Julie Roux',
-      type: 'A domicile',
-      place: 'Boulogne',
-      status: 'pending',
-    },
-  ],
-  week: [
-    { id: 4, day: 'Mer', time: '10:00', dog: 'Rocky', client: 'Marc', type: 'Obeissance', place: 'Neuilly', status: 'pending' },
-    { id: 5, day: 'Jeu', time: '14:00', dog: 'Bella', client: 'Sarah', type: 'Agility', place: 'Vincennes', status: 'confirmed' },
-    { id: 6, day: 'Ven', time: '18:00', dog: 'Milo', client: 'Lucas', type: 'Collectif', place: 'Pantin', status: 'waiting' },
-  ],
-  requests: [
-    { id: 7, client: 'Nouveau lead', detail: 'Cours de rappel pour Oslo', location: 'Chatillon', budget: '60 EUR' },
-    { id: 8, client: 'Club Tendance', detail: '2 cours collectifs a programmer', location: 'Montreuil', budget: 'A definir' },
-  ],
-};
+type TabKey = 'today' | 'week';
 
-const tabs: Array<{ key: keyof typeof planning; label: string }> = [
-  { key: 'today', label: 'Aujourd hui' },
+const tabs: Array<{ key: TabKey; label: string }> = [
+  { key: 'today', label: "Aujourd'hui" },
   { key: 'week', label: 'Semaine' },
-  { key: 'requests', label: 'Demandes' },
 ];
 
 const styles = StyleSheet.create({
@@ -170,31 +134,117 @@ const styles = StyleSheet.create({
 
 export default function TeacherAppointmentsPage() {
   const navigation = useNavigation<NativeStackNavigationProp<TeacherStackParamList>>();
-  const [activeTab, setActiveTab] = useState<keyof typeof planning>('today');
+  const [activeTab, setActiveTab] = useState<TabKey>('today');
+  
+  // Get educatorId from user profile - the profile contains the educator ID reference
+  const { profile } = useAuth();
+  const educatorProfile = (profile as any)?.profile || {};
+  const educatorId = educatorProfile?.educatorId || (profile as any)?.educatorId || '';
+  const { bookings, loading, error } = useFetchEducatorBookings(educatorId);
 
-  // Helper for navigation to appointment details
-  const goToAppointmentDetail = (_id: number | string) => {
-    navigation.navigate('teacher-appointments');
-  };
+  // Separate bookings into today and week
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+
+  const weekEnd = new Date(todayEnd);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+
+  const todayBookings = useMemo(() => {
+    return bookings.filter((booking) => {
+      const sessionDate = booking.sessionDate instanceof Timestamp
+        ? booking.sessionDate.toDate()
+        : new Date(booking.sessionDate);
+      return sessionDate >= todayStart && sessionDate < todayEnd;
+    });
+  }, [bookings]);
+
+  const weekBookings = useMemo(() => {
+    return bookings.filter((booking) => {
+      const sessionDate = booking.sessionDate instanceof Timestamp
+        ? booking.sessionDate.toDate()
+        : new Date(booking.sessionDate);
+      return sessionDate >= todayEnd && sessionDate < weekEnd;
+    });
+  }, [bookings]);
 
   const counts = useMemo(
     () => ({
-      today: planning.today.length,
-      week: planning.week.length,
-      requests: planning.requests.length,
+      today: todayBookings.length,
+      week: weekBookings.length,
     }),
-    [],
+    [todayBookings, weekBookings],
   );
 
   const statusBadge = (status: string) => {
     switch (status) {
       case 'confirmed':
-        return { label: 'Confirme', bg: '#DCFCE7', text: '#166534' };
+        return { label: 'Confirmé', bg: '#DCFCE7', text: '#166534' };
       case 'pending':
-        return { label: 'A valider', bg: '#FFF7ED', text: '#9A3412' };
+        return { label: 'À valider', bg: '#FFF7ED', text: '#9A3412' };
       default:
         return { label: 'En attente', bg: '#E0E7FF', text: '#3730A3' };
     }
+  };
+
+  const formatDate = (date: any): string => {
+    if (date instanceof Timestamp) {
+      return date.toDate().toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: 'short',
+      });
+    }
+    return new Date(date).toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'short',
+    });
+  };
+
+  const formatTime = (date: any): string => {
+    if (date instanceof Timestamp) {
+      return date.toDate().toLocaleTimeString('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    }
+    return new Date(date).toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getDurationInHours = (duration: number): string => {
+    const hours = Math.floor(duration / 60);
+    const mins = duration % 60;
+    if (hours > 0 && mins > 0) return `${hours}h ${mins}m`;
+    if (hours > 0) return `${hours}h`;
+    return `${mins}m`;
+  };
+
+  const renderBooking = (booking: BookingDisplay) => {
+    const badge = statusBadge(booking.status);
+    return (
+      <TouchableOpacity key={booking.id} style={styles.card} onPress={() => navigation.navigate('teacher-appointments')}>
+        <View style={styles.timeBadge}>
+          <Text style={styles.timeText}>{formatTime(booking.sessionDate)}</Text>
+        </View>
+        <View style={{ flex: 1, gap: 6 }}>
+          <View>
+            <Text style={styles.cardTitle}>{booking.title}</Text>
+            <Text style={styles.cardMeta}>{booking.trainingType}</Text>
+            {booking.description && <Text style={styles.cardMeta}>{booking.description}</Text>}
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+              <Text style={[styles.badgeText, { color: badge.text }]}>{badge.label}</Text>
+            </View>
+            {booking.maxParticipants > 1 && (
+              <Text style={styles.cardMeta}>{booking.currentParticipants}/{booking.maxParticipants} participants</Text>
+            )}
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
   };
 
   return (
@@ -224,11 +274,6 @@ export default function TeacherAppointmentsPage() {
             <Text style={styles.statValue}>{counts.week}</Text>
             <Text style={styles.statLabel}>Semaine</Text>
           </View>
-          <View style={styles.statCard}>
-            <MaterialCommunityIcons name="email-alert-outline" size={18} color="#DC2626" />
-            <Text style={styles.statValue}>{counts.requests}</Text>
-            <Text style={styles.statLabel}>Demandes</Text>
-          </View>
         </View>
 
         <View style={styles.tabs}>
@@ -246,73 +291,33 @@ export default function TeacherAppointmentsPage() {
           })}
         </View>
 
-        <View style={{ paddingHorizontal: 16, gap: 12 }}>
-          {activeTab !== 'requests' &&
-            planning[activeTab].map((slot: any) => {
-              const badge = statusBadge(slot.status);
-              return (
-                <View key={slot.id} style={styles.card}>
-                  <View style={styles.timeBadge}>
-                    <Text style={styles.timeText}>
-                      {slot.day ? `${slot.day} ${slot.time}` : slot.time}
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1, gap: 4 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <Text style={styles.cardTitle}>{slot.type}</Text>
-                      <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-                        <Text style={[styles.badgeText, { color: badge.text }]}>{badge.label}</Text>
-                      </View>
-                    </View>
-                    <Text style={styles.cardMeta}>
-                      {slot.client} - {slot.dog}
-                    </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Ionicons name="location-outline" size={14} color={palette.gray} />
-                      <Text style={styles.cardMeta}>{slot.place}</Text>
-                    </View>
-                    <View style={styles.actionsRow}>
-                      <TouchableOpacity
-                        style={styles.secondary}
-                        onPress={() => navigation.navigate('teacher-community')}
-                      >
-                        <Text style={styles.secondaryText}>Message</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.primaryBtn}
-                        onPress={() => goToAppointmentDetail(String(slot.id))}
-                      >
-                        <Text style={styles.primaryBtnText}>Valider</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
+        {loading ? (
+          <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+            <ActivityIndicator size="large" color={palette.primary} />
+          </View>
+        ) : error ? (
+          <View style={{ alignItems: 'center', paddingVertical: 40, paddingHorizontal: 16 }}>
+            <Text style={{ color: '#DC2626', fontSize: 14 }}>Erreur: {error}</Text>
+          </View>
+        ) : (
+          <View style={{ paddingHorizontal: 16, gap: 12 }}>
+            {activeTab === 'today' ? (
+              todayBookings.length === 0 ? (
+                <View style={{ alignItems: 'center', paddingVertical: 30 }}>
+                  <Text style={{ color: palette.gray, fontSize: 14 }}>Aucun rendez-vous aujourd'hui</Text>
                 </View>
-              );
-            })}
-        </View>
-
-        {activeTab === 'requests' &&
-          planning.requests.map((req) => (
-            <View key={req.id} style={styles.requestCard}>
-              <View style={{ flex: 1, gap: 6 }}>
-                <Text style={styles.cardTitle}>{req.client}</Text>
-                <Text style={styles.cardMeta}>{req.detail}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Ionicons name="location-outline" size={14} color={palette.gray} />
-                  <Text style={styles.cardMeta}>{req.location}</Text>
-                </View>
-                <Text style={[styles.cardMeta, { fontWeight: '700', color: palette.text }]}>
-                  {req.budget}
-                </Text>
+              ) : (
+                todayBookings.map((booking) => renderBooking(booking))
+              )
+            ) : weekBookings.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 30 }}>
+                <Text style={{ color: palette.gray, fontSize: 14 }}>Aucun rendez-vous cette semaine</Text>
               </View>
-              <TouchableOpacity
-                style={[styles.primaryBtn, { paddingHorizontal: 14, paddingVertical: 10 }]}
-                onPress={() => navigation.navigate('teacher-home')}
-              >
-                <Text style={styles.primaryBtnText}>Proposer</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
+            ) : (
+              weekBookings.map((booking) => renderBooking(booking))
+            )}
+          </View>
+        )}
       </ScrollView>
           <TeacherBottomNav current="teacher-appointments" />
           </SafeAreaView>
