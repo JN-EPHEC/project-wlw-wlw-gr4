@@ -27,8 +27,8 @@ const palette = {
 type Props = NativeStackScreenProps<ClubStackParamList, 'clubMembers'>;
 
 export default function ClubMembersScreen({ navigation, route }: Props) {
-  const { user } = useAuth();
-  const clubId = (route.params as any)?.clubId || user?.uid;
+  const { user, profile } = useAuth();
+  const clubId = (route.params as any)?.clubId || (profile as any)?.clubId || user?.uid || '';
   
   const { members, loading } = useCommunityMembers(clubId);
   const [search, setSearch] = useState('');

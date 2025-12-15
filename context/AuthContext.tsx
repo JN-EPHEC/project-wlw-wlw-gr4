@@ -245,6 +245,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: 'club',
         email,
         displayName,
+        clubId: credential.user.uid,
         profile: {
           clubName: data.clubName.trim(),
           legalName: data.legalName?.trim() ?? '',

@@ -28,8 +28,8 @@ const palette = {
 type Props = NativeStackScreenProps<ClubStackParamList, 'clubChannels'>;
 
 export default function ClubChannelsScreen({ navigation, route }: Props) {
-  const { user } = useAuth();
-  const clubId = (route.params as any)?.clubId || user?.uid;
+  const { user, profile } = useAuth();
+  const clubId = (route.params as any)?.clubId || (profile as any)?.clubId || user?.uid || '';
   
   const { channels, loading } = useCommunityChannels(clubId);
   const [showCreateModal, setShowCreateModal] = useState(false);

@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   Modal,
   SafeAreaView,
@@ -10,9 +10,17 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
+import { addDoc, collection, Timestamp, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { db } from '@/firebaseConfig';
 
 import { ClubStackParamList } from '@/navigation/types';
+import { useClubEvents } from '@/hooks/useClubEvents';
+import { useGetUserNames } from '@/hooks/useGetUserNames';
+import { useAuth } from '@/context/AuthContext';
 
 const palette = {
   primary: '#41B6A6',
@@ -23,7 +31,7 @@ const palette = {
 };
 
 type EventItem = {
-  id: number;
+  id: string;
   title: string;
   description: string;
   date: string;
@@ -31,7 +39,9 @@ type EventItem = {
   location: string;
   participants: number;
   maxParticipants: number;
-  type: 'social' | 'competition' | 'training' | 'openday';
+  maxSpectators: number;
+  participantData?: Array<{ userId: string; numDogs: number }>;
+  type: 'Social' | 'Compétition' | 'Formation' | 'Portes ouvertes';
   status: 'upcoming' | 'full';
 };
 
@@ -88,36 +98,91 @@ const seedEvents: EventItem[] = [
 
 type Props = NativeStackScreenProps<ClubStackParamList, 'clubEventsManagement'>;
 
-export default function ClubEventsManagementScreen({ navigation }: Props) {
-  const [events, setEvents] = useState<EventItem[]>(seedEvents);
+export default function ClubEventsManagementScreen({ navigation, route }: Props) {
+  const { user, profile } = useAuth();
+  const clubId = (route.params as any)?.clubId || (profile as any)?.clubId || user?.uid || '';
+  const { events: firebaseEvents, loading: eventsLoading } = useClubEvents(clubId);
+  
+  console.log('🔍 [ClubEventsManagement] clubId:', clubId);
+  console.log('🔍 [ClubEventsManagement] firebaseEvents:', firebaseEvents.length, 'loading:', eventsLoading);
+  
+  const [events, setEvents] = useState<EventItem[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [showParticipantsModal, setShowParticipantsModal] = useState(false);
+  const [selectedEventForParticipants, setSelectedEventForParticipants] = useState<EventItem | null>(null);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [eventDate, setEventDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [draft, setDraft] = useState({
     title: '',
     description: '',
-    date: '',
-    time: '',
     location: '',
     maxParticipants: '',
+    maxSpectators: '',
     type: '' as EventItem['type'] | '',
   });
+
+  // Utiliser les événements Firebase si disponibles
+  useEffect(() => {
+    if (!eventsLoading && firebaseEvents.length > 0) {
+      const converted = firebaseEvents.map((e) => {
+        // Convert Timestamp to Date properly
+        let eventDate = null;
+        if (e.startDate) {
+          if (e.startDate.toDate) {
+            eventDate = e.startDate.toDate();
+          } else {
+            eventDate = new Date(e.startDate);
+          }
+        }
+        
+        return {
+          id: e.id,
+          title: e.title,
+          description: e.description,
+          date: eventDate ? eventDate.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }) : 'À planifier',
+          time: eventDate ? eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--',
+          location: e.location || 'À préciser',
+          participants: e.participants || 0,
+          maxParticipants: e.dogSlots || 0,
+          maxSpectators: e.spectatorSlots || 0,
+          participantData: e.participants || [],
+          type: normalizeEventType(e.type),
+          status: 'upcoming' as const,
+        };
+      }) as EventItem[];
+      setEvents(converted);
+    } else if (!eventsLoading) {
+      setEvents([]);
+    }
+  }, [firebaseEvents, eventsLoading]);
 
   const stats = useMemo(
     () => ({
       total: events.length,
       upcoming: events.filter((e) => e.status === 'upcoming').length,
-      participants: events.reduce((sum, e) => sum + e.participants, 0),
+      participants: events.reduce(
+        (sum, e) =>
+          sum +
+          (Array.isArray(e.participantData)
+            ? e.participantData.reduce((pSum, p) => pSum + (p.numDogs || 0), 0)
+            : 0),
+        0
+      ),
     }),
     [events]
   );
 
   const badgeForType = (type: EventItem['type']) => {
     const map = {
-      social: { bg: '#DBEAFE', text: '#1D4ED8', label: 'Social' },
-      competition: { bg: '#F3E8FF', text: '#7C3AED', label: 'Compétition' },
-      training: { bg: '#FFEDD5', text: '#EA580C', label: 'Formation' },
-      openday: { bg: '#DCFCE7', text: '#166534', label: 'Portes ouvertes' },
+      'Social': { bg: '#DBEAFE', text: '#1D4ED8', label: 'Social' },
+      'Compétition': { bg: '#F3E8FF', text: '#7C3AED', label: 'Compétition' },
+      'Formation': { bg: '#FFEDD5', text: '#EA580C', label: 'Formation' },
+      'Portes ouvertes': { bg: '#DCFCE7', text: '#166534', label: 'Portes ouvertes' },
     } as const;
-    const conf = map[type];
+    const conf = map[type] || { bg: '#E5E7EB', text: '#6B7280', label: 'Inconnu' };
     return (
       <View style={[styles.badge, { backgroundColor: conf.bg }]}>
         <Text style={[styles.badgeText, { color: conf.text }]}>{conf.label}</Text>
@@ -125,36 +190,199 @@ export default function ClubEventsManagementScreen({ navigation }: Props) {
     );
   };
 
-  const handleCreate = () => {
-    if (!draft.title.trim()) return;
-    const next: EventItem = {
-      id: events.length + 1,
-      title: draft.title.trim(),
-      description: draft.description.trim(),
-      date: draft.date || 'À planifier',
-      time: draft.time || '--:--',
-      location: draft.location || 'À préciser',
-      participants: 0,
-      maxParticipants: Number(draft.maxParticipants) || 0,
-      type: (draft.type as EventItem['type']) || 'social',
-      status: 'upcoming',
+  const normalizeEventType = (type: any): EventItem['type'] => {
+    // Map old lowercase types to new PascalCase types
+    const typeMap: Record<string, EventItem['type']> = {
+      'social': 'Social',
+      'competition': 'Compétition',
+      'training': 'Formation',
+      'openday': 'Portes ouvertes',
+      'formation': 'Formation',
+      'portes ouvertes': 'Portes ouvertes',
+      'Social': 'Social',
+      'Compétition': 'Compétition',
+      'Formation': 'Formation',
+      'Portes ouvertes': 'Portes ouvertes',
     };
-    setEvents([next, ...events]);
+    const normalized = typeMap[type] || 'Social';
+    console.log('📝 normalizeEventType:', type, '→', normalized);
+    return normalized;
+  };
+
+  const handleDateChange = (event: any, date?: Date) => {
+    if (date) setEventDate(date);
+    setShowDatePicker(false);
+  };
+
+  const handleTimeChange = (event: any, date?: Date) => {
+    if (date) setEventDate(date);
+    setShowTimePicker(false);
+  };
+
+  const eventTypes = [
+    { label: 'Social', value: 'Social' as EventItem['type'] },
+    { label: 'Compétition', value: 'Compétition' as EventItem['type'] },
+    { label: 'Formation', value: 'Formation' as EventItem['type'] },
+    { label: 'Portes ouvertes', value: 'Portes ouvertes' as EventItem['type'] },
+  ];
+
+  const handleCreate = async () => {
+    // Validation des champs obligatoires
+    if (!draft.title.trim() || !draft.location.trim() || !draft.type || !draft.maxParticipants || !clubId) {
+      console.log('❌ Missing required fields');
+      return;
+    }
+    
+    try {
+      // Use eventDate directly as Timestamp
+      const startDate = Timestamp.fromDate(eventDate);
+      
+      // Create document for Firestore
+      const eventData = {
+        title: draft.title.trim(),
+        description: draft.description.trim(),
+        location: draft.location.trim(),
+        clubId: clubId,
+        type: draft.type || 'Social',
+        startDate: startDate,
+        endDate: startDate,
+        dogSlots: Number(draft.maxParticipants) || 0,
+        spectatorSlots: Number(draft.maxSpectators) || 0,
+        price: 0,
+        currency: 'EUR',
+        isActive: true,
+        participants: 0,
+        participants: [], // array of {userId, numDogs}
+        createdAt: Timestamp.now(),
+      };
+      
+      if (editingEventId) {
+        // Update existing event
+        const eventRef = doc(db, 'events', editingEventId);
+        await updateDoc(eventRef, {
+          ...eventData,
+          updatedAt: Timestamp.now(),
+        });
+        console.log('✅ Event updated in Firestore:', editingEventId);
+        
+        // Update local state
+        setEvents(events.map(e => 
+          e.id === editingEventId 
+            ? {
+                ...e,
+                title: draft.title.trim(),
+                description: draft.description.trim(),
+                location: draft.location.trim(),
+                maxParticipants: Number(draft.maxParticipants) || 0,
+                maxSpectators: Number(draft.maxSpectators) || 0,
+                type: (draft.type || 'Social') as EventItem['type'],
+                date: eventDate.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }),
+                time: eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+              }
+            : e
+        ));
+      } else {
+        // Create new event
+        const docRef = await addDoc(collection(db, 'events'), eventData);
+        console.log('✅ Event created in Firestore:', docRef.id);
+        
+        // Add to local state with Firestore ID
+        const next: EventItem = {
+          id: docRef.id,
+          title: draft.title.trim(),
+          description: draft.description.trim(),
+          date: eventDate.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }),
+          time: eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+          location: draft.location.trim(),
+          participants: 0,
+          maxParticipants: Number(draft.maxParticipants) || 0,
+          maxSpectators: Number(draft.maxSpectators) || 0,
+          participantData: [],
+          type: (draft.type || 'Social') as EventItem['type'],
+          status: 'upcoming',
+        };
+        setEvents([next, ...events]);
+      }
+      
+      // Reset form
+      setDraft({
+        title: '',
+        description: '',
+        location: '',
+        maxParticipants: '',
+        maxSpectators: '',
+        type: '',
+      });
+      setEventDate(new Date());
+      setEditingEventId(null);
+      setShowModal(false);
+    } catch (error) {
+      console.error('❌ Error creating/updating event:', error);
+    }
+  };
+
+  const handleEdit = (event: EventItem) => {
+    // Parse the date from the display format
+    const dateParts = event.date.split(' ');
+    const timeParts = event.time.split(':');
+    
+    // Set draft with event data
     setDraft({
-      title: '',
-      description: '',
-      date: '',
-      time: '',
-      location: '',
-      maxParticipants: '',
-      type: '',
+      title: event.title,
+      description: event.description,
+      location: event.location,
+      maxParticipants: String(event.maxParticipants),
+      maxSpectators: String(event.maxSpectators),
+      type: event.type,
     });
-    setShowModal(false);
+    
+    // Try to reconstruct the date from the components we have
+    const now = new Date();
+    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (timeParts.length === 2) {
+      date.setHours(parseInt(timeParts[0], 10), parseInt(timeParts[1], 10), 0);
+    }
+    setEventDate(date);
+    
+    // Set edit mode
+    setEditingEventId(event.id);
+    setShowModal(true);
+  };
+
+  const handleDelete = (event: EventItem) => {
+    Alert.alert(
+      'Supprimer l\'événement',
+      `Êtes-vous sûr de vouloir supprimer "${event.title}" ?`,
+      [
+        { text: 'Annuler', onPress: () => {}, style: 'cancel' },
+        {
+          text: 'Supprimer',
+          onPress: async () => {
+            try {
+              const eventRef = doc(db, 'events', event.id);
+              await deleteDoc(eventRef);
+              console.log('✅ Event deleted from Firestore:', event.id);
+              
+              // Update local state
+              setEvents(events.filter(e => e.id !== event.id));
+            } catch (error) {
+              console.error('❌ Error deleting event:', error);
+            }
+          },
+          style: 'destructive',
+        },
+      ]
+    );
   };
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+      {eventsLoading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={palette.primary} />
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.navigate({ name: 'clubCommunity', params: {} })}>
             <Ionicons name="arrow-back" size={20} color="#fff" />
@@ -226,9 +454,9 @@ export default function ClubEventsManagementScreen({ navigation }: Props) {
                       <Text style={styles.cardMeta}>{event.location}</Text>
                     </View>
                     <View style={styles.metaRow}>
-                      <Ionicons name="people-outline" size={14} color={palette.gray} />
+                      <Ionicons name="paw" size={14} color={palette.gray} />
                       <Text style={styles.cardMeta}>
-                        {event.participants}/{event.maxParticipants} participants
+                        {event.participantData ? event.participantData.reduce((sum, p) => sum + (p.numDogs || 0), 0) : 0}/{event.maxParticipants} chiens
                       </Text>
                       {event.status === 'full' ? (
                         <View style={[styles.badge, { backgroundColor: '#F97316' }]}>
@@ -236,20 +464,38 @@ export default function ClubEventsManagementScreen({ navigation }: Props) {
                         </View>
                       ) : null}
                     </View>
+                    <View style={styles.metaRow}>
+                      <Ionicons name="people-outline" size={14} color={palette.gray} />
+                      <Text style={styles.cardMeta}>
+                        {event.maxSpectators} spectateurs max
+                      </Text>
+                    </View>
                   </View>
                 </View>
               </View>
 
               <View style={styles.actionsRow}>
-                <TouchableOpacity style={[styles.actionBtn, styles.actionGhost]}>
+                <TouchableOpacity 
+                  style={[styles.actionBtn, styles.actionGhost]}
+                  onPress={() => {
+                    setSelectedEventForParticipants(event);
+                    setShowParticipantsModal(true);
+                  }}
+                >
                   <MaterialCommunityIcons name="account-group-outline" size={16} color={palette.text} />
                   <Text style={[styles.actionText, { color: palette.text }]}>Participants</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.actionBtn, styles.actionGhost]}>
+                <TouchableOpacity 
+                  style={[styles.actionBtn, styles.actionGhost]}
+                  onPress={() => handleEdit(event)}
+                >
                   <MaterialCommunityIcons name="pencil-outline" size={16} color={palette.text} />
                   <Text style={[styles.actionText, { color: palette.text }]}>Modifier</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.circleBtn]}>
+                <TouchableOpacity 
+                  style={[styles.circleBtn]}
+                  onPress={() => handleDelete(event)}
+                >
                   <MaterialCommunityIcons name="trash-can-outline" size={16} color="#DC2626" />
                 </TouchableOpacity>
               </View>
@@ -257,19 +503,28 @@ export default function ClubEventsManagementScreen({ navigation }: Props) {
           ))}
         </View>
       </ScrollView>
+      )}
 
       <Modal transparent visible={showModal} animationType="slide">
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Nouvel événement</Text>
-              <TouchableOpacity onPress={() => setShowModal(false)}>
+              <Text style={styles.modalTitle}>
+                {editingEventId ? 'Modifier l\'événement' : 'Nouvel événement'}
+              </Text>
+              <TouchableOpacity onPress={() => {
+                setShowModal(false);
+                setEditingEventId(null);
+                setDraft({ title: '', description: '', location: '', maxParticipants: '', maxSpectators: '', type: '' });
+              }}>
                 <Ionicons name="close" size={22} color={palette.gray} />
               </TouchableOpacity>
             </View>
             <View style={{ gap: 12 }}>
               <View>
-                <Text style={styles.label}>Titre de l’événement</Text>
+                <Text style={styles.label}>
+                  Titre de l'événement <Text style={styles.required}>*</Text>
+                </Text>
                 <TextInput
                   value={draft.title}
                   onChangeText={(text) => setDraft({ ...draft, title: text })}
@@ -291,28 +546,38 @@ export default function ClubEventsManagementScreen({ navigation }: Props) {
               </View>
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.label}>Date</Text>
-                  <TextInput
-                    value={draft.date}
-                    onChangeText={(text) => setDraft({ ...draft, date: text })}
-                    placeholder="Sam 28 Oct"
+                  <Text style={styles.label}>
+                    Date <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TouchableOpacity
                     style={styles.input}
-                    placeholderTextColor={palette.gray}
-                  />
+                    onPress={() => setShowDatePicker(true)}
+                  >
+                    <Text style={styles.value}>
+                      {eventDate.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                    </Text>
+                    <Ionicons name="calendar-outline" size={20} color={palette.primary} />
+                  </TouchableOpacity>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.label}>Heure</Text>
-                  <TextInput
-                    value={draft.time}
-                    onChangeText={(text) => setDraft({ ...draft, time: text })}
-                    placeholder="10:00"
+                  <Text style={styles.label}>
+                    Heure <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TouchableOpacity
                     style={styles.input}
-                    placeholderTextColor={palette.gray}
-                  />
+                    onPress={() => setShowTimePicker(true)}
+                  >
+                    <Text style={styles.value}>
+                      {eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                    </Text>
+                    <Ionicons name="time-outline" size={20} color={palette.primary} />
+                  </TouchableOpacity>
                 </View>
               </View>
               <View>
-                <Text style={styles.label}>Lieu</Text>
+                <Text style={styles.label}>
+                  Lieu <Text style={styles.required}>*</Text>
+                </Text>
                 <TextInput
                   value={draft.location}
                   onChangeText={(text) => setDraft({ ...draft, location: text })}
@@ -324,28 +589,24 @@ export default function ClubEventsManagementScreen({ navigation }: Props) {
               <View>
                 <Text style={styles.label}>Type d’événement</Text>
                 <View style={styles.typeRow}>
-                  {(['social', 'competition', 'training', 'openday'] as EventItem['type'][]).map((type) => {
-                    const active = draft.type === type;
-                    const labels: Record<EventItem['type'], string> = {
-                      social: 'Social',
-                      competition: 'Compétition',
-                      training: 'Formation',
-                      openday: 'Portes ouvertes',
-                    };
+                  {eventTypes.map((typeOption) => {
+                    const active = draft.type === typeOption.value;
                     return (
                       <TouchableOpacity
-                        key={type}
+                        key={typeOption.value}
                         style={[styles.typePill, active && styles.typePillActive]}
-                        onPress={() => setDraft({ ...draft, type })}
+                        onPress={() => setDraft({ ...draft, type: typeOption.value })}
                       >
-                        <Text style={[styles.typePillText, active && styles.typePillTextActive]}>{labels[type]}</Text>
+                        <Text style={[styles.typePillText, active && styles.typePillTextActive]}>{typeOption.label}</Text>
                       </TouchableOpacity>
                     );
                   })}
                 </View>
               </View>
               <View>
-                <Text style={styles.label}>Participants max</Text>
+                <Text style={styles.label}>
+                  Places pour chiens <Text style={styles.required}>*</Text>
+                </Text>
                 <TextInput
                   value={draft.maxParticipants}
                   onChangeText={(text) => setDraft({ ...draft, maxParticipants: text })}
@@ -355,15 +616,146 @@ export default function ClubEventsManagementScreen({ navigation }: Props) {
                   placeholderTextColor={palette.gray}
                 />
               </View>
+              <View>
+                <Text style={styles.label}>
+                  Places pour spectateurs
+                </Text>
+                <TextInput
+                  value={draft.maxSpectators}
+                  onChangeText={(text) => setDraft({ ...draft, maxSpectators: text })}
+                  placeholder="Ex: 50"
+                  keyboardType="number-pad"
+                  style={styles.input}
+                  placeholderTextColor={palette.gray}
+                />
+              </View>
               <TouchableOpacity style={styles.publishBtn} onPress={handleCreate} activeOpacity={0.9}>
-                <MaterialCommunityIcons name="calendar-plus" size={18} color="#fff" />
-                <Text style={styles.publishText}>Créer l’événement</Text>
+                <MaterialCommunityIcons name={editingEventId ? "pencil" : "calendar-plus"} size={18} color="#fff" />
+                <Text style={styles.publishText}>
+                  {editingEventId ? 'Mettre à jour' : 'Créer l\'événement'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* Date Picker */}
+          {showDatePicker && (
+            <DateTimePicker
+              value={eventDate}
+              mode="date"
+              display="default"
+              onChange={handleDateChange}
+            />
+          )}
+
+          {/* Time Picker */}
+          {showTimePicker && (
+            <DateTimePicker
+              value={eventDate}
+              mode="time"
+              display="default"
+              onChange={handleTimeChange}
+            />
+          )}
         </View>
       </Modal>
+
+      {/* Participants Modal */}
+      {selectedEventForParticipants && (
+        <ParticipantsModal
+          event={selectedEventForParticipants}
+          visible={showParticipantsModal}
+          onClose={() => {
+            setShowParticipantsModal(false);
+            setSelectedEventForParticipants(null);
+          }}
+        />
+      )}
     </SafeAreaView>
+  );
+}
+
+interface ParticipantsModalProps {
+  event: EventItem;
+  visible: boolean;
+  onClose: () => void;
+}
+
+function ParticipantsModal({ event, visible, onClose }: ParticipantsModalProps) {
+  const { users, loading } = useGetUserNames(event.participantData);
+
+  return (
+    <Modal transparent visible={visible} animationType="slide">
+      <View style={styles.modalBackdrop}>
+        <View style={styles.modalCard}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Participants - {event.title}</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={22} color={palette.gray} />
+            </TouchableOpacity>
+          </View>
+
+          {loading ? (
+            <ActivityIndicator size="large" color={palette.primary} />
+          ) : users.length === 0 ? (
+            <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+              <MaterialCommunityIcons name="account-off-outline" size={48} color={palette.gray} />
+              <Text style={{ color: palette.gray, marginTop: 12, fontSize: 14 }}>
+                Aucun participant pour le moment
+              </Text>
+            </View>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false} style={{ gap: 8 }}>
+              {users.map((user) => {
+                const participantInfo = event.participantData?.find(p => p.userId === user.id);
+                const numDogs = participantInfo?.numDogs || 0;
+                
+                return (
+                  <View
+                    key={user.id}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 12,
+                      paddingHorizontal: 16,
+                      backgroundColor: '#F9FAFB',
+                      borderRadius: 10,
+                      marginBottom: 8,
+                      borderWidth: 1,
+                      borderColor: palette.border,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: palette.primary,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 12,
+                      }}
+                    >
+                      <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>
+                        {user.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: palette.text, fontWeight: '600' }}>
+                        {user.fullName || 'Sans nom'}
+                      </Text>
+                      <Text style={{ color: palette.gray, fontSize: 12 }}>
+                        {user.email} • {numDogs} chien{numDogs > 1 ? 's' : ''}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          )}
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -487,6 +879,7 @@ const styles = StyleSheet.create({
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   modalTitle: { color: palette.text, fontWeight: '700', fontSize: 16 },
   label: { color: palette.text, fontWeight: '600', marginBottom: 6 },
+  required: { color: '#EF4444', fontWeight: '700' },
   input: {
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
@@ -495,7 +888,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     color: palette.text,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
+  value: { color: palette.text, fontSize: 14 },
+  placeholder: { color: palette.gray, fontSize: 14 },
   typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   typePill: {
     paddingHorizontal: 12,

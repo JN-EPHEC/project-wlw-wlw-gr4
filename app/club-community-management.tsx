@@ -7,6 +7,7 @@ import ClubBottomNav from '@/components/ClubBottomNav';
 import { ClubStackParamList } from '@/navigation/types';
 import { useCommunityChannels } from '@/hooks/useCommunityChannels';
 import { useCommunityMembers } from '@/hooks/useCommunityMembers';
+import { useClubEvents } from '@/hooks/useClubEvents';
 import { useAuth } from '@/context/AuthContext';
 
 const palette = {
@@ -19,12 +20,13 @@ const palette = {
 type Props = NativeStackScreenProps<ClubStackParamList, 'clubCommunity'>;
 
 export default function ClubCommunityManagementScreen({ navigation, route }: Props) {
-  const { user } = useAuth();
-  // On récupère le clubId depuis la route ou du contexte
-  const clubId = (route.params as any)?.clubId || user?.uid;
+  const { user, profile } = useAuth();
+  // On récupère le clubId depuis la route, le profil ou du contexte
+  const clubId = (route.params as any)?.clubId || (profile as any)?.clubId || user?.uid || '';
   
   const { channels, loading: channelsLoading } = useCommunityChannels(clubId);
   const { members, loading: membersLoading } = useCommunityMembers(clubId);
+  const { events, loading: eventsLoading } = useClubEvents(clubId);
 
   if (channelsLoading || membersLoading) {
     return (
@@ -107,6 +109,27 @@ export default function ClubCommunityManagementScreen({ navigation, route }: Pro
               <Text style={styles.cardMeta}>
                 {channels.filter((c) => c.type === 'chat').length} salon(s) actif(s)
               </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={palette.gray} />
+          </TouchableOpacity>
+
+          {/* Événements */}
+          <TouchableOpacity
+            style={[styles.card, styles.cardEvents]}
+            activeOpacity={0.9}
+            onPress={() => handleNavigate('clubEventsManagement', { clubId })}
+          >
+            <View style={styles.cardIconEvents}>
+              <MaterialCommunityIcons name="calendar" size={28} color="#fff" />
+            </View>
+            <View style={styles.cardBody}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>Événements</Text>
+                <View style={[styles.badge, { backgroundColor: '#41B6A6' }]}>
+                  <Text style={[styles.badgeText, { color: '#fff' }]}>{events.length}</Text>
+                </View>
+              </View>
+              <Text style={styles.cardMeta}>Créez et gérez vos événements</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={palette.gray} />
           </TouchableOpacity>
@@ -218,11 +241,15 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#7C3AED',
   },
-  cardIconTerracotta: {
+  cardEvents: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#41B6A6',
+  },
+  cardIconEvents: {
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#F28B6F',
+    backgroundColor: '#41B6A6',
     justifyContent: 'center',
     alignItems: 'center',
   },

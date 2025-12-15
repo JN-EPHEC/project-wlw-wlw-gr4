@@ -28,16 +28,19 @@ const palette = {
 type Props = NativeStackScreenProps<UserStackParamList, 'clubCommunity'>;
 
 export default function ClubCommunityScreen({ navigation, route }: Props) {
-  const { clubId } = route.params;
+  const { clubId } = route.params as { clubId: number };
+  const clubIdStr = String(clubId);
   const { user } = useAuth();
 
   // Fetch channels and members
-  const { channels, loading: channelsLoading, error: channelsError } = useCommunityChannels(clubId);
-  const { members, loading: membersLoading } = useCommunityMembers(clubId);
+  const { channels, loading: channelsLoading, error: channelsError } = useCommunityChannels(clubIdStr);
+  const { members, loading: membersLoading } = useCommunityMembers(clubIdStr);
+
+  console.log('🔍 [ClubCommunity] clubId:', clubId);
 
   const handleChannelClick = (channelId: string, channelName: string) => {
     navigation.navigate('chatRoom' as any, {
-      clubId,
+      clubId: clubIdStr,
       channelId,
       channelName,
     });
@@ -246,7 +249,7 @@ export default function ClubCommunityScreen({ navigation, route }: Props) {
         )}
       </ScrollView>
 
-      <UserBottomNav navigation={navigation} />
+      <UserBottomNav current="community" />
     </SafeAreaView>
   );
 }
