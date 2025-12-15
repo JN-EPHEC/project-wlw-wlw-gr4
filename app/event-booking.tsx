@@ -1,11 +1,12 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { doc, getDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, Timestamp, updateDoc } from 'firebase/firestore';
 
 import { UserStackParamList } from '@/navigation/types';
 import { db } from '@/firebaseConfig';
+import { useAuth } from '@/context/AuthContext';
 
 const palette = {
   primary: '#41B6A6',
@@ -18,9 +19,11 @@ type Props = NativeStackScreenProps<UserStackParamList, 'eventBooking'>;
 
 export default function EventBookingScreen({ navigation, route }: Props) {
   const { eventId } = route.params;
+  const { user } = useAuth();
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ name: '', email: '', dog: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({ name: '', email: '', phone: '', dog: '' });
 
   // Récupérer l'événement de Firebase
   useEffect(() => {
@@ -59,7 +62,83 @@ export default function EventBookingScreen({ navigation, route }: Props) {
     fetchEvent();
   }, [eventId]);
 
-  const canBook = form.name && form.email && form.dog;
+  const canBook = form.name && form.email && form.phone && form.dog;
+
+  const handleBooking = async () => {
+    if (!canBook) {
+      Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    if (!user?.uid) {
+      Alert.alert('Erreur', 'Vous devez être connecté pour vous inscrire');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // Save booking to Firestore
+      const eventRef = doc(db, 'events', eventId);
+      
+      // Get current event data to check if user is already registered
+      const eventSnap = await getDoc(eventRef);
+      const currentData = eventSnap.data();
+      const currentParticipants = Array.isArray(currentData?.participantData) ? currentData.participantData : [];
+      
+      // Check if user is already registered
+      const alreadyRegistered = currentParticipants.some(p => p.userId === user.uid);
+      if (alreadyRegistered) {
+        Alert.alert('Erreur', 'Vous êtes déjà inscrit à cet événement');
+        setSubmitting(false);
+        return;
+      }
+
+      // Check if event is full
+      if (currentParticipants.length >= (currentData?.dogSlots || 0)) {
+        Alert.alert('Erreur', 'Cet événement est complet');
+        setSubmitting(false);
+        return;
+      }
+      
+      // Prepare participant data object with userId
+      const newParticipant = {
+        userId: user.uid,
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        dog: form.dog.trim(),
+        bookingDate: Timestamp.now(),
+      };
+      
+      // Update event with new participant
+      await updateDoc(eventRef, {
+        participantData: [...currentParticipants, newParticipant],
+      });
+
+      console.log('✅ Booking confirmed:', newParticipant);
+      console.log('✅ Total participants now:', currentParticipants.length + 1);
+      
+      // Show success message
+      Alert.alert(
+        '✅ Confirmation',
+        `Votre inscription pour "${event.title}" a été confirmée ! Nous vous contacterons sur ${form.phone} pour les détails.`,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Go back to event detail - it will refresh the data
+              navigation.goBack();
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('❌ Error booking:', error);
+      Alert.alert('Erreur', 'Impossible de confirmer votre inscription. Veuillez réessayer.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -85,7 +164,7 @@ export default function EventBookingScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => navigation.navigate('eventDetail', { eventId })} style={styles.back}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
             <Ionicons name="arrow-back" size={20} color={palette.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Réserver</Text>
@@ -118,15 +197,16 @@ export default function EventBookingScreen({ navigation, route }: Props) {
           <Text style={styles.cardTitle}>Informations</Text>
           <Input label="Votre nom" value={form.name} onChangeText={(t) => setForm({ ...form, name: t })} placeholder="Nom complet" />
           <Input label="Email" value={form.email} onChangeText={(t) => setForm({ ...form, email: t })} placeholder="votre@email.com" keyboardType="email-address" />
+          <Input label="Téléphone" value={form.phone} onChangeText={(t) => setForm({ ...form, phone: t })} placeholder="+33 6 12 34 56 78" keyboardType="phone-pad" />
           <Input label="Nom du chien" value={form.dog} onChangeText={(t) => setForm({ ...form, dog: t })} placeholder="Nala" />
         </View>
 
         <TouchableOpacity
-          style={[styles.primary, !canBook && { opacity: 0.5 }]}
-          onPress={() => navigation.navigate('eventDetail', { eventId })}
-          disabled={!canBook}
+          style={[styles.primary, (!canBook || submitting) && { opacity: 0.5 }]}
+          onPress={handleBooking}
+          disabled={!canBook || submitting}
         >
-          <Text style={styles.primaryText}>Confirmer ma place</Text>
+          <Text style={styles.primaryText}>{submitting ? 'En cours...' : 'Confirmer ma place'}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -144,7 +224,7 @@ function Input({
   value: string;
   onChangeText: (t: string) => void;
   placeholder?: string;
-  keyboardType?: 'default' | 'email-address';
+  keyboardType?: 'default' | 'email-address' | 'phone-pad';
 }) {
   return (
     <View style={{ gap: 6 }}>

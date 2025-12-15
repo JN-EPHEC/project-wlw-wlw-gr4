@@ -1,9 +1,10 @@
-import React from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useState, useEffect } from 'react';
+import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { UserStackParamList } from '@/navigation/types';
+import { useClubEvents } from '@/hooks/useClubEvents';
 
 const palette = {
   primary: '#41B6A6',
@@ -11,73 +12,137 @@ const palette = {
   gray: '#6B7280',
 };
 
-const events = [
-  {
-    id: 1,
-    title: 'Stage Agility intensif',
-    date: '10 avr.',
-    time: '14:00',
-    location: 'Bois de Vincennes',
-    price: '29 €',
-    image: 'https://images.unsplash.com/photo-1557971779-95a20f2d0e4a?auto=format&fit=crop&w=800&q=80',
-  },
-  {
-    id: 2,
-    title: 'Initiation obéissance chiots',
-    date: '12 avr.',
-    time: '10:00',
-    location: 'Parc Montsouris',
-    price: '19 €',
-    image: 'https://images.unsplash.com/photo-1529778873920-4da4926a72c2?auto=format&fit=crop&w=800&q=80',
-  },
-  {
-    id: 3,
-    title: 'Balade collective en ville',
-    date: '15 avr.',
-    time: '18:30',
-    location: 'Place de la Republique',
-    price: 'Gratuit',
-    image: 'https://images.unsplash.com/photo-1494256997604-768d1f608cac?auto=format&fit=crop&w=800&q=80',
-  },
-];
-
 type Props = NativeStackScreenProps<UserStackParamList, 'events'>;
 
 export default function EventsListScreen({ navigation, route }: Props) {
   const { clubId } = route.params;
+  const clubIdStr = clubId;
+  
+  console.log('🔍 [events-list] clubId received:', clubId, 'clubIdStr:', clubIdStr);
+  
+  // Fetch events from Firestore
+  const { events, loading, error } = useClubEvents(clubIdStr);
+
+  console.log('📊 [events-list] events loaded:', events.length, 'loading:', loading, 'error:', error);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
+            <Ionicons name="arrow-back" size={20} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Événements</Text>
+          <View style={{ width: 32 }} />
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={palette.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('clubCommunity', { clubId })} style={styles.back}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
           <Ionicons name="arrow-back" size={20} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Événements</Text>
         <View style={{ width: 32 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        {events.map((event) => (
-          <TouchableOpacity
-            key={event.id}
-            style={styles.card}
-            activeOpacity={0.9}
-            onPress={() => navigation.navigate('eventDetail', { eventId: event.id, clubId })}
-          >
-            <Image source={{ uri: event.image }} style={styles.image} />
-            <View style={styles.info}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.badge}>{event.date}</Text>
-                <Text style={styles.badge}>{event.time}</Text>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {error && (
+          <View style={{ backgroundColor: '#FEE2E2', padding: 12, borderRadius: 8, marginBottom: 16 }}>
+            <Text style={{ color: '#DC2626', fontSize: 12 }}>Erreur: {error}</Text>
+          </View>
+        )}
+        
+        {events.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="calendar-outline" size={48} color={palette.gray} />
+            <Text style={styles.emptyText}>Pas d'événements pour le moment</Text>
+            <Text style={{ color: palette.gray, marginTop: 4, fontSize: 12 }}>
+              clubId: {clubIdStr}
+            </Text>
+          </View>
+        ) : (
+          events.map((event) => {
+            // Format date
+            const startDate = event.startDate?.toDate?.() || new Date(event.startDate);
+            const dayStr = startDate.toLocaleDateString('fr-FR', { weekday: 'short' });
+            const dateStr = startDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+            const timeStr = startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+            // Calculate available slots
+            const availableSlots = event.dogSlots - (event.participants?.reduce((sum, p) => sum + (p.numDogs || 0), 0) || 0);
+            const isFull = availableSlots <= 0;
+
+            return (
+              <View key={event.id} style={styles.card}>
+                <View style={{ flexDirection: 'row', gap: 16 }}>
+                  {/* Date sidebar */}
+                  <View style={styles.dateBox}>
+                    <Text style={styles.dateDay}>{dayStr}.</Text>
+                    <Text style={styles.dateNum}>{startDate.getDate()}</Text>
+                    <Text style={styles.dateMonth}>{startDate.toLocaleDateString('fr-FR', { month: 'short' }).toLowerCase()}</Text>
+                  </View>
+
+                  {/* Content */}
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                      <Text style={[styles.title, { flex: 1 }]} numberOfLines={2}>{event.title}</Text>
+                      <View style={styles.typeBadge}>
+                        <Text style={styles.typeBadgeText}>{event.type || 'Événement'}</Text>
+                      </View>
+                    </View>
+
+                    <Text style={styles.description} numberOfLines={2}>{event.description}</Text>
+
+                    {/* Metadata */}
+                    <View style={{ gap: 8, marginTop: 12 }}>
+                      <View style={styles.metaRow}>
+                        <Ionicons name="time-outline" size={14} color={palette.gray} />
+                        <Text style={styles.metaText}>{timeStr}</Text>
+                      </View>
+
+                      <View style={styles.metaRow}>
+                        <Ionicons name="location-outline" size={14} color={palette.gray} />
+                        <Text style={[styles.metaText, { flex: 1 }]} numberOfLines={1}>
+                          {event.location || 'Lieu non spécifié'}
+                        </Text>
+                      </View>
+
+                      <View style={styles.metaRow}>
+                        <MaterialCommunityIcons name="paw" size={14} color={palette.gray} />
+                        <Text style={styles.metaText}>{availableSlots}/{event.dogSlots} chiens</Text>
+                      </View>
+
+                      {event.spectatorSlots > 0 && (
+                        <View style={styles.metaRow}>
+                          <Ionicons name="people-outline" size={14} color={palette.gray} />
+                          <Text style={styles.metaText}>{event.spectatorSlots} spectateurs max</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Book Button */}
+                    <TouchableOpacity 
+                      style={[styles.bookButton, isFull && { opacity: 0.5 }]}
+                      disabled={isFull}
+                      onPress={() => navigation.navigate('eventBooking' as any, { eventId: event.id })}
+                    >
+                      <Text style={styles.bookButtonText}>
+                        {isFull ? 'Complet' : 'Réserver maintenant'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
-              <Text style={styles.title}>{event.title}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="location-outline" size={14} color={palette.gray} />
-                <Text style={styles.sub}>{event.location}</Text>
-              </View>
-              <Text style={styles.price}>{event.price}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+            );
+          })
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -97,26 +162,92 @@ const styles = StyleSheet.create({
   },
   back: { padding: 8, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.15)' },
   headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
-  content: { padding: 16, gap: 14 },
+  content: { padding: 16, gap: 16, paddingBottom: 40 },
+  
+  // Card styles
   card: {
     backgroundColor: '#fff',
-    borderRadius: 14,
-    overflow: 'hidden',
+    borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
-  image: { width: '100%', height: 160 },
-  info: { padding: 12, gap: 6 },
-  badge: {
-    backgroundColor: '#E0F2F1',
-    color: palette.primary,
+  dateBox: {
+    backgroundColor: '#E0F7F4',
+    borderRadius: 12,
+    paddingVertical: 12,
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-    fontWeight: '700',
-    fontSize: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 70,
   },
-  title: { color: palette.text, fontSize: 16, fontWeight: '700' },
-  sub: { color: palette.gray, fontSize: 13 },
-  price: { color: palette.primary, fontWeight: '700', marginTop: 4 },
+  dateDay: {
+    color: palette.primary,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  dateNum: {
+    color: palette.primary,
+    fontSize: 20,
+    fontWeight: '700',
+    marginVertical: 2,
+  },
+  dateMonth: {
+    color: palette.primary,
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  title: {
+    color: palette.text,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  description: {
+    color: palette.gray,
+    fontSize: 13,
+    marginTop: 4,
+  },
+  typeBadge: {
+    backgroundColor: '#E0E7FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  typeBadgeText: {
+    color: '#4F46E5',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  metaText: {
+    color: palette.gray,
+    fontSize: 13,
+  },
+  bookButton: {
+    backgroundColor: palette.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  bookButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    color: palette.gray,
+    marginTop: 12,
+    fontSize: 14,
+  },
 });

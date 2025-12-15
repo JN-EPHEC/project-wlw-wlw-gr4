@@ -1,12 +1,8 @@
 import { useEffect, useState } from 'react';
 import {
-  collection,
-  query,
-  where,
-  onSnapshot,
-  getDocs,
   doc,
   getDoc,
+  onSnapshot,
   Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '@/firebaseConfig';
@@ -31,7 +27,7 @@ interface UseCommunityMembersResult {
 
 /**
  * Hook to fetch and listen to community members of a club
- * Récupère les données complètes des utilisateurs (nom, email, etc)
+ * Récupère les membres depuis club.members (approuvés seulement)
  * @param clubId - The club ID to fetch members for
  * @returns Object containing members array, loading state, and error state
  */
@@ -50,76 +46,94 @@ export const useCommunityMembers = (clubId: string): UseCommunityMembersResult =
     try {
       console.log('🔍 [useCommunityMembers] Setting up listener for clubId:', clubId);
 
-      // Real-time listener for community members
-      const channelsRef = collection(db, 'channels');
-      // Get all channels for this club
-      const q = query(
-        channelsRef,
-        where('clubId', '==', clubId)
-      );
-
+      // Real-time listener for club document members array
+      const clubRef = doc(db, 'club', clubId);
+      
       const unsubscribe = onSnapshot(
-        q,
+        clubRef,
         async (snapshot) => {
-          console.log('📡 [useCommunityMembers] Channels snapshot received');
-          const allMemberIds: Set<string> = new Set();
+          if (!snapshot.exists()) {
+            console.warn('⚠️ [useCommunityMembers] Club document not found');
+            setMembers([]);
+            setLoading(false);
+            return;
+          }
 
-          // Collect all unique member IDs from all channels
-          snapshot.docs.forEach((doc) => {
-            const channelData = doc.data();
-            if (channelData.members && Array.isArray(channelData.members)) {
-              channelData.members.forEach((memberId: string) => {
-                allMemberIds.add(memberId);
-              });
-            }
-          });
+          console.log('📡 [useCommunityMembers] Club snapshot received');
+          const clubData = snapshot.data();
+          const membersArray = clubData.members || [];
+          
+          console.log(`📊 [useCommunityMembers] Found ${membersArray.length} members`);
 
-          // Fetch user details for each member
+          // Fetch full user data for each member
           const membersList: CommunityMember[] = [];
-          for (const memberId of Array.from(allMemberIds)) {
+          
+          for (const member of membersArray) {
             try {
-              const userDocRef = doc(db, 'users', memberId);
+              const userDocRef = doc(db, 'users', member.userId);
               const userSnap = await getDoc(userDocRef);
               
               if (userSnap.exists()) {
                 const userData = userSnap.data();
+                console.log('👤 [useCommunityMembers] User data for', member.userId, ':', userData);
+                // Combiner firstName et lastName (depuis profile ou root)
+                const firstName = userData.profile?.firstName || userData.firstName;
+                const lastName = userData.profile?.lastName || userData.lastName;
+                const fullName = firstName && lastName 
+                  ? `${firstName} ${lastName}`
+                  : firstName || lastName || userData.profile?.name || userData.displayName || userData.name || member.name || 'Utilisateur';
+                console.log('📝 Full name computed:', fullName);
+                  
                 membersList.push({
-                  id: memberId,
-                  userId: memberId,
-                  name: userData.firstName || userData.name || 'Utilisateur',
-                  displayName: userData.displayName || userData.firstName || userData.name,
-                  email: userData.email || '',
-                  avatar: userData.avatar || '',
-                  joinedAt: Date.now(),
-                  role: 'member',
+                  id: member.userId,
+                  userId: member.userId,
+                  name: fullName,
+                  displayName: fullName,
+                  email: userData.email || member.email || '',
+                  avatar: userData.avatar || member.avatar || '',
+                  joinedAt: member.joinedAt?.toMillis?.() || member.joinedAt || Date.now(),
+                  role: member.role || 'member',
                 });
               } else {
-                // User doc doesn't exist, add placeholder
+                // User doc doesn't exist, use data from member object
                 membersList.push({
-                  id: memberId,
-                  userId: memberId,
-                  name: 'Utilisateur supprimé',
-                  displayName: 'Utilisateur supprimé',
-                  email: '',
-                  joinedAt: Date.now(),
-                  role: 'member',
+                  id: member.userId,
+                  userId: member.userId,
+                  name: member.name || 'Utilisateur',
+                  displayName: member.name || 'Utilisateur',
+                  email: member.email || '',
+                  avatar: member.avatar || '',
+                  joinedAt: member.joinedAt?.toMillis?.() || member.joinedAt || Date.now(),
+                  role: member.role || 'member',
                 });
               }
             } catch (err) {
-              console.error('Error fetching user data for', memberId, err);
+              console.error('Error fetching user data for', member.userId, err);
+              // Still add the member with available data
+              membersList.push({
+                id: member.userId,
+                userId: member.userId,
+                name: member.name || 'Utilisateur',
+                displayName: member.name || 'Utilisateur',
+                email: member.email || '',
+                avatar: member.avatar || '',
+                joinedAt: member.joinedAt?.toMillis?.() || Date.now(),
+                role: member.role || 'member',
+              });
             }
           }
 
           setMembers(membersList);
           setError(null);
+          setLoading(false);
         },
         (err) => {
-          console.error('❌ [useCommunityMembers] Error listening to members:', err);
+          console.error('❌ [useCommunityMembers] Error listening to club:', err);
           setError('Erreur lors du chargement des membres');
+          setLoading(false);
         }
       );
 
-      setLoading(false);
       return () => unsubscribe();
     } catch (err) {
       console.error('❌ [useCommunityMembers] Error setting up listener:', err);
@@ -133,54 +147,70 @@ export const useCommunityMembers = (clubId: string): UseCommunityMembersResult =
 
     try {
       setLoading(true);
-      const channelsRef = collection(db, 'channels');
-      const q = query(channelsRef, where('clubId', '==', clubId));
+      const clubRef = doc(db, 'club', clubId);
+      const snapshot = await getDoc(clubRef);
 
-      const snapshot = await getDocs(q);
-      const allMemberIds: Set<string> = new Set();
+      if (!snapshot.exists()) {
+        console.warn('⚠️ [useCommunityMembers] Club document not found');
+        setMembers([]);
+        setLoading(false);
+        return;
+      }
 
-      // Collect all unique member IDs from all channels
-      snapshot.docs.forEach((doc) => {
-        const channelData = doc.data();
-        if (channelData.members && Array.isArray(channelData.members)) {
-          channelData.members.forEach((memberId: string) => {
-            allMemberIds.add(memberId);
-          });
-        }
-      });
+      const clubData = snapshot.data();
+      const membersArray = clubData.members || [];
 
-      // Fetch user details for each member
+      // Fetch full user data for each member
       const membersList: CommunityMember[] = [];
-      for (const memberId of Array.from(allMemberIds)) {
+      
+      for (const member of membersArray) {
         try {
-          const userDocRef = doc(db, 'users', memberId);
+          const userDocRef = doc(db, 'users', member.userId);
           const userSnap = await getDoc(userDocRef);
           
           if (userSnap.exists()) {
             const userData = userSnap.data();
+            // Combiner firstName et lastName (depuis profile ou root)
+            const firstName = userData.profile?.firstName || userData.firstName;
+            const lastName = userData.profile?.lastName || userData.lastName;
+            const fullName = firstName && lastName 
+              ? `${firstName} ${lastName}`
+              : firstName || lastName || userData.profile?.name || userData.displayName || userData.name || member.name || 'Utilisateur';
+              
             membersList.push({
-              id: memberId,
-              userId: memberId,
-              name: userData.firstName || userData.name || 'Utilisateur',
-              displayName: userData.displayName || userData.firstName || userData.name,
-              email: userData.email || '',
-              avatar: userData.avatar || '',
-              joinedAt: Date.now(),
-              role: 'member',
+              id: member.userId,
+              userId: member.userId,
+              name: fullName,
+              displayName: fullName,
+              email: userData.email || member.email || '',
+              avatar: userData.avatar || member.avatar || '',
+              joinedAt: member.joinedAt?.toMillis?.() || member.joinedAt || Date.now(),
+              role: member.role || 'member',
             });
           } else {
             membersList.push({
-              id: memberId,
-              userId: memberId,
-              name: 'Utilisateur supprimé',
-              displayName: 'Utilisateur supprimé',
-              email: '',
-              joinedAt: Date.now(),
-              role: 'member',
+              id: member.userId,
+              userId: member.userId,
+              name: member.name || 'Utilisateur',
+              displayName: member.name || 'Utilisateur',
+              email: member.email || '',
+              avatar: member.avatar || '',
+              joinedAt: member.joinedAt?.toMillis?.() || member.joinedAt || Date.now(),
+              role: member.role || 'member',
             });
           }
         } catch (err) {
-          console.error('Error fetching user data for', memberId, err);
+          console.error('Error fetching user data for', member.userId, err);
+          membersList.push({
+            id: member.userId,
+            userId: member.userId,
+            name: member.name || 'Utilisateur',
+            displayName: member.name || 'Utilisateur',
+            email: member.email || '',
+            avatar: member.avatar || '',
+            joinedAt: member.joinedAt?.toMillis?.() || Date.now(),
+            role: member.role || 'member',
+          });
         }
       }
 

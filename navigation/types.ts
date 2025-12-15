@@ -85,10 +85,10 @@ export type UserStackParamList = {
   homeTrainingBooking: { clubId: string };
   reviews: { clubId?: string };
   teacherDetail: { teacherId: number; clubId?: number; previousTarget?: RootRouteName };
-  clubCommunity: { clubId: number };
-  events: { clubId: number };
-  chatRoom: { clubId: number; channelId: string; channelName: string };
-  forum: { clubId: number; channelId?: string; channelName?: string };
+  clubCommunity: { clubId: string };
+  events: { clubId: string };
+  chatRoom: { clubId: string; channelId: string; channelName: string };
+  forum: { clubId: string; channelId?: string; channelName?: string };
   postDetail: { postId: number };
   eventDetail: { eventId: string; clubId?: string };
   eventBooking: { eventId: string };

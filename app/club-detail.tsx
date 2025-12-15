@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { doc, getDoc } from 'firebase/firestore';
@@ -10,6 +10,9 @@ import { useFetchClubFields } from '@/hooks/useFetchClubFields';
 import { useFetchClubEducators } from '@/hooks/useFetchClubEducators';
 import { useFetchClubUpcomingBookings } from '@/hooks/useFetchClubUpcomingBookings';
 import { useFetchClubUpcomingEvents } from '@/hooks/useFetchClubUpcomingEvents';
+import { useFetchEducatorById } from '@/hooks/useFetchEducatorById';
+import { useJoinClub } from '@/hooks/useJoinClub';
+import { useAuth } from '@/context/AuthContext';
 
 const palette = {
   primary: '#41B6A6',
@@ -50,6 +53,11 @@ export default function ClubDetailScreen({ navigation, route }: Props) {
   const [club, setClub] = useState<ClubData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [joiningLoading, setJoiningLoading] = useState(false);
+  
+  // Auth et join club hook
+  const { user, profile } = useAuth();
+  const { joinClub } = useJoinClub();
   
   // Récupérer les terrains et éducateurs du club
   const { fields, loading: fieldsLoading } = useFetchClubFields(clubId);
@@ -85,6 +93,34 @@ export default function ClubDetailScreen({ navigation, route }: Props) {
 
     fetchClub();
   }, [clubId]);
+
+  // Handler pour rejoindre la communauté
+  const handleJoinCommunity = async () => {
+    if (!user || !profile) {
+      Alert.alert('Erreur', 'Veuillez vous connecter');
+      return;
+    }
+
+    setJoiningLoading(true);
+    try {
+      const userName = (profile as any).firstName && (profile as any).lastName
+        ? `${(profile as any).firstName} ${(profile as any).lastName}`
+        : (profile as any).displayName || 'Utilisateur';
+
+      await joinClub({
+        clubId,
+        userEmail: user.email || '',
+        userName,
+      });
+
+      Alert.alert('✓ Succès', 'Votre demande d\'adhésion a été envoyée au club. Un responsable l\'examinera prochainement.');
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Erreur lors de l\'adhésion';
+      Alert.alert('Erreur', errorMsg);
+    } finally {
+      setJoiningLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -212,6 +248,29 @@ export default function ClubDetailScreen({ navigation, route }: Props) {
           )}
         </View>
 
+        {/* BOUTON REJOINDRE LA COMMUNAUTÉ */}
+        <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+          <TouchableOpacity 
+            style={[styles.joinCommunityBtn, joiningLoading && { opacity: 0.7 }]}
+            onPress={handleJoinCommunity}
+            disabled={joiningLoading}
+            activeOpacity={0.8}
+          >
+            {joiningLoading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <>
+                <Ionicons name="people" size={20} color="#fff" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.joinCommunityTitle}>Rejoindre la communauté</Text>
+                  <Text style={styles.joinCommunitySubtitle}>Accédez aux salons, annonces et événements</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#fff" />
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+
         {/* SECTION TERRAINS */}
         <View style={styles.section}>
           <Text style={styles.title}>Terrains & Équipements</Text>
@@ -317,81 +376,24 @@ export default function ClubDetailScreen({ navigation, route }: Props) {
           )}
         </View>
 
-        {/* SECTION PROCHAINS COURS */}
+        {/* SECTION PROCHAINS COURS (BOOKINGS) */}
         <View style={styles.section}>
           <Text style={styles.title}>Prochains cours</Text>
-          {bookingsLoading || eventsLoading ? (
+          {bookingsLoading ? (
             <View style={{ paddingVertical: 20, alignItems: 'center' }}>
               <ActivityIndicator color={palette.primary} />
             </View>
-          ) : bookings.length > 0 || events.length > 0 ? (
+          ) : bookings.length > 0 ? (
             <View>
-              {/* Mélanger bookings et events, prendre les 2 premiers */}
-              {[...bookings, ...events]
+              {bookings
                 .sort((a, b) => {
-                  const dateA = a.sessionDate || a.startDate;
-                  const dateB = b.sessionDate || b.startDate;
-                  const timeA = dateA?.toDate?.() || new Date(dateA);
-                  const timeB = dateB?.toDate?.() || new Date(dateB);
-                  return timeA.getTime() - timeB.getTime();
+                  const dateA = a.sessionDate?.toDate?.() || new Date(a.sessionDate);
+                  const dateB = b.sessionDate?.toDate?.() || new Date(b.sessionDate);
+                  return dateA.getTime() - dateB.getTime();
                 })
-                .slice(0, 2)
-                .map((item) => {
-                  const isBooking = 'sessionDate' in item;
-                  const date = isBooking ? item.sessionDate : item.startDate;
-                  const dateObj = date?.toDate?.() || new Date(date);
-                  const dateStr = dateObj.toLocaleDateString('fr-FR', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                  });
-                  const timeStr = dateObj.toLocaleTimeString('fr-FR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  });
-
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={styles.courseCard}
-                      onPress={() => {
-                        if (isBooking) {
-                          navigation.navigate('booking', { clubId });
-                        } else {
-                          navigation.navigate('eventBooking', { eventId: item.id });
-                        }
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.courseTitle}>
-                          {isBooking ? (item.isGroupCourse ? item.title : 'Séance privée') : item.title}
-                        </Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 8 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Ionicons name="calendar-outline" size={14} color={palette.gray} />
-                            <Text style={styles.sub}>{dateStr}</Text>
-                          </View>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Ionicons name="time-outline" size={14} color={palette.gray} />
-                            <Text style={styles.sub}>{timeStr}</Text>
-                          </View>
-                        </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10 }}>
-                          <Text style={[styles.sub, { fontWeight: '600', color: palette.primary }]}>
-                            {item.price}€
-                          </Text>
-                          {item.duration && (
-                            <Text style={styles.sub}>
-                              {item.duration} min
-                            </Text>
-                          )}
-                        </View>
-                      </View>
-                      <Ionicons name="chevron-forward" size={18} color={palette.gray} />
-                    </TouchableOpacity>
-                  );
-                })}
+                .map((item) => (
+                  <CourseCardWithEducator key={item.id} booking={item} clubId={clubId} navigation={navigation} />
+                ))}
             </View>
           ) : (
             <View style={{ paddingVertical: 20, alignItems: 'center' }}>
@@ -401,67 +403,32 @@ export default function ClubDetailScreen({ navigation, route }: Props) {
           )}
         </View>
 
-        {/* SECTION AUTRES COURS DISPONIBLES */}
-        {bookings.length > 2 || events.length > 2 ? (
-          <View style={styles.section}>
-            <Text style={styles.title}>Autres cours disponibles</Text>
-            <View>
-              {[...bookings, ...events]
-                .sort((a, b) => {
-                  const dateA = a.sessionDate || a.startDate;
-                  const dateB = b.sessionDate || b.startDate;
-                  const timeA = dateA?.toDate?.() || new Date(dateA);
-                  const timeB = dateB?.toDate?.() || new Date(dateB);
-                  return timeA.getTime() - timeB.getTime();
-                })
-                .slice(2)
-                .map((item) => {
-                  const isBooking = 'sessionDate' in item;
-                  const date = isBooking ? item.sessionDate : item.startDate;
-                  const dateObj = date?.toDate?.() || new Date(date);
-                  const dateStr = dateObj.toLocaleDateString('fr-FR', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                  });
-                  const timeStr = dateObj.toLocaleTimeString('fr-FR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  });
-
-                  return (
-                    <View key={item.id} style={styles.courseCardInfo}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.courseTitle}>
-                          {isBooking ? (item.isGroupCourse ? item.title : 'Séance privée') : item.title}
-                        </Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 8 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Ionicons name="calendar-outline" size={14} color={palette.gray} />
-                            <Text style={styles.sub}>{dateStr}</Text>
-                          </View>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Ionicons name="time-outline" size={14} color={palette.gray} />
-                            <Text style={styles.sub}>{timeStr}</Text>
-                          </View>
-                        </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10 }}>
-                          <Text style={[styles.sub, { fontWeight: '600', color: palette.primary }]}>
-                            {item.price}€
-                          </Text>
-                          {item.duration && (
-                            <Text style={styles.sub}>
-                              {item.duration} min
-                            </Text>
-                          )}
-                        </View>
-                      </View>
-                    </View>
-                  );
-                })}
+        {/* SECTION PROCHAINS ÉVÉNEMENTS */}
+        <View style={styles.section}>
+          <Text style={styles.title}>Prochains événements</Text>
+          {eventsLoading ? (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              <ActivityIndicator color={palette.primary} />
             </View>
-          </View>
-        ) : null}
+          ) : events.length > 0 ? (
+            <View>
+              {events
+                .sort((a, b) => {
+                  const dateA = a.startDate?.toDate?.() || new Date(a.startDate);
+                  const dateB = b.startDate?.toDate?.() || new Date(b.startDate);
+                  return dateA.getTime() - dateB.getTime();
+                })
+                .map((item) => (
+                  <EventCard key={item.id} event={item} navigation={navigation} />
+                ))}
+            </View>
+          ) : (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              <MaterialCommunityIcons name="calendar-outline" size={40} color={palette.border} />
+              <Text style={[styles.sub, { marginTop: 8, textAlign: 'center' }]}>Pas encore d'événements</Text>
+            </View>
+          )}
+        </View>
 
         {/* SECTION PHOTOS */}
         {club.PhotoUrl && (
@@ -493,6 +460,202 @@ export default function ClubDetailScreen({ navigation, route }: Props) {
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+// Composant pour afficher une carte de cours avec l'éducateur
+function CourseCardWithEducator({ booking, clubId, navigation }: any) {
+  const { educator } = useFetchEducatorById(booking.educatorId);
+
+  const dateObj = booking.sessionDate?.toDate?.() || new Date(booking.sessionDate);
+  const dateStr = dateObj.toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
+  const timeStr = dateObj.toLocaleTimeString('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  return (
+    <TouchableOpacity
+      style={styles.courseCard}
+      onPress={() => navigation.navigate('booking', { clubId })}
+      activeOpacity={0.7}
+    >
+      <View style={{ flex: 1, gap: 10 }}>
+        {/* Titre du cours */}
+        <Text style={[styles.courseTitle, { marginBottom: 2 }]}>
+          {booking.isGroupCourse ? booking.title : 'Séance privée'}
+        </Text>
+
+        {/* Description */}
+        {booking.description && (
+          <Text style={[styles.sub, { fontSize: 13, color: palette.gray }]} numberOfLines={2}>
+            {booking.description}
+          </Text>
+        )}
+
+        {/* Infos: Date, Heure, Durée */}
+        <View style={{ gap: 6, marginTop: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="calendar-outline" size={14} color={palette.primary} />
+            <Text style={[styles.sub, { fontSize: 12, color: palette.text, fontWeight: '500' }]}>
+              {dateStr}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="time-outline" size={14} color={palette.primary} />
+            <Text style={[styles.sub, { fontSize: 12, color: palette.text, fontWeight: '500' }]}>
+              {timeStr}
+            </Text>
+          </View>
+          {booking.duration && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="timer-outline" size={14} color={palette.primary} />
+              <Text style={[styles.sub, { fontSize: 12, color: palette.text, fontWeight: '500' }]}>
+                {booking.duration} minutes
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Éducateur */}
+        {educator && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+            {educator.photoUrl ? (
+              <Image
+                source={{ uri: educator.photoUrl }}
+                style={{ width: 28, height: 28, borderRadius: 14 }}
+              />
+            ) : (
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: palette.primary, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 10 }}>
+                  {educator.firstName.charAt(0)}{educator.lastName.charAt(0)}
+                </Text>
+              </View>
+            )}
+            <Text style={[styles.sub, { fontSize: 12, color: palette.text }]}>
+              {educator.firstName} {educator.lastName}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* Droite: Prix, Chevron */}
+      <View style={{ alignItems: 'flex-end', justifyContent: 'flex-start', gap: 10, minWidth: 80 }}>
+        <Ionicons name="chevron-forward" size={20} color={palette.primary} style={{ marginTop: 2 }} />
+        <View style={{ alignItems: 'flex-end', gap: 3 }}>
+          <Text style={{ color: palette.primary, fontSize: 16, fontWeight: '700' }}>
+            {booking.price}€
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+// Composant pour afficher une carte d'événement
+function EventCard({ event, navigation }: any) {
+  const { educator } = useFetchEducatorById(event.educatorId);
+
+  const dateObj = event.startDate?.toDate?.() || new Date(event.startDate);
+  const dateStr = dateObj.toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
+
+  return (
+    <TouchableOpacity
+      style={styles.eventCard}
+      onPress={() => navigation.navigate('eventBooking', { eventId: event.id })}
+      activeOpacity={0.7}
+    >
+      <View style={{ flex: 1, gap: 10 }}>
+        {/* Badge type */}
+        {event.type && (
+          <View style={styles.eventBadge}>
+            <Text style={styles.eventBadgeText}>{event.type}</Text>
+          </View>
+        )}
+
+        {/* Titre */}
+        <Text style={[styles.courseTitle, { marginBottom: 2 }]}>
+          {event.title}
+        </Text>
+
+        {/* Description */}
+        {event.description && (
+          <Text style={[styles.sub, { fontSize: 13, color: palette.gray }]} numberOfLines={2}>
+            {event.description}
+          </Text>
+        )}
+
+        {/* Infos: Participants, Chiens, Adresse */}
+        <View style={{ gap: 6, marginTop: 4 }}>
+          {event.dogSlots !== undefined && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <MaterialCommunityIcons name="dog" size={14} color={palette.primary} />
+              <Text style={[styles.sub, { fontSize: 12, color: palette.text, fontWeight: '500' }]}>
+                {event.dogSlots} places pour chiens
+              </Text>
+            </View>
+          )}
+          {event.spectatorSlots !== undefined && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="people-outline" size={14} color={palette.primary} />
+              <Text style={[styles.sub, { fontSize: 12, color: palette.text, fontWeight: '500' }]}>
+                {event.spectatorSlots} participants
+              </Text>
+            </View>
+          )}
+          {(event.address || event.location) && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="location-outline" size={14} color={palette.primary} />
+              <Text style={[styles.sub, { fontSize: 12, color: palette.text, fontWeight: '500' }]} numberOfLines={1}>
+                {event.address || event.location}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Éducateur */}
+        {educator && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+            {educator.photoUrl ? (
+              <Image
+                source={{ uri: educator.photoUrl }}
+                style={{ width: 28, height: 28, borderRadius: 14 }}
+              />
+            ) : (
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: palette.primary, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 10 }}>
+                  {educator.firstName.charAt(0)}{educator.lastName.charAt(0)}
+                </Text>
+              </View>
+            )}
+            <Text style={[styles.sub, { fontSize: 12, color: palette.text }]}>
+              {educator.firstName} {educator.lastName}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* Droite: Prix, Date, Chevron */}
+      <View style={{ alignItems: 'flex-end', justifyContent: 'flex-start', gap: 10, minWidth: 80 }}>
+        <Ionicons name="chevron-forward" size={20} color={palette.primary} style={{ marginTop: 2 }} />
+        <View style={{ alignItems: 'flex-end', gap: 3 }}>
+          <Text style={{ color: palette.primary, fontSize: 16, fontWeight: '700' }}>
+            {event.price}€
+          </Text>
+          <Text style={[styles.sub, { fontSize: 11, color: palette.text }]}>
+            {dateStr}
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -568,6 +731,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   secondaryText: { color: palette.primary, fontWeight: '700' },
+  joinCommunityBtn: {
+    backgroundColor: palette.primary,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  joinCommunityTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  joinCommunitySubtitle: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 12,
+    marginTop: 2,
+  },
   primaryBtn: {
     flex: 1,
     backgroundColor: palette.primary,
@@ -639,16 +821,32 @@ const styles = StyleSheet.create({
     borderColor: palette.border,
     marginBottom: 10,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 10,
   },
-  courseCardInfo: {
+  eventCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
     borderColor: palette.border,
     marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  eventBadge: {
+    backgroundColor: '#FEE4E2',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  eventBadgeText: {
+    color: '#D32F2F',
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'capitalize',
   },
   courseTitle: {
     color: palette.text,

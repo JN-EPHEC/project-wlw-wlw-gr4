@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
   collection,
-  query,
-  where,
-  onSnapshot,
   getDocs,
+  doc,
+  getDoc,
 } from 'firebase/firestore';
 import { db } from '@/firebaseConfig';
 
@@ -26,7 +25,7 @@ interface UseUserClubCommunitiesResult {
 }
 
 /**
- * Hook to fetch clubs where user is a community member
+ * Hook to fetch clubs where user is a member
  * @param userId - The user ID
  * @returns Object containing clubs array, loading state, and error state
  */
@@ -42,77 +41,50 @@ export const useUserClubCommunities = (userId: string): UseUserClubCommunitiesRe
       return;
     }
 
-    try {
-      console.log('🔍 [useUserClubCommunities] Fetching clubs for user:', userId);
+    const fetchUserClubs = async () => {
+      try {
+        console.log('🔍 [useUserClubCommunities] Fetching clubs for user:', userId);
 
-      // Query all channels where user is a member
-      const channelsRef = collection(db, 'channels');
-      const q = query(channelsRef, where('members', 'array-contains', userId));
+        // Fetch all clubs
+        const clubsRef = collection(db, 'club');
+        const clubsSnapshot = await getDocs(clubsRef);
 
-      const unsubscribe = onSnapshot(
-        q,
-        async (snapshot) => {
-          console.log('📡 [useUserClubCommunities] Snapshot received with', snapshot.size, 'channels');
-          const clubsMap: Map<string, UserClubCommunity> = new Map();
+        const userClubs: UserClubCommunity[] = [];
 
-          // Group channels by clubId to get unique clubs
-          snapshot.docs.forEach((doc) => {
-            const channelData = doc.data();
-            const clubId = channelData.clubId;
+        // Check each club to see if user is a member
+        clubsSnapshot.docs.forEach((clubDoc) => {
+          const clubData = clubDoc.data();
+          const members = clubData.members || [];
 
-            if (clubId && !clubsMap.has(clubId)) {
-              clubsMap.set(clubId, {
-                clubId,
-                clubName: channelData.clubName || 'Club sans nom',
-                logoUrl: channelData.clubLogoUrl,
-                members: channelData.members?.length || 0,
-                unreadCount: 0,
-                lastMessage: undefined,
-                lastMessageTime: undefined,
-              });
-            }
-          });
+          // Check if userId is in the members array
+          const isMember = members.some((member: any) => member.userId === userId);
 
-          // Fetch club details to get logo and name
-          if (clubsMap.size > 0) {
-            const clubsRef = collection(db, 'clubs');
-            const clubIds = Array.from(clubsMap.keys());
-
-            for (const clubId of clubIds) {
-              try {
-                const clubDoc = await getDocs(
-                  query(clubsRef, where('__name__', '==', clubId))
-                );
-                if (!clubDoc.empty) {
-                  const clubData = clubDoc.docs[0].data();
-                  const club = clubsMap.get(clubId);
-                  if (club) {
-                    club.clubName = clubData.name || club.clubName;
-                    club.logoUrl = clubData.logoUrl || clubData.PhotoUrl;
-                  }
-                }
-              } catch (err) {
-                console.log(`⚠️ [useUserClubCommunities] Could not fetch club ${clubId}`);
-              }
-            }
+          if (isMember) {
+            console.log(`✅ User ${userId} is member of club ${clubDoc.id}`);
+            const club = {
+              clubId: clubDoc.id,
+              clubName: clubData.name || 'Club inconnu',
+              logoUrl: clubData.logoUrl || clubData.PhotoUrl,
+              members: members.length,
+              unreadCount: 0, // TODO: Calculate from unread messages
+            };
+            console.log(`📌 [useUserClubCommunities] Pushing club:`, JSON.stringify(club));
+            userClubs.push(club);
           }
+        });
 
-          setClubs(Array.from(clubsMap.values()));
-          setError(null);
-        },
-        (err) => {
-          console.error('❌ [useUserClubCommunities] Error listening to clubs:', err);
-          setError('Erreur lors du chargement des clubs');
-        }
-      );
+        console.log(`📊 [useUserClubCommunities] Found ${userClubs.length} clubs for user ${userId}`);
+        setClubs(userClubs);
+        setError(null);
+        setLoading(false);
+      } catch (err) {
+        console.error('❌ [useUserClubCommunities] Error fetching clubs:', err);
+        setError('Erreur lors du chargement des clubs');
+        setLoading(false);
+      }
+    };
 
-      setLoading(false);
-      return () => unsubscribe();
-    } catch (err) {
-      console.error('❌ [useUserClubCommunities] Error setting up listener:', err);
-      setError('Erreur lors du chargement des clubs');
-      setLoading(false);
-    }
+    fetchUserClubs();
   }, [userId]);
 
   const refetch = async () => {
@@ -120,28 +92,29 @@ export const useUserClubCommunities = (userId: string): UseUserClubCommunitiesRe
 
     try {
       setLoading(true);
-      const channelsRef = collection(db, 'channels');
-      const q = query(channelsRef, where('members', 'array-contains', userId));
+      const clubsRef = collection(db, 'club');
+      const clubsSnapshot = await getDocs(clubsRef);
 
-      const snapshot = await getDocs(q);
-      const clubsMap: Map<string, UserClubCommunity> = new Map();
+      const userClubs: UserClubCommunity[] = [];
 
-      snapshot.docs.forEach((doc) => {
-        const channelData = doc.data();
-        const clubId = channelData.clubId;
+      clubsSnapshot.docs.forEach((clubDoc) => {
+        const clubData = clubDoc.data();
+        const members = clubData.members || [];
 
-        if (clubId && !clubsMap.has(clubId)) {
-          clubsMap.set(clubId, {
-            clubId,
-            clubName: channelData.clubName || 'Club sans nom',
-            logoUrl: channelData.clubLogoUrl,
-            members: channelData.members?.length || 0,
+        const isMember = members.some((member: any) => member.userId === userId);
+
+        if (isMember) {
+          userClubs.push({
+            clubId: clubDoc.id,
+            clubName: clubData.name || 'Club inconnu',
+            logoUrl: clubData.logoUrl || clubData.PhotoUrl,
+            members: members.length,
             unreadCount: 0,
           });
         }
       });
 
-      setClubs(Array.from(clubsMap.values()));
+      setClubs(userClubs);
       setError(null);
     } catch (err) {
       console.error('❌ [useUserClubCommunities] Error refetching clubs:', err);

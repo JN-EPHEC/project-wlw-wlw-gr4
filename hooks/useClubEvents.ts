@@ -17,6 +17,7 @@ export interface ClubEvent {
   currency: string;
   fieldId?: string;
   participants?: Array<{ userId: string; numDogs: number }>;
+  participantData?: Array<{ userId: string; name: string; email: string; phone: string; dog: string; bookingDate?: Timestamp }>;
   type?: string;
 }
 
@@ -85,6 +86,7 @@ export const useClubEvents = (clubId: string): UseClubEventsResult => {
           currency: data.currency || 'EUR',
           fieldId: data.fieldId,
           participants: data.participants || [],
+          participantData: data.participantData || [],
           type: data.type,
         } as ClubEvent;
       });

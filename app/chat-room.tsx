@@ -17,6 +17,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useCommunityMessages } from '@/hooks/useCommunityMessages';
 import { useCommunityMembers } from '@/hooks/useCommunityMembers';
 import { useClubPermissions } from '@/hooks/useClubPermissions';
+import { useMessagesWithUserInfo } from '@/hooks/useMessagesWithUserInfo';
 
 const palette = {
   primary: '#41B6A6',
@@ -40,6 +41,9 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
     sendMessage,
     isSending,
   } = useCommunityMessages(channelId, user?.uid || '', 30);
+
+  // Enrichir les messages avec les infos utilisateur
+  const { messagesWithInfo } = useMessagesWithUserInfo(messages);
 
   // Get community members
   const { members, loading: membersLoading } = useCommunityMembers(clubId);
@@ -88,7 +92,7 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => navigation.navigate('clubCommunity', { clubId })}
+          onPress={() => navigation.goBack()}
           style={styles.iconBtn}
         >
           <Ionicons name="arrow-back" size={20} color="#fff" />
@@ -97,7 +101,7 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
           <Text style={styles.headerTitle}>
             {channelName ?? (isAnnouncement ? 'Annonces' : 'Salon général')}
           </Text>
-          <Text style={styles.headerSub}>{messages.length} messages</Text>
+          <Text style={styles.headerSub}>{messagesWithInfo.length} messages</Text>
         </View>
         <TouchableOpacity style={styles.iconBtn}>
           <MaterialCommunityIcons name="dots-vertical" size={20} color="#fff" />
@@ -118,19 +122,33 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
               </Text>
             </View>
           ) : (
-            messages.map((msg) => {
-              const isEducator = members.some((m) => m.id === msg.createdBy);
+            messagesWithInfo.map((msg) => {
+              const member = members.find((m) => m.id === msg.createdBy);
+              const role = member?.role || 'member';
+              
+              // Déterminer le label du rôle
+              let roleBadge = '';
+              if (role === 'owner' || role === 'club') {
+                roleBadge = 'Propriétaire';
+              } else if (role === 'educator') {
+                roleBadge = 'Éducateur';
+              } else if (role === 'member') {
+                roleBadge = 'Membre';
+              }
+              
+              const shouldShowBadge = !!roleBadge && role !== 'member';
+              
               return (
-                <View key={msg.id} style={[styles.message, isEducator && styles.messageEducator]}>
+                <View key={msg.id} style={[styles.message]}>
                   <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{msg.createdBy.substring(0, 1).toUpperCase()}</Text>
+                    <Text style={styles.avatarText}>{msg.userFirstName?.substring(0, 1).toUpperCase() || msg.createdBy.substring(0, 1).toUpperCase()}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={styles.author}>{msg.createdBy}</Text>
-                      {isEducator ? (
+                      <Text style={styles.author}>{msg.userName}</Text>
+                      {shouldShowBadge ? (
                         <View style={styles.badge}>
-                          <Text style={styles.badgeText}>Équipe</Text>
+                          <Text style={styles.badgeText}>{roleBadge}</Text>
                         </View>
                       ) : null}
                     </View>
