@@ -96,7 +96,10 @@ export default function CommunityScreen() {
                 key={club.clubId}
                 style={styles.card}
                 activeOpacity={0.9}
-                onPress={() => navigation.navigate('clubCommunity', { clubId: club.clubId })}
+                onPress={() => {
+                  console.log('🔗 [community] Navigating to clubCommunity with clubId:', club.clubId, 'type:', typeof club.clubId);
+                  navigation.navigate('clubCommunity', { clubId: club.clubId });
+                }}
               >
                 <Image source={{ uri: getClubImage(club.logoUrl) }} style={styles.image} />
                 <View style={{ flex: 1 }}>

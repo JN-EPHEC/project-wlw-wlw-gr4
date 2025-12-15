@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useMemo, useState, useEffect } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Alert } from 'react-native';
 import { doc, getDoc, Timestamp } from 'firebase/firestore';
 
 import { UserStackParamList } from '@/navigation/types';
@@ -25,10 +25,10 @@ export default function BookingScreen({ navigation, route }: Props) {
   const [step, setStep] = useState<Step>('datetime');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
-  const [subscribeClub, setSubscribeClub] = useState(true);
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', dogName: '' });
   const [club, setClub] = useState<any>(null);
   const [clubLoading, setClubLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Récupérer les bookings du club
   const { bookings, loading: bookingsLoading } = useFetchClubAllBookings(clubId);
@@ -51,16 +51,24 @@ export default function BookingScreen({ navigation, route }: Props) {
     fetchClub();
   }, [clubId]);
 
-  // Générer les dates disponibles à partir des bookings
+  // Générer les dates disponibles à partir des bookings (filtrées: dates futures uniquement)
   const dates = useMemo(() => {
     if (bookings.length === 0) return [];
+    
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // Début de la journée
+    
     const datesSet = new Set<string>();
     bookings.forEach((booking) => {
       const date = booking.sessionDate instanceof Timestamp ? 
         booking.sessionDate.toDate() : 
         new Date(booking.sessionDate);
-      const dateStr = date.toISOString().split('T')[0];
-      datesSet.add(dateStr);
+      
+      // Filtrer: ne garder que les dates futures (aujourd'hui et après)
+      if (date >= now) {
+        const dateStr = date.toISOString().split('T')[0];
+        datesSet.add(dateStr);
+      }
     });
     
     return Array.from(datesSet)
@@ -107,6 +115,26 @@ export default function BookingScreen({ navigation, route }: Props) {
   const canGoInfo = selectedDate !== '' && selectedTime !== '';
   const canGoPayment =
     formData.name.trim() && formData.email.trim() && formData.phone.trim() && formData.dogName.trim();
+
+  // Fonction pour continuer depuis l'étape info
+  const handleContinueFromInfo = async () => {
+    if (!canGoPayment) {
+      Alert.alert('Erreur', 'Veuillez remplir tous les champs');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Continuer vers le paiement
+      setStep('payment');
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Erreur';
+      Alert.alert('Erreur', errorMsg);
+      console.error('Error joining club:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const clubData = club || { name: 'Club', address: 'Adresse' };
 
@@ -257,27 +285,6 @@ export default function BookingScreen({ navigation, route }: Props) {
             <InputField label="Email" value={formData.email} onChangeText={(t) => setFormData({ ...formData, email: t })} placeholder="votre@email.com" keyboardType="email-address" />
             <InputField label="Téléphone" value={formData.phone} onChangeText={(t) => setFormData({ ...formData, phone: t })} placeholder="+33 6 00 00 00 00" keyboardType="phone-pad" />
             <InputField label="Nom de votre chien" value={formData.dogName} onChangeText={(t) => setFormData({ ...formData, dogName: t })} placeholder="Max" />
-
-            <View style={styles.card}>
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-                <TouchableOpacity
-                  style={[styles.checkbox, subscribeClub && { backgroundColor: palette.primary, borderColor: palette.primary }]}
-                  onPress={() => setSubscribeClub((v) => !v)}
-                  activeOpacity={0.8}
-                >
-                  {subscribeClub ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}
-                </TouchableOpacity>
-                <View style={{ flex: 1, gap: 4 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="people-outline" size={18} color={palette.primary} />
-                    <Text style={styles.value}>Rejoindre la communauté du club</Text>
-                  </View>
-                  <Text style={styles.subText}>
-                    Accédez aux salons, annonces et événements du club, et échangez avec d'autres propriétaires.
-                  </Text>
-                </View>
-              </View>
-            </View>
           </View>
         ) : null}
 
@@ -325,11 +332,15 @@ export default function BookingScreen({ navigation, route }: Props) {
               <Text style={styles.outlineButtonText}>Retour</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.primaryButton, { flex: 1 }, !canGoPayment && styles.primaryDisabled]}
-              onPress={() => canGoPayment && setStep('payment')}
-              disabled={!canGoPayment}
+              style={[styles.primaryButton, { flex: 1 }, (!canGoPayment || isSubmitting) && styles.primaryDisabled]}
+              onPress={handleContinueFromInfo}
+              disabled={!canGoPayment || isSubmitting}
             >
-              <Text style={styles.primaryButtonText}>Continuer</Text>
+              {isSubmitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.primaryButtonText}>Continuer</Text>
+              )}
             </TouchableOpacity>
           </View>
         ) : null}

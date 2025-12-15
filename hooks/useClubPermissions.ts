@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/firebaseConfig';
 
@@ -43,6 +43,13 @@ export const useClubPermissions = (
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const lastCheckRef = useRef<string>('');
+
+  // Stabiliser educatorIds avec useMemo
+  const stableEducatorIds = useMemo(() => educatorIds, [educatorIds.join(',')]);
+  
+  // Créer une clé unique pour éviter les recalculs inutiles
+  const checkKey = useMemo(() => `${clubId}-${userId}-${userRole}-${stableEducatorIds.join(',')}`, [clubId, userId, userRole, stableEducatorIds]);
 
   useEffect(() => {
     if (!clubId || !userId) {
@@ -50,16 +57,19 @@ export const useClubPermissions = (
       return;
     }
 
+    // Ne pas recalculer si c'est identique à la dernière vérification
+    if (lastCheckRef.current === checkKey) {
+      return;
+    }
+
     const checkPermissions = async () => {
       try {
-        console.log('🔍 [useClubPermissions] Checking permissions for user:', userId, 'role:', userRole);
-
         // Get the club document to check educatorIds
-        const clubRef = doc(db, 'clubs', clubId);
+        const clubRef = doc(db, 'club', clubId);
         const clubSnap = await getDoc(clubRef);
 
         if (!clubSnap.exists()) {
-          console.log('❌ [useClubPermissions] Club not found');
+          console.log('❌ [useClubPermissions] Club not found for clubId:', clubId);
           setError('Club non trouvé');
           setLoading(false);
           return;
@@ -89,9 +99,9 @@ export const useClubPermissions = (
           isCommunityMember: isMember,
         };
 
-        console.log('✅ [useClubPermissions] Permissions calculated:', newPermissions);
         setPermissions(newPermissions);
         setError(null);
+        lastCheckRef.current = checkKey;
       } catch (err) {
         console.error('❌ [useClubPermissions] Error checking permissions:', err);
         setError('Erreur lors de la vérification des permissions');
@@ -101,7 +111,7 @@ export const useClubPermissions = (
     };
 
     checkPermissions();
-  }, [clubId, userId, userRole, educatorIds]);
+  }, [checkKey]);
 
   return { permissions, loading, error };
 };

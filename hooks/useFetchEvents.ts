@@ -46,9 +46,25 @@ export const useFetchEvents = (): UseFetchEventsResult => {
         
         const eventsData: Event[] = snapshot.docs.map(doc => {
           const data = doc.data() as any;
+          
+          // Convert GeoPoint location to string if needed
+          let locationStr = data.location;
+          if (data.location) {
+            if (typeof data.location !== 'string') {
+              if (data.location._lat !== undefined && data.location._long !== undefined) {
+                // GeoPoint object
+                locationStr = `${data.location._lat.toFixed(4)}, ${data.location._long.toFixed(4)}`;
+              } else if (data.location.latitude !== undefined && data.location.longitude !== undefined) {
+                // Alternative GeoPoint format
+                locationStr = `${data.location.latitude.toFixed(4)}, ${data.location.longitude.toFixed(4)}`;
+              }
+            }
+          }
+          
           return {
             id: doc.id,
             ...data,
+            location: locationStr,
             // Ajouter les champs transformés pour compatibilité UI
             image: 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=600&q=80',
             subtitle: data.description || 'Événement canin',

@@ -16,6 +16,7 @@ import { UserStackParamList } from '@/navigation/types';
 import { useAuth } from '@/context/AuthContext';
 import { useCommunityChannels } from '@/hooks/useCommunityChannels';
 import { useCommunityMembers } from '@/hooks/useCommunityMembers';
+import { useClubEvents } from '@/hooks/useClubEvents';
 
 const palette = {
   primary: '#41B6A6',
@@ -28,19 +29,33 @@ const palette = {
 type Props = NativeStackScreenProps<UserStackParamList, 'clubCommunity'>;
 
 export default function ClubCommunityScreen({ navigation, route }: Props) {
-  const { clubId } = route.params;
+  const { clubId } = route.params as { clubId: string };
+  const clubIdStr = clubId;
   const { user } = useAuth();
 
-  // Fetch channels and members
-  const { channels, loading: channelsLoading, error: channelsError } = useCommunityChannels(clubId);
-  const { members, loading: membersLoading } = useCommunityMembers(clubId);
+  console.log('🔍 [ClubCommunity] clubId:', clubId);
+  console.log('👤 [ClubCommunity] Current user ID:', user?.uid);
+  console.log('📧 [ClubCommunity] Current user email:', user?.email);
+
+  // Fetch channels, members and events
+  const { channels, loading: channelsLoading, error: channelsError } = useCommunityChannels(clubIdStr);
+  const { members, loading: membersLoading } = useCommunityMembers(clubIdStr);
+  const { events, loading: eventsLoading } = useClubEvents(clubIdStr);
 
   const handleChannelClick = (channelId: string, channelName: string) => {
     navigation.navigate('chatRoom' as any, {
-      clubId,
+      clubId: clubIdStr,
       channelId,
       channelName,
     });
+  };
+
+  const handleAnnouncementsClick = () => {
+    navigation.navigate('clubAnnouncements' as any);
+  };
+
+  const handleEventsClick = () => {
+    navigation.navigate('events', { clubId: clubIdStr });
   };
 
   // Separate channels by type
@@ -195,7 +210,10 @@ export default function ClubCommunityScreen({ navigation, route }: Props) {
         {/* Announcements Section */}
         {announcementChannels.length > 0 && (
           <>
-            <Text style={styles.sectionHeading}>📢 Annonces</Text>
+            <TouchableOpacity onPress={handleAnnouncementsClick} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 24 }}>
+              <Text style={styles.sectionHeading}>📢 Annonces</Text>
+              <Text style={{ color: palette.primary, fontSize: 14, fontWeight: '600' }}>Voir tout</Text>
+            </TouchableOpacity>
             {announcementChannels.map((channel) => (
               <TouchableOpacity
                 key={channel.id}
@@ -211,6 +229,82 @@ export default function ClubCommunityScreen({ navigation, route }: Props) {
                 </View>
               </TouchableOpacity>
             ))}
+          </>
+        )}
+
+        {announcementChannels.length === 0 && (
+          <View style={{ marginTop: 24, paddingHorizontal: 16 }}>
+            <Text style={styles.sectionHeading}>📢 Annonces</Text>
+            <View style={styles.emptyState}>
+              <MaterialCommunityIcons name="bell-outline" size={40} color={palette.gray} />
+              <Text style={{ color: palette.gray, marginTop: 12, fontSize: 14 }}>
+                Pas d'annonces pour le moment
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Events Section */}
+        {events.length > 0 && (
+          <>
+            <TouchableOpacity onPress={handleEventsClick} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 24 }}>
+              <Text style={styles.sectionHeading}>📅 Événements</Text>
+              <Text style={{ color: palette.primary, fontSize: 14, fontWeight: '600' }}>Voir tout</Text>
+            </TouchableOpacity>
+            {events.slice(0, 3).map((event) => {
+              const startDate = event.startDate?.toDate?.() || new Date(event.startDate);
+              const dateStr = startDate.toLocaleDateString('fr-FR', { 
+                weekday: 'short', 
+                day: 'numeric', 
+                month: 'short' 
+              });
+              const timeStr = startDate.toLocaleTimeString('fr-FR', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              });
+              const availableSlots = event.dogSlots - (event.participants?.reduce((sum, p) => sum + (p.numDogs || 0), 0) || 0);
+
+              return (
+                <TouchableOpacity
+                  key={event.id}
+                  style={styles.channelCard}
+                  onPress={handleEventsClick}
+                >
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                    <Text style={[styles.channelName, { flex: 1 }]} numberOfLines={2}>{event.title}</Text>
+                    <View style={{ marginLeft: 8 }}>
+                      <Text style={{ 
+                        backgroundColor: '#E0F2F1', 
+                        color: palette.primary, 
+                        paddingHorizontal: 8, 
+                        paddingVertical: 2, 
+                        borderRadius: 8, 
+                        fontWeight: '700', 
+                        fontSize: 11 
+                      }}>
+                        {availableSlots}/{event.dogSlots}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name="calendar-outline" size={12} color={palette.gray} />
+                      <Text style={styles.channelDesc}>{dateStr}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name="time-outline" size={12} color={palette.gray} />
+                      <Text style={styles.channelDesc}>{timeStr}</Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Ionicons name="location-outline" size={12} color={palette.gray} />
+                    <Text style={[styles.channelDesc, { flex: 1 }]} numberOfLines={1}>
+                      {event.location || 'Lieu non spécifié'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </>
         )}
 
@@ -246,7 +340,7 @@ export default function ClubCommunityScreen({ navigation, route }: Props) {
         )}
       </ScrollView>
 
-      <UserBottomNav navigation={navigation} />
+      <UserBottomNav current="community" />
     </SafeAreaView>
   );
 }

@@ -34,6 +34,7 @@ export const useFetchClubUpcomingEvents = (clubId: string): UseFetchClubUpcoming
   useEffect(() => {
     const fetchEvents = async () => {
       if (!clubId) {
+        console.log('⚠️ [useFetchClubUpcomingEvents] clubId is empty');
         setLoading(false);
         return;
       }
@@ -66,14 +67,14 @@ export const useFetchClubUpcomingEvents = (clubId: string): UseFetchClubUpcoming
           }
         });
 
-        // Trier par date et prendre seulement les 2 premiers
+        // Trier par date (déjà fait dans useFetchClubUpcomingBookings, faire pareil ici)
         fetchedEvents.sort((a, b) => {
           const dateA = a.startDate instanceof Timestamp ? a.startDate.toDate() : new Date(a.startDate);
           const dateB = b.startDate instanceof Timestamp ? b.startDate.toDate() : new Date(b.startDate);
           return dateA.getTime() - dateB.getTime();
         });
 
-        console.log('✅ [useFetchClubUpcomingEvents] Found', fetchedEvents.length, 'upcoming events');
+        console.log('✅ [useFetchClubUpcomingEvents] Found', fetchedEvents.length, 'upcoming events for club', clubId);
         setEvents(fetchedEvents);
         setError(null);
       } catch (err) {
