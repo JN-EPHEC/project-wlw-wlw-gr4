@@ -34,6 +34,7 @@ import DogTasksScreen from '@/screens/user/DogTasksScreen';
 import FollowedClubsScreen from '@/screens/user/FollowedClubsScreen';
 import SettingsScreen from '@/screens/user/SettingsScreen';
 import VerifiedScreen from '@/screens/user/VerifiedScreen';
+import EditProfileScreen from '@/screens/user/EditProfileScreen';
 import { UserStackParamList } from '@/navigation/types';
 import AddDogScreen from '@/app/add-dog';
 import EditDogScreen from '@/app/edit-dog';
@@ -80,6 +81,7 @@ export default function UserStack() {
       <Stack.Screen name="djanaiResults" component={DjanaiResultsScreen} />
       <Stack.Screen name="DjanaiLoadingScreen" component={DjanaiLoadingScreen} />
       <Stack.Screen name="djanai-program" component={DjanaiProgramScreen} />
+      <Stack.Screen name="editProfile" component={EditProfileScreen} />
     </Stack.Navigator>
   );
 }
