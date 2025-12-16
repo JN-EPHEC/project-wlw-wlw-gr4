@@ -19,6 +19,7 @@ import ClubTeacherRequestsScreen from '@/app/club-teacher-requests';
 import ClubTeachersPaymentScreen from '@/app/club-teachers-payment';
 import ClubTeachersPricingScreen from '@/app/club-teachers-pricing';
 import ClubTeachersScreen from '@/app/club-teachers';
+import EditClubProfileScreen from '@/screens/club/EditClubProfileScreen';
 import { ClubStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<ClubStackParamList>();
@@ -28,6 +29,7 @@ export default function ClubStack() {
     <Stack.Navigator initialRouteName="clubHome" screenOptions={{ headerShown: false }}>
       <Stack.Screen name="clubHome" component={ClubHomeScreen} />
       <Stack.Screen name="clubProfile" component={ClubProfileScreen} />
+      <Stack.Screen name="editClubProfile" component={EditClubProfileScreen} />
       <Stack.Screen name="clubCommunity" component={ClubCommunityManagementScreen} />
       <Stack.Screen name="clubAnnouncements" component={ClubAnnouncementsScreen} />
       <Stack.Screen name="clubEventsManagement" component={ClubEventsManagementScreen} />

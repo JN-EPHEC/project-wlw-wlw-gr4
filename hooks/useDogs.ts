@@ -84,10 +84,15 @@ export function useDogs() {
         photoUrl = await uploadPhotoToStorage(photoFile, user.uid);
       }
 
+      // Nettoyer les champs undefined avant d'envoyer à Firestore
+      const cleanedData = Object.fromEntries(
+        Object.entries(dogData).filter(([_, value]) => value !== undefined && value !== '')
+      );
+
       const docData = {
-        ...dogData,
+        ...cleanedData,
         ownerId: user.uid,
-        photoUrl,
+        ...(photoUrl && { photoUrl }),
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       };
@@ -125,8 +130,14 @@ export function useDogs() {
       }
 
       const docRef = doc(db, 'Chien', dogId);
+      
+      // Nettoyer les champs undefined avant d'envoyer à Firestore
+      const cleanedUpdates = Object.fromEntries(
+        Object.entries(updates).filter(([_, value]) => value !== undefined && value !== '')
+      );
+
       const updateData = {
-        ...updates,
+        ...cleanedUpdates,
         ...(photoUrl && { photoUrl }),
         updatedAt: Timestamp.now(),
       };

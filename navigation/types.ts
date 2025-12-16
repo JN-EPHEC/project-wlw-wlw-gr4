@@ -38,6 +38,7 @@ export type UserRoute =
 export type ClubRoute =
   | 'clubHome'
   | 'clubProfile'
+  | 'editClubProfile'
   | 'clubCommunity'
   | 'clubAnnouncements'
   | 'clubEventsManagement'
@@ -117,6 +118,7 @@ export type UserStackParamList = {
 export type ClubStackParamList = {
   clubHome: undefined;
   clubProfile: undefined;
+  editClubProfile: undefined;
   clubCommunity: { clubId?: number };
   clubAnnouncements: undefined;
   clubEventsManagement: undefined;
