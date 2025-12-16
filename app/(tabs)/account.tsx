@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Alert, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { formatFirebaseAuthError, useAuth } from '@/context/AuthContext';
@@ -49,7 +49,7 @@ type AccountNavigationProp = NativeStackNavigationProp<UserStackParamList, 'acco
 
 export default function AccountScreen() {
   const navigation = useNavigation<AccountNavigationProp>();
-  const { user, profile, logout, deleteAccount, actionLoading } = useAuth();
+  const { user, profile, logout, deleteAccount, actionLoading, refreshProfile } = useAuth();
   const { bookings } = useUserUpcomingBookings();
   const { dogs: dogsData } = useDogs();
   const { favorites } = useFavorites();
@@ -58,6 +58,7 @@ export default function AccountScreen() {
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
   const [followedClubsCount, setFollowedClubsCount] = useState(0);
   const [realClubs, setRealClubs] = useState<any[]>([]);
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     // Compter les clubs favoris et charger les données
@@ -98,6 +99,16 @@ export default function AccountScreen() {
   }, [favorites]);
 
   const profileData = useMemo(() => ((profile as any)?.profile ?? {}) as Record<string, any>, [profile]);
+  
+  // Recharger les données du profil quand on revient sur cette page
+  useFocusEffect(
+    React.useCallback(() => {
+      // Refresh profile data when returning to this screen
+      if (user?.uid) {
+        refreshProfile();
+      }
+    }, [user?.uid, refreshProfile])
+  );
   const displayName = useMemo(() => {
     const nameFromProfile = `${profileData.firstName ?? ''} ${profileData.lastName ?? ''}`.trim();
     return nameFromProfile || user?.displayName || user?.email || 'Utilisateur Smart Dogs';
@@ -139,6 +150,17 @@ export default function AccountScreen() {
     { label: 'Chiens', value: dogsData?.length ?? 0, icon: 'paw-outline' as const },
     { label: 'Clubs suivis', value: followedClubsCount, icon: 'heart-outline' as const },
   ];
+
+  useEffect(() => {
+    // Charger la photo depuis Firestore si disponible, sinon utiliser celle d'Auth
+    if (profileData.photoUrl) {
+      setProfilePhotoUrl(profileData.photoUrl);
+    } else if (user?.photoURL) {
+      setProfilePhotoUrl(user.photoURL);
+    } else {
+      setProfilePhotoUrl(null);
+    }
+  }, [profileData.photoUrl, user?.photoURL]);
 
   const menuItems = [
     { id: 'bookings', icon: 'calendar-outline' as const, label: 'Mes réservations', badge: bookings.length ? String(bookings.length) : null, onPress: () => navigation.navigate('bookings') },
@@ -183,8 +205,8 @@ export default function AccountScreen() {
             <View style={styles.profileCard}>
               <View style={styles.profileRow}>
                 <View style={styles.avatar}>
-                  {user?.photoURL ? (
-                    <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
+                  {profilePhotoUrl ? (
+                    <Image source={{ uri: profilePhotoUrl }} style={styles.avatarImage} />
                   ) : (
                     <Text style={styles.avatarText}>{initials}</Text>
                   )}
@@ -192,7 +214,9 @@ export default function AccountScreen() {
                 <View style={{ flex: 1 }}>
                   <View style={styles.nameRow}>
                     <Text style={styles.name}>{displayName}</Text>
-                    <Ionicons name="checkmark-circle" size={18} color={palette.primary} />
+                    <TouchableOpacity onPress={() => navigation.navigate('editProfile')} style={styles.editButton}>
+                      <Ionicons name="pencil" size={16} color="#FFF" />
+                    </TouchableOpacity>
                   </View>
                   <Text style={styles.meta}>{location}</Text>
                   <Text style={[styles.meta, { fontSize: 12 }]}>{user?.email}</Text>
@@ -377,8 +401,16 @@ const styles = StyleSheet.create({
   },
   avatarImage: { width: '100%', height: '100%', borderRadius: 20 },
   avatarText: { color: palette.primary, fontWeight: '700', fontSize: 18 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  name: { color: palette.text, fontSize: 18, fontWeight: '700' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 10, justifyContent: 'space-between' },
+  name: { color: palette.text, fontSize: 18, fontWeight: '700', flex: 1 },
+  editButton: {
+    backgroundColor: palette.primary,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   meta: { color: '#6B7280', fontSize: 13 },
   divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 12 },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between' },

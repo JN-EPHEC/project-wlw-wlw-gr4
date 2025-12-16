@@ -32,7 +32,8 @@ export type UserRoute =
   | 'dogs'
   | 'followedClubs'
   | 'djanaiResults'
-  | 'djanai-program';
+  | 'djanai-program'
+  | 'editProfile';
 
 export type ClubRoute =
   | 'clubHome'
@@ -110,6 +111,7 @@ export type UserStackParamList = {
   djanaiResults: { profile?: Record<string, unknown>; previousPage?: UserRoute; dogId?: string; dogName?: string };
   DjanaiLoadingScreen: { dogId?: string };
   'djanai-program': { dogId?: string };
+  editProfile: undefined;
 };
 
 export type ClubStackParamList = {
