@@ -1,0 +1,25 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Galerie photos - Les clubs peuvent uploader et lire leurs propres photos
+    match /galleries/{clubId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow create: if request.auth.uid == clubId && request.resource.size < 10 * 1024 * 1024;
+      allow update: if request.auth.uid == clubId;
+      allow delete: if request.auth.uid == clubId;
+    }
+
+    // Logos et images de profil
+    match /clubs/{clubId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow create: if request.auth.uid == clubId;
+      allow update: if request.auth.uid == clubId;
+      allow delete: if request.auth.uid == clubId;
+    }
+
+    // Par défaut, interdire tous les accès
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

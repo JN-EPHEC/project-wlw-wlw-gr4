@@ -12,6 +12,7 @@ import {
   Image,
   Dimensions,
   Pressable,
+  Alert,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -23,6 +24,10 @@ import { formatFirebaseAuthError, useAuth } from '@/context/AuthContext';
 import { resetToHome } from '@/navigation/navigationRef';
 import { ClubStackParamList } from '@/navigation/types';
 import { useClubData } from '@/hooks/useClubData';
+import { useClubProfileData } from '@/hooks/useClubProfileData';
+import { useClubPromotions } from '@/hooks/useClubPromotions';
+import { useClubGallery } from '@/hooks/useClubGallery';
+import { useClubTerrains } from '@/hooks/useClubTerrains';
 import { db } from '@/firebaseConfig';
 
 const palette = {
@@ -61,6 +66,13 @@ interface BankInfo {
 
 export default function ClubProfileScreen({ navigation }: Props) {
   const { logout, deleteAccount, actionLoading, profile, refreshProfile, user } = useAuth();
+  
+  // Récupérer les données du club depuis Firestore
+  const clubProfileData = useClubProfileData(user?.uid || null);
+  const { promotions, deletePromotion, refetch: refetchPromotions } = useClubPromotions(user?.uid || null);
+  const { images: galleryImages, refetch: refetchGallery, totalPhotos } = useClubGallery(user?.uid || null);
+  const { terrains, refetch: refetchTerrains, deleteTerrain } = useClubTerrains(user?.uid || null);
+  
   const [settings, setSettings] = useState({
     acceptNewMembers: true,
     showPhonePublic: true,
@@ -71,29 +83,31 @@ export default function ClubProfileScreen({ navigation }: Props) {
     maxGroupSize: '10',
     cancellationPolicy: '24h avant - Remboursement total',
   });
-  const [bankInfo, setBankInfo] = useState<BankInfo>({ connected: false });
-  const [stats, setStats] = useState<Stats>({
-    activeMembers: 127,
-    completedSessions: 456,
-    averageRating: 4.8,
-    satisfactionRate: 98,
-  });
+  const [bankInfo, setBankInfo] = useState({ connected: false });
   const [error, setError] = useState<string | null>(null);
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
   const [forceRefresh, setForceRefresh] = useState(0);
 
-  // Récupère les données du club depuis le profile (Firebase)
+  // Extraire les données du club profile (avant: depuis profile, maintenant: depuis clubProfileData)
   const clubProfile = (profile as any)?.profile || {};
-  const clubName = clubProfile?.clubName || 'Mon Club';
-  const legalName = clubProfile?.legalName || '';
-  const siret = clubProfile?.siret || '';
-  const description = clubProfile?.description || '';
-  const email = clubProfile?.email || clubProfile?.email || profile?.email || '';
-  const phone = clubProfile?.phone || '';
-  const address = clubProfile?.address || '';
-  const website = clubProfile?.website || '';
-  const logoUrl = clubProfile?.logoUrl || null;
-  const services = (clubProfile?.services as string[]) || [];
+  const clubName = clubProfileData.name || clubProfile?.clubName || 'Mon Club';
+  const legalName = clubProfileData.legalName || clubProfile?.legalName || '';
+  const siret = clubProfileData.siret || clubProfile?.siret || '';
+  const description = clubProfileData.description || clubProfile?.description || '';
+  const email = clubProfileData.email || clubProfile?.email || profile?.email || '';
+  const phone = clubProfileData.phone || clubProfile?.phone || '';
+  const address = clubProfileData.address || clubProfile?.address || '';
+  const website = clubProfileData.website || clubProfile?.website || '';
+  const logoUrl = clubProfileData.logoUrl || clubProfile?.logoUrl || null;
+  const services = clubProfileData.services || clubProfile?.services || [];
+  
+  // Stats réelles depuis la base de données
+  const stats = {
+    activeMembers: clubProfileData.stats.totalMembers,
+    completedSessions: clubProfileData.stats.totalSessions,
+    averageRating: clubProfileData.stats.averageRating,
+    satisfactionRate: clubProfileData.stats.satisfactionRate,
+  };
 
   // Recharger les données du club quand on revient sur cette page
   useFocusEffect(
@@ -103,13 +117,22 @@ export default function ClubProfileScreen({ navigation }: Props) {
           if (refreshProfile) {
             await refreshProfile();
           }
+          if (refetchPromotions) {
+            await refetchPromotions();
+          }
+          if (refetchGallery) {
+            await refetchGallery();
+          }
+          if (refetchTerrains) {
+            await refetchTerrains();
+          }
           setForceRefresh(prev => prev + 1);
         } catch (err) {
           console.error('Erreur lors du rafraîchissement:', err);
         }
       };
       loadFreshData();
-    }, [refreshProfile, user?.uid])
+    }, [refreshProfile, refetchPromotions, refetchGallery, refetchTerrains, user?.uid])
   );
 
   const handleLogout = async () => {
@@ -154,22 +177,28 @@ export default function ClubProfileScreen({ navigation }: Props) {
               </TouchableOpacity>
             </View>
             <Text style={styles.heroTitle}>{clubName}</Text>
+            {clubProfileData.createdAt && (
+              <Text style={styles.heroMember}>
+                Depuis {new Date(clubProfileData.createdAt.toDate?.() || clubProfileData.createdAt).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long' })}
+              </Text>
+            )}
             <View style={styles.heroBadges}>
-              <View style={styles.heroBadge}>
-                <Ionicons name="checkmark-circle" size={12} color="#fff" />
-                <Text style={styles.heroBadgeText}>Verifié</Text>
-              </View>
+              {clubProfileData.verificationStatus && (
+                <View style={styles.heroBadge}>
+                  <Ionicons name="checkmark-circle" size={12} color="#fff" />
+                  <Text style={styles.heroBadgeText}>Verifié</Text>
+                </View>
+              )}
             </View>
             <TouchableOpacity 
               style={styles.ratingContainer}
               onPress={() => navigation.navigate('clubReviews')}
             >
               <Text style={styles.heroRating}>
-                <Ionicons name="star" size={14} color="#FBBF24" /> 4.8 (156 avis)
+                <Ionicons name="star" size={14} color="#FBBF24" /> {clubProfileData.stats.averageRating.toFixed(1)} ({clubProfileData.reviewsCount} avis)
               </Text>
               <Ionicons name="chevron-forward" size={16} color={palette.primaryDark} />
             </TouchableOpacity>
-            <Text style={styles.heroMember}>Membre depuis Janvier 2020</Text>
           </View>
         </View>
 
@@ -249,10 +278,19 @@ export default function ClubProfileScreen({ navigation }: Props) {
                   <Text style={[styles.infoValue, { color: '#2563EB' }]}>{website}</Text>
                 </View>
               )}
-              <View style={styles.infLine}>
-                <MaterialCommunityIcons name="clock-outline" size={20} color={palette.primary} />
-                <Text style={styles.infoValue}>Lun-Sam: 9h-19h, Dim: 9h-13h</Text>
-              </View>
+              {clubProfileData.openingHours && clubProfileData.openingHours.length > 0 ? (
+                clubProfileData.openingHours.map((hours, idx) => (
+                  <View key={idx} style={styles.infLine}>
+                    <MaterialCommunityIcons name="clock-outline" size={20} color={palette.primary} />
+                    <Text style={styles.infoValue}>{hours.day}: {hours.open}-{hours.close}</Text>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.infLine}>
+                  <MaterialCommunityIcons name="clock-outline" size={20} color={palette.primary} />
+                  <Text style={styles.infoValue}>Horaires non renseignés</Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -299,37 +337,45 @@ export default function ClubProfileScreen({ navigation }: Props) {
           <View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <Text style={styles.sectionTitle}>Promotions</Text>
-              <TouchableOpacity style={styles.createButton}>
+              <TouchableOpacity 
+                style={styles.createButton}
+                onPress={() => navigation.navigate('editPromotion', {})}
+              >
                 <Ionicons name="add" size={18} color="#fff" />
                 <Text style={styles.createButtonText}>Créer</Text>
               </TouchableOpacity>
             </View>
             <View style={{ gap: 12 }}>
-              <View style={styles.promotionCard}>
-                <View style={styles.promotionHeader}>
-                  <Text style={styles.promotionTitle}>-20% sur les forfaits mensuels</Text>
-                  <View style={styles.promotionBadge}>
-                    <Text style={styles.promotionBadgeText}>Active</Text>
-                  </View>
-                </View>
-                <Text style={styles.promotionCode}>OCT2025 -20%</Text>
-                <Text style={styles.promotionDate}>Valide jusqu'au 31 Oct 2025</Text>
-              </View>
-              <View style={styles.promotionCard}>
-                <View style={styles.promotionHeader}>
-                  <Text style={styles.promotionTitle}>Première séance gratuite</Text>
-                  <View style={styles.promotionBadge}>
-                    <Text style={styles.promotionBadgeText}>Active</Text>
-                  </View>
-                </View>
-                <Text style={styles.promotionCode}>FIRST -100%</Text>
-                <Text style={styles.promotionDate}>Valide jusqu'au 31 Déc 2025</Text>
-              </View>
+              {promotions.length > 0 ? (
+                promotions.map((promo) => {
+                  const isActive = promo.isActive && new Date(promo.validUntil?.toDate?.() || promo.validUntil) > new Date();
+                  return (
+                    <TouchableOpacity 
+                      key={promo.id}
+                      style={styles.promotionCard}
+                      onPress={() => navigation.navigate('promotionDetail', { promotionId: promo.id })}
+                    >
+                      <View style={styles.promotionHeader}>
+                        <Text style={styles.promotionTitle}>{promo.title}</Text>
+                        <View style={[styles.promotionBadge, { backgroundColor: isActive ? palette.greenLight : '#F3F4F6' }]}>
+                          <Text style={[styles.promotionBadgeText, { color: isActive ? palette.green : palette.gray }]}>{isActive ? 'Active' : 'Inactive'}</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.promotionCode}>{promo.code} -{promo.discountPercentage}%</Text>
+                      <Text style={styles.promotionDate}>
+                        Valide jusqu'au {new Date(promo.validUntil?.toDate?.() || promo.validUntil).toLocaleDateString('fr-FR')}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })
+              ) : (
+                <Text style={styles.emptyText}>Aucune promotion créée</Text>
+              )}
             </View>
             <View style={styles.infoBox}>
               <Ionicons name="information-circle" size={16} color="#6366F1" />
               <Text style={styles.infoBoxText}>
-                Conseils: avec promotions actives reçoivent 60% de réservations en plus !
+                Conseils: les clubs avec promotions actives reçoivent 60% de réservations en plus !
               </Text>
             </View>
           </View>
@@ -338,47 +384,75 @@ export default function ClubProfileScreen({ navigation }: Props) {
           <View>
             <Text style={styles.sectionTitle}>Compte bancaire</Text>
             <View style={[styles.infoCard, styles.bankCardStyle]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <View style={styles.bankIconContainer}>
-                  <Ionicons name="checkmark-circle" size={20} color={palette.green} />
-                </View>
-                <View>
-                  <Text style={styles.infoLabel}>Connectez votre compte bancaire</Text>
-                  <Text style={styles.infoValue}>
-                    Les paiements seront versés directement sur votre compte sous 2-3 jours ouvrés.
-                  </Text>
-                </View>
-              </View>
+              {clubProfileData.paymentSettings?.isActive ? (
+                <>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                    <View style={styles.bankIconContainer}>
+                      <Ionicons name="checkmark-circle" size={20} color={palette.green} />
+                    </View>
+                    <View>
+                      <Text style={styles.infoLabel}>Compte bancaire connecté</Text>
+                      <Text style={styles.infoValue}>
+                        Vos paiements sont versés directement sur votre compte.
+                      </Text>
+                    </View>
+                  </View>
 
-              <View style={{ gap: 12, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: palette.border }}>
-                <View>
-                  <Text style={styles.infoLabel}>Titulaire du compte</Text>
-                  <Text style={styles.infoValue}>Nom du titulaire</Text>
-                </View>
-                <View>
-                  <Text style={styles.infoLabel}>IBAN</Text>
-                  <Text style={styles.infoValue}>FR78 XXXX XXXX XXXX XXXX XXXX XX</Text>
-                </View>
-                <View>
-                  <Text style={styles.infoLabel}>BIC/SWIFT</Text>
-                  <Text style={styles.infoValue}>XXXXXXXX</Text>
-                </View>
-                <View>
-                  <Text style={styles.infoLabel}>Nom de la banque</Text>
-                  <Text style={styles.infoValue}>Ex: Crédit Agricole</Text>
-                </View>
-              </View>
+                  <View style={{ gap: 12, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: palette.border }}>
+                    {clubProfileData.paymentSettings?.provider && (
+                      <View>
+                        <Text style={styles.infoLabel}>Prestataire</Text>
+                        <Text style={styles.infoValue}>{clubProfileData.paymentSettings.provider}</Text>
+                      </View>
+                    )}
+                    {clubProfileData.paymentSettings?.ibanMasked && (
+                      <View>
+                        <Text style={styles.infoLabel}>IBAN</Text>
+                        <Text style={styles.infoValue}>{clubProfileData.paymentSettings.ibanMasked}</Text>
+                      </View>
+                    )}
+                    {clubProfileData.paymentSettings?.bic && (
+                      <View>
+                        <Text style={styles.infoLabel}>BIC/SWIFT</Text>
+                        <Text style={styles.infoValue}>{clubProfileData.paymentSettings.bic}</Text>
+                      </View>
+                    )}
+                    {clubProfileData.paymentSettings?.updatedAt && (
+                      <View>
+                        <Text style={styles.infoLabel}>Dernière mise à jour</Text>
+                        <Text style={styles.infoValue}>
+                          {new Date(clubProfileData.paymentSettings.updatedAt).toLocaleDateString('fr-FR')}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                    <View style={styles.bankIconContainer}>
+                      <Ionicons name="close-circle" size={20} color={palette.orange} />
+                    </View>
+                    <View>
+                      <Text style={styles.infoLabel}>Connectez votre compte bancaire</Text>
+                      <Text style={styles.infoValue}>
+                        Les paiements seront versés directement sur votre compte sous 2-3 jours ouvrés.
+                      </Text>
+                    </View>
+                  </View>
 
-              <TouchableOpacity style={styles.bankButton}>
-                <MaterialCommunityIcons name="credit-card-check" size={18} color="#fff" />
-                <Text style={styles.bankButtonText}>Connecter mon compte bancaire</Text>
-              </TouchableOpacity>
+                  <TouchableOpacity style={styles.bankButton}>
+                    <MaterialCommunityIcons name="credit-card-check" size={18} color="#fff" />
+                    <Text style={styles.bankButtonText}>Connecter mon compte bancaire</Text>
+                  </TouchableOpacity>
+                </>
+              )}
 
               <Text style={styles.securityNote}>
                 Les informations bancaires sont cryptées et sécurisées. Nous ne stockons jamais vos données bancaires complètes.
               </Text>
               <Text style={styles.friendNote}>
-                🎁 Breviot: Dogs prélève 5% de commission sur chaque transaction.
+                🎁 Dogs Breviot: prélève 5% de commission sur chaque transaction.
               </Text>
             </View>
           </View>
@@ -426,27 +500,33 @@ export default function ClubProfileScreen({ navigation }: Props) {
           <View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <Text style={styles.sectionTitle}>Galerie photos</Text>
-              <TouchableOpacity style={styles.addPhotoButton}>
+              <TouchableOpacity 
+                style={styles.addPhotoButton}
+                onPress={() => navigation.navigate('editGallery')}
+              >
                 <MaterialCommunityIcons name="plus" size={20} color={palette.primary} />
                 <Text style={styles.addPhotoText}>Ajouter</Text>
               </TouchableOpacity>
             </View>
             <View style={{ gap: 12 }}>
-              <View style={styles.photosPreview}>
-                <View style={styles.photoThumbnail}>
-                  <Text style={styles.photoPlaceholder}>📷</Text>
-                  <Text style={styles.photoLabel}>Terrain d'agility</Text>
+              {galleryImages.length > 0 ? (
+                <View style={styles.photosPreview}>
+                  {galleryImages.slice(0, 3).map((image) => (
+                    <View key={image.id} style={styles.photoThumbnail}>
+                      <Image 
+                        source={{ uri: image.url }} 
+                        style={styles.photoImage}
+                      />
+                    </View>
+                  ))}
                 </View>
-                <View style={styles.photoThumbnail}>
-                  <Text style={styles.photoPlaceholder}>🐕</Text>
-                  <Text style={styles.photoLabel}>Séance de grou</Text>
+              ) : (
+                <View style={styles.emptyPhotosPlaceholder}>
+                  <MaterialCommunityIcons name="image-outline" size={48} color={palette.gray} />
+                  <Text style={styles.emptyPhotosText}>Aucune photo pour le moment</Text>
                 </View>
-                <View style={styles.photoThumbnail}>
-                  <Text style={styles.photoPlaceholder}>🏠</Text>
-                  <Text style={styles.photoLabel}>Nos installations</Text>
-                </View>
-              </View>
-              <Text style={styles.photoInfo}>3/10 photos - Les photos de qualité augmentent vos réservations de 40%</Text>
+              )}
+              <Text style={styles.photoInfo}>{totalPhotos}/10 photos - Les photos de qualité augmentent vos réservations de 40%</Text>
             </View>
           </View>
 
@@ -454,43 +534,64 @@ export default function ClubProfileScreen({ navigation }: Props) {
           <View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <Text style={styles.sectionTitle}>Terrains</Text>
-              <TouchableOpacity style={styles.createButton}>
+              <TouchableOpacity 
+                style={styles.createButton}
+                onPress={() => navigation.navigate('editTerrains' as any)}
+              >
                 <Ionicons name="add" size={18} color="#fff" />
                 <Text style={styles.createButtonText}>Ajouter</Text>
               </TouchableOpacity>
             </View>
             <View style={{ gap: 12 }}>
-              <View style={styles.terrainItem}>
-                <View style={styles.terrainIcon}>
-                  <Ionicons name="location" size={24} color={palette.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.terrainName}>Terrain principal</Text>
-                  <Text style={styles.terrainAddress}>123 Rue de la République, 75015 Paris</Text>
-                  <View style={styles.terrainBadge}>
-                    <Text style={styles.terrainBadgeText}>Agility</Text>
+              {terrains.length > 0 ? (
+                terrains.map((terrain) => (
+                  <View key={terrain.id} style={styles.terrainItem}>
+                    <View style={styles.terrainIcon}>
+                      <Ionicons name="location" size={24} color={palette.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.terrainName}>{terrain.name}</Text>
+                      <Text style={styles.terrainAddress}>{terrain.address}</Text>
+                      <View style={styles.terrainBadge}>
+                        <Text style={styles.terrainBadgeText}>{terrain.trainingStyle}</Text>
+                      </View>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                      <TouchableOpacity
+                        onPress={() => navigation.navigate('editTerrains' as any, { terrainId: terrain.id })}
+                      >
+                        <Ionicons name="pencil-outline" size={20} color={palette.primary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => {
+                          Alert.alert('Supprimer le terrain', 'Êtes-vous sûr de vouloir supprimer ce terrain?', [
+                            { text: 'Annuler', onPress: () => {} },
+                            {
+                              text: 'Supprimer',
+                              onPress: async () => {
+                                try {
+                                  await deleteTerrain(terrain.id);
+                                  Alert.alert('Succès', 'Terrain supprimé');
+                                } catch (err) {
+                                  Alert.alert('Erreur', 'Impossible de supprimer le terrain');
+                                }
+                              },
+                              style: 'destructive',
+                            },
+                          ]);
+                        }}
+                      >
+                        <Ionicons name="trash-outline" size={20} color={palette.red} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
+                ))
+              ) : (
+                <View style={styles.emptyState}>
+                  <Ionicons name="location-outline" size={48} color={palette.gray} />
+                  <Text style={styles.emptyStateText}>Aucun terrain pour le moment</Text>
                 </View>
-                <TouchableOpacity>
-                  <Ionicons name="trash-outline" size={20} color={palette.red} />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.terrainItem}>
-                <View style={styles.terrainIcon}>
-                  <Ionicons name="location" size={24} color={palette.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.terrainName}>Terrain de dressage</Text>
-                  <Text style={styles.terrainAddress}>45 Avenue du Parc, 75015 Paris</Text>
-                  <View style={styles.terrainBadge}>
-                    <Text style={styles.terrainBadgeText}>Education</Text>
-                  </View>
-                </View>
-                <TouchableOpacity>
-                  <Ionicons name="trash-outline" size={20} color={palette.red} />
-                </TouchableOpacity>
-              </View>
+              )}
             </View>
           </View>
 
@@ -939,6 +1040,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: palette.gray,
   },
+  emptyText: {
+    fontSize: 14,
+    color: palette.gray,
+    textAlign: 'center',
+    padding: 16,
+  },
   infoBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -1050,6 +1157,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: palette.border,
+    overflow: 'hidden',
+  },
+  photoImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 10,
   },
   photoPlaceholder: {
     fontSize: 28,
@@ -1094,17 +1207,39 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   terrainBadge: {
-    backgroundColor: '#E6E6FA',
+    backgroundColor: palette.purpleLight,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    marginTop: 6,
     alignSelf: 'flex-start',
+    marginTop: 6,
   },
   terrainBadgeText: {
-    color: '#6B7280',
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '600',
+    color: palette.purple,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 30,
+    gap: 8,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: palette.text,
+  },
+  emptyPhotosPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 30,
+    gap: 8,
+  },
+  emptyPhotosText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: palette.text,
   },
   managerCard: {
     backgroundColor: palette.orangeLight,

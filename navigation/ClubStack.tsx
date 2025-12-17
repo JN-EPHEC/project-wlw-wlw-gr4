@@ -21,6 +21,10 @@ import ClubTeachersPaymentScreen from '@/app/club-teachers-payment';
 import ClubTeachersPricingScreen from '@/app/club-teachers-pricing';
 import ClubTeachersScreen from '@/app/club-teachers';
 import EditClubProfileScreen from '@/screens/club/EditClubProfileScreen';
+import EditPromotionScreen from '@/screens/club/EditPromotionScreen';
+import PromotionDetailScreen from '@/screens/club/PromotionDetailScreen';
+import EditGalleryScreen from '@/screens/club/EditGalleryScreen';
+import EditTerrainScreen from '@/screens/club/EditTerrainScreen';
 import NotificationsScreen from '@/app/notifications';
 import { ClubStackParamList } from './types';
 
@@ -32,6 +36,10 @@ export default function ClubStack() {
       <Stack.Screen name="clubHome" component={ClubHomeScreen} />
       <Stack.Screen name="clubProfile" component={ClubProfileScreen} />
       <Stack.Screen name="editClubProfile" component={EditClubProfileScreen} />
+      <Stack.Screen name="editPromotion" component={EditPromotionScreen} />
+      <Stack.Screen name="promotionDetail" component={PromotionDetailScreen} />
+      <Stack.Screen name="editGallery" component={EditGalleryScreen} />
+      <Stack.Screen name="editTerrains" component={EditTerrainScreen} />
       <Stack.Screen name="clubCommunity" component={ClubCommunityManagementScreen} />
       <Stack.Screen name="clubAnnouncements" component={ClubAnnouncementsScreen} />
       <Stack.Screen name="clubEventsManagement" component={ClubEventsManagementScreen} />

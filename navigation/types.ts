@@ -123,6 +123,10 @@ export type ClubStackParamList = {
   clubHome: undefined;
   clubProfile: undefined;
   editClubProfile: undefined;
+  editPromotion: { promotionId?: string };
+  promotionDetail: { promotionId: string };
+  editGallery: undefined;
+  editTerrains: { terrainId?: string };
   clubCommunity: { clubId?: number };
   clubAnnouncements: undefined;
   clubEventsManagement: undefined;
