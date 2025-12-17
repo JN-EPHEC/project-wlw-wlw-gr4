@@ -4,6 +4,8 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { ClubStackParamList } from '@/navigation/types';
+import { useAuth } from '@/context/AuthContext';
+import { useUnreadNotificationCount } from '@/hooks/useNotifications';
 
 type ClubTab = 'clubHome' | 'clubProfile' | 'clubAppointments' | 'clubPayments' | 'clubCommunity';
 
@@ -27,6 +29,9 @@ const palette = {
 
 export default function ClubBottomNav({ current }: Props) {
   const navigation = useNavigation<NavigationProp<ClubStackParamList>>();
+  const { user } = useAuth();
+  const clubId = (user as any)?.clubId || '';
+  const unreadCount = useUnreadNotificationCount(clubId);
 
   const navItems: NavItem[] = [
     { id: 'clubHome', icon: 'home-outline', label: 'Accueil' },
@@ -55,11 +60,20 @@ export default function ClubBottomNav({ current }: Props) {
               style={[styles.item, isActive && styles.itemActive]}
               activeOpacity={0.8}
             >
-              <Ionicons
-                name={item.icon}
-                size={22}
-                color={isActive ? palette.primary : palette.gray}
-              />
+              <View style={{ position: 'relative' }}>
+                <Ionicons
+                  name={item.icon}
+                  size={22}
+                  color={isActive ? palette.primary : palette.gray}
+                />
+                {item.id === 'clubCommunity' && unreadCount > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </Text>
+                  </View>
+                )}
+              </View>
               <Text style={[styles.label, isActive && styles.labelActive]} numberOfLines={1}>
                 {item.label}
               </Text>
@@ -115,5 +129,23 @@ const styles = StyleSheet.create({
   labelActive: {
     color: palette.primary,
     fontWeight: '600',
+  },
+  badge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#F97316',
+    borderRadius: 10,
+    minWidth: 18,
+    minHeight: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: palette.surface,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '700',
   },
 });

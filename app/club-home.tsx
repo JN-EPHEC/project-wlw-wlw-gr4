@@ -208,7 +208,7 @@ export default function ClubHomeScreen({ navigation }: Props) {
                 </View>
               </View>
             </View>
-            <TouchableOpacity style={styles.notif} onPress={() => goTo('notifications')}>
+            <TouchableOpacity style={styles.notif} onPress={() => goTo('notifications', { previousTarget: 'clubHome' })}>
               <Ionicons name="notifications-outline" size={20} color={palette.primaryDark} />
             </TouchableOpacity>
           </View>

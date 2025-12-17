@@ -20,6 +20,7 @@ import { useCommunityMembers } from '@/hooks/useCommunityMembers';
 import { useFetchPendingMembers } from '@/hooks/useFetchPendingMembers';
 import { useApproveOrRejectMember } from '@/hooks/useApproveOrRejectMember';
 import { useAuth } from '@/context/AuthContext';
+import { notifyUserMembershipApproved, notifyUserMembershipRejected } from '@/utils/notificationHelpers';
 
 const palette = {
   primary: '#7C3AED',
@@ -87,6 +88,16 @@ export default function ClubMembersScreen({ navigation, route }: Props) {
         name: pendingMember.name,
         action: 'approve',
       });
+      
+      // Créer une notification pour l'utilisateur
+      try {
+        const clubData = await getDoc(doc(db, 'club', clubId));
+        const clubName = clubData.data()?.name || 'le club';
+        await notifyUserMembershipApproved(pendingMember.userId, clubId, clubName);
+      } catch (notifErr) {
+        console.warn('Erreur création notification:', notifErr);
+      }
+      
       Alert.alert('Succès', `${pendingMember.name} a été ajouté aux membres`);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Erreur';
@@ -111,6 +122,16 @@ export default function ClubMembersScreen({ navigation, route }: Props) {
                 name: pendingMember.name,
                 action: 'reject',
               });
+              
+              // Créer une notification pour l'utilisateur
+              try {
+                const clubData = await getDoc(doc(db, 'club', clubId));
+                const clubName = clubData.data()?.name || 'le club';
+                await notifyUserMembershipRejected(pendingMember.userId, clubId, clubName);
+              } catch (notifErr) {
+                console.warn('Erreur création notification:', notifErr);
+              }
+              
               Alert.alert('Succès', `La demande de ${pendingMember.name} a été refusée`);
             } catch (err) {
               const errorMsg = err instanceof Error ? err.message : 'Erreur';

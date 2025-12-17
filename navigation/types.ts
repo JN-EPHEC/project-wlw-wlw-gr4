@@ -54,7 +54,8 @@ export type ClubRoute =
   | 'clubTeachersPayment'
   | 'clubTeacherRequests'
   | 'clubLeaderboard'
-  | 'clubDetail';
+  | 'clubDetail'
+  | 'notifications';
 
 export type TeacherRoute =
   | 'teacher-home'
@@ -135,6 +136,7 @@ export type ClubStackParamList = {
   clubTeacherRequests: undefined;
   clubLeaderboard: undefined;
   clubDetail: { clubId: number };
+  notifications: { previousTarget?: string } | undefined;
 };
 
 export type TeacherStackParamList = {

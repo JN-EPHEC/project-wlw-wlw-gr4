@@ -7,6 +7,7 @@ import { doc, getDoc, Timestamp, updateDoc } from 'firebase/firestore';
 import { UserStackParamList } from '@/navigation/types';
 import { db } from '@/firebaseConfig';
 import { useAuth } from '@/context/AuthContext';
+import { notifyClubNewBooking } from '@/utils/notificationHelpers';
 
 const palette = {
   primary: '#41B6A6',
@@ -114,6 +115,14 @@ export default function EventBookingScreen({ navigation, route }: Props) {
       await updateDoc(eventRef, {
         participantData: [...currentParticipants, newParticipant],
       });
+
+      // Send notification to the club that organized the event
+      try {
+        const clubName = event.clubName || 'un club';
+        await notifyClubNewBooking(currentData.clubId, event.title, form.name);
+      } catch (notifErr) {
+        console.warn('Erreur création notification:', notifErr);
+      }
 
       console.log('✅ Booking confirmed:', newParticipant);
       console.log('✅ Total participants now:', currentParticipants.length + 1);

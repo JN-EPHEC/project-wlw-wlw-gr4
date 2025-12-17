@@ -18,6 +18,7 @@ import { useCommunityMessages } from '@/hooks/useCommunityMessages';
 import { useCommunityMembers } from '@/hooks/useCommunityMembers';
 import { useClubPermissions } from '@/hooks/useClubPermissions';
 import { useMessagesWithUserInfo } from '@/hooks/useMessagesWithUserInfo';
+import { notifyNewMessage } from '@/utils/notificationHelpers';
 
 const palette = {
   primary: '#41B6A6',
@@ -70,6 +71,26 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
     }
 
     await sendMessage(newMessage.trim());
+    
+    // Send notification to other members about new message
+    try {
+      const members = await useCommunityMembers(); // Get club members from hook
+      // Filter out sender and notify others
+      const otherMembers = members?.filter((m: any) => m.userId !== user?.uid);
+      if (otherMembers && otherMembers.length > 0) {
+        for (const member of otherMembers) {
+          await notifyNewMessage(
+            member.userId,
+            clubId,
+            profile?.name || 'Un utilisateur',
+            channelName || 'le canal'
+          );
+        }
+      }
+    } catch (notifErr) {
+      console.warn('Erreur création notification:', notifErr);
+    }
+    
     setNewMessage('');
   };
 
