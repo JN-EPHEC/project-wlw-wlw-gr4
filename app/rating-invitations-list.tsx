@@ -61,12 +61,19 @@ export default function RatingInvitationsListScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
+      <View style={styles.headerContainer}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.navigate('account')}
+        >
+          <MaterialCommunityIcons name="chevron-left" size={28} color="#fff" />
+        </TouchableOpacity>
+        <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Mes invitations</Text>
           <Text style={styles.headerSub}>Donnez votre avis sur vos séances</Text>
         </View>
+      </View>
+      <ScrollView showsVerticalScrollIndicator={false}>
 
         {/* Invitations List */}
         <View style={styles.section}>
@@ -136,15 +143,25 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: palette.bg },
   centerContent: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-  header: {
+  headerContainer: {
     backgroundColor: palette.primary,
     paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 24,
-    gap: 4,
+    paddingTop: 12,
+    paddingBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
-  headerTitle: { color: '#fff', fontSize: 24, fontWeight: '700' },
-  headerSub: { color: 'rgba(255,255,255,0.9)', fontSize: 14 },
+  backButton: {
+    padding: 8,
+    marginLeft: -8,
+  },
+  headerContent: {
+    flex: 1,
+    gap: 2,
+  },
+  headerTitle: { color: '#fff', fontSize: 20, fontWeight: '700' },
+  headerSub: { color: 'rgba(255,255,255,0.9)', fontSize: 13 },
 
   section: { paddingHorizontal: 16, paddingVertical: 16, gap: 12 },
 

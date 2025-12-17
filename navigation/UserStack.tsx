@@ -19,6 +19,7 @@ import HomeTrainingBookingScreen from '@/app/home-training-booking';
 import NotificationsScreen from '@/app/notifications';
 import PostDetailScreen from '@/app/post-detail';
 import RatingInvitationScreen from '@/app/rating-invitation';
+import RatingInvitationsListScreen from '@/app/rating-invitations-list';
 import RatingScreen from '@/app/rating';
 import ReviewsScreen from '@/app/reviews';
 import TeacherDetailScreen from '@/app/teacher-detail';
@@ -71,6 +72,7 @@ export default function UserStack() {
       <Stack.Screen name="editDog" component={EditDogScreen} />
       <Stack.Screen name="account" component={AccountScreen} />
       <Stack.Screen name="ratingInvitation" component={RatingInvitationScreen} />
+      <Stack.Screen name="ratingsInvitationsList" component={RatingInvitationsListScreen} />
       <Stack.Screen name="rating" component={RatingScreen} />
       <Stack.Screen name="notifications" component={NotificationsScreen} />
       <Stack.Screen name="verified" component={VerifiedScreen} />

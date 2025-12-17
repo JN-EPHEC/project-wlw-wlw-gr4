@@ -2,6 +2,8 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Alert, ActivityIndicator } from 'react-native';
+import { doc, deleteDoc } from 'firebase/firestore';
+import { db } from '@/firebaseConfig';
 
 import { RootStackParamList } from '@/navigation/types';
 import { useAuth } from '@/context/AuthContext';
@@ -98,6 +100,15 @@ export default function RatingScreen({ navigation, route }: Props) {
           comment: educatorComment,
           tags: educatorSelectedTags,
         });
+
+        // Supprimer l'invitation d'avis
+        try {
+          const invitationId = `${bookingId}_${ownerId}`;
+          await deleteDoc(doc(db, 'ratingInvitations', invitationId));
+          console.log('✅ Invitation supprimée');
+        } catch (err) {
+          console.warn('⚠️ Erreur suppression invitation:', err);
+        }
 
         // Envoyer une notification au club pour lui dire qu'il a reçu un avis
         try {
