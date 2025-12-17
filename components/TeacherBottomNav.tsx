@@ -5,6 +5,8 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { TeacherStackParamList } from '@/navigation/types';
+import { useAuth } from '@/context/AuthContext';
+import { useUnreadNotificationCount } from '@/hooks/useNotifications';
 
 type TeacherTab =
   | 'teacher-home'
@@ -23,8 +25,19 @@ type Props = {
   current: TeacherTab;
 };
 
+const palette = {
+  primary: '#F28B6F',
+  text: '#1F2937',
+  gray: '#6B7280',
+  border: '#E5E7EB',
+  surface: '#FFFFFF',
+};
+
 export default function TeacherBottomNav({ current }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<TeacherStackParamList>>();
+  const { user } = useAuth();
+  const userId = (user as any)?.uid || '';
+  const unreadCount = useUnreadNotificationCount(userId);
 
   const navItems: NavItem[] = [
     { id: 'teacher-home', icon: 'home-outline', label: 'Accueil' },
@@ -51,11 +64,20 @@ export default function TeacherBottomNav({ current }: Props) {
               style={[styles.item, isActive && styles.itemActive]}
               activeOpacity={0.85}
             >
-              <Ionicons
-                name={item.icon}
-                size={22}
-                color={isActive ? palette.primary : palette.gray}
-              />
+              <View style={{ position: 'relative' }}>
+                <Ionicons
+                  name={item.icon}
+                  size={22}
+                  color={isActive ? palette.primary : palette.gray}
+                />
+                {item.id === 'teacher-account' && unreadCount > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </Text>
+                  </View>
+                )}
+              </View>
               <Text style={[styles.label, isActive && styles.labelActive]} numberOfLines={1}>
                 {item.label}
               </Text>
@@ -66,14 +88,6 @@ export default function TeacherBottomNav({ current }: Props) {
     </View>
   );
 }
-
-const palette = {
-  primary: '#F28B6F',
-  text: '#1F2937',
-  gray: '#6B7280',
-  border: '#E5E7EB',
-  surface: '#FFFFFF',
-};
 
 const styles = StyleSheet.create({
   wrapper: {
@@ -109,7 +123,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   itemActive: {
-    backgroundColor: '#FFF3EC',
+    backgroundColor: '#FDF5E6',
     borderRadius: 12,
   },
   label: {
@@ -119,5 +133,23 @@ const styles = StyleSheet.create({
   labelActive: {
     color: palette.primary,
     fontWeight: '600',
+  },
+  badge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#F97316',
+    borderRadius: 10,
+    minWidth: 18,
+    minHeight: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: palette.surface,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '700',
   },
 });

@@ -4,6 +4,8 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { UserStackParamList } from '@/navigation/types';
+import { useAuth } from '@/context/AuthContext';
+import { useUnreadNotificationCount } from '@/hooks/useNotifications';
 
 type UserTab = 'home' | 'clubs' | 'community' | 'mydog' | 'account';
 
@@ -26,11 +28,14 @@ const palette = {
 
 export default function UserBottomNav({ current }: Props) {
   const navigation = useNavigation<NavigationProp<UserStackParamList>>();
+  const { user } = useAuth();
+  const userId = (user as any)?.uid || '';
+  const unreadCount = useUnreadNotificationCount(userId);
 
   const navItems: NavItem[] = [
     { id: 'home', icon: 'home-outline', label: 'Accueil' },
     { id: 'clubs', icon: 'account-group-outline', label: 'Clubs' },
-    { id: 'community', icon: 'message-text-outline', label: 'Communaut\u00e9' },
+    { id: 'community', icon: 'message-text-outline', label: 'Communauté' },
     { id: 'mydog', icon: 'dog', label: 'Mes chiens' },
     { id: 'account', icon: 'account-circle-outline', label: 'Compte' },
   ];
@@ -54,7 +59,16 @@ export default function UserBottomNav({ current }: Props) {
               onPress={() => handlePress(item.id)}
               style={styles.item}
               activeOpacity={0.85}>
-              <MaterialCommunityIcons name={item.icon} size={28} color={color} />
+              <View style={{ position: 'relative' }}>
+                <MaterialCommunityIcons name={item.icon} size={28} color={color} />
+                {item.id === 'account' && unreadCount > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </Text>
+                  </View>
+                )}
+              </View>
               <Text style={[styles.label, isActive && styles.labelActive]} numberOfLines={1}>
                 {item.label}
               </Text>
@@ -98,6 +112,24 @@ const styles = StyleSheet.create({
   },
   labelActive: {
     color: palette.active,
+    fontWeight: '700',
+  },
+  badge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#F97316',
+    borderRadius: 10,
+    minWidth: 20,
+    minHeight: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: palette.background,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 10,
     fontWeight: '700',
   },
 });

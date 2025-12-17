@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { RootStackParamList } from '@/navigation/types';
+import { notifyReviewReceived } from '@/utils/notificationHelpers';
 
 const palette = {
   primary: '#41B6A6',
@@ -60,10 +61,18 @@ export default function RatingScreen({ navigation, route }: Props) {
     );
   }
 
-  const onSubmit = () => {
+  const onSubmit = async () => {
     if (step === 'club') {
       setStep('trainer');
     } else {
+      // Send notification when review is submitted
+      try {
+        const clubId = bookingMock.club.name; // In real app, would get actual clubId
+        const clubName = bookingMock.club.name;
+        await notifyReviewReceived(clubId, clubName, trainerRating, clubRating);
+      } catch (notifErr) {
+        console.warn('Erreur création notification:', notifErr);
+      }
       setStep('done');
     }
   };

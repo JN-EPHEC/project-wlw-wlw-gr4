@@ -1,9 +1,12 @@
-import React, { useMemo, useState } from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import React, { useMemo } from 'react';
+import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '@/navigation/types';
+import { useAuth } from '@/context/AuthContext';
+import { useNotifications, useNotificationIcon, useFormattedTime } from '@/hooks/useNotifications';
+import { Notification } from '@/types/Notification';
 
 const palette = {
   primary: '#41B6A6',
@@ -12,66 +15,62 @@ const palette = {
   border: '#E5E7EB',
 };
 
-const initialNotifications = [
-  {
-    id: 1,
-    type: 'rating',
-    title: 'Donnez votre avis !',
-    message: "Comment s'est passée votre séance au Canin Club Paris ?",
-    time: 'Il y a 2 heures',
-    isRead: false,
-    icon: 'star',
-    iconColor: '#E9B782',
-    bg: '#FEF3C7',
-    bookingId: 501,
-  },
-  {
-    id: 2,
-    type: 'club',
-    title: 'Réservation confirmée !',
-    message: 'Séance du 2 novembre à 14h00 avec Sophie Martin confirmée.',
-    time: 'Il y a 3 heures',
-    isRead: false,
-    icon: 'checkmark-circle',
-    iconColor: '#16A34A',
-    bg: '#ECFDF3',
-    clubId: 101,
-    club: { name: 'Canin Club Paris', logo: 'https://images.unsplash.com/photo-1560807707-8cc77767d783?auto=format&fit=crop&w=200&q=80' },
-  },
-  {
-    id: 3,
-    type: 'club',
-    title: 'Nouvel événement !',
-    message: 'Compétition Agility - Grand Prix 2024 ouverte aux inscriptions.',
-    time: 'Hier',
-    isRead: false,
-    icon: 'trophy',
-    iconColor: '#7C3AED',
-    bg: '#F3E8FF',
-    clubId: 202,
-    club: { name: 'Agility Pro', logo: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=200&q=80' },
-  },
-  {
-    id: 4,
-    type: 'message',
-    title: 'Nouveau message !',
-    message: 'Sophie vous a écrit dans #conseils.',
-    time: 'Il y a 2 jours',
-    isRead: true,
-    icon: 'chatbubble-ellipses',
-    iconColor: '#F28B6F',
-    bg: '#FFF7ED',
-  },
-];
-
 type Props = NativeStackScreenProps<RootStackParamList, 'notifications'>;
 
 export default function NotificationsScreen({ navigation, route }: Props) {
-  const [notifications, setNotifications] = useState(initialNotifications);
+  const { user } = useAuth();
+  const userId = (user as any)?.uid || '';
+  
+  const { notifications, loading, error, markAsRead, markAllAsRead } = useNotifications(userId);
   const unreadCount = useMemo(() => notifications.filter((n) => !n.isRead).length, [notifications]);
   const previousTarget = route.params?.previousTarget;
 
-  const markAllRead = () => setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  // Affichage du chargement
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.header}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+            <TouchableOpacity
+              onPress={() => (previousTarget ? navigation.navigate(previousTarget as any) : navigation.goBack())}
+              style={styles.back}
+            >
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Mes notifications</Text>
+          </View>
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={palette.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Affichage si pas de notifications
+  if (notifications.length === 0) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.header}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+            <TouchableOpacity
+              onPress={() => (previousTarget ? navigation.navigate(previousTarget as any) : navigation.goBack())}
+              style={styles.back}
+            >
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Mes notifications</Text>
+          </View>
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 }}>
+          <Ionicons name="notifications-off-outline" size={48} color={palette.gray} />
+          <Text style={{ color: palette.gray, marginTop: 12, fontSize: 14, textAlign: 'center' }}>
+            Aucune notification pour le moment
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -90,50 +89,113 @@ export default function NotificationsScreen({ navigation, route }: Props) {
             <Text style={styles.headerSub}>
               {unreadCount} non lue{unreadCount > 1 ? 's' : ''}
             </Text>
-            <TouchableOpacity style={styles.back} onPress={markAllRead}>
-              <Ionicons name="checkmark-done" size={24} color="#fff" />
-            </TouchableOpacity>
+            {unreadCount > 0 && (
+              <TouchableOpacity style={styles.back} onPress={markAllAsRead}>
+                <Ionicons name="checkmark-done" size={24} color="#fff" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
-        {notifications.map((n) => (
-          <TouchableOpacity
-            key={n.id}
-            style={[styles.card, { backgroundColor: n.bg }, n.isRead && styles.readCard]}
-            activeOpacity={0.9}
+        {notifications.map((notif) => (
+          <NotificationCard
+            key={notif.id}
+            notification={notif}
             onPress={() => {
-              if (n.type === 'rating') {
-                navigation.navigate('ratingInvitation', { bookingId: n.bookingId ?? 0, previousTarget: 'notifications' });
-              } else if (n.type === 'club') {
-                navigation.navigate('clubDetail', { clubId: n.clubId ?? 0 });
-              } else {
-                navigation.goBack();
-              }
+              markAsRead(notif.id);
+              handleNavigate(navigation, notif);
             }}
-          >
-            <View style={[styles.iconWrap, { backgroundColor: n.isRead ? '#E5E7EB' : '#fff' }]}>
-              <Ionicons name={n.icon as any} size={18} color={n.iconColor} />
-            </View>
-            <View style={{ flex: 1, gap: 4 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.title}>{n.title}</Text>
-                {!n.isRead ? <View style={styles.unreadDot} /> : null}
-              </View>
-              <Text style={styles.message}>{n.message}</Text>
-              <Text style={styles.meta}>{n.time}</Text>
-              {n.club ? (
-                <View style={styles.clubRow}>
-                  <Image source={{ uri: n.club.logo }} style={styles.logo} />
-                  <Text style={styles.clubName}>{n.club.name}</Text>
-                </View>
-              ) : null}
-            </View>
-            <Ionicons name="chevron-forward" size={16} color={palette.gray} />
-          </TouchableOpacity>
+          />
         ))}
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+/**
+ * Composant pour afficher une notification
+ */
+function NotificationCard({ 
+  notification, 
+  onPress 
+}: { 
+  notification: Notification; 
+  onPress: () => void;
+}) {
+  const { icon, color, bg } = useNotificationIcon(notification.type);
+  const formattedTime = useFormattedTime(notification.createdAt);
+
+  return (
+    <TouchableOpacity
+      style={[styles.card, { backgroundColor: bg }, notification.isRead && styles.readCard]}
+      activeOpacity={0.9}
+      onPress={onPress}
+    >
+      <View style={[styles.iconWrap, { backgroundColor: notification.isRead ? '#E5E7EB' : '#fff' }]}>
+        <Ionicons name={icon as any} size={18} color={color} />
+      </View>
+      <View style={{ flex: 1, gap: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text style={styles.title}>{notification.title}</Text>
+          {!notification.isRead ? <View style={styles.unreadDot} /> : null}
+        </View>
+        <Text style={styles.message} numberOfLines={2}>
+          {notification.message}
+        </Text>
+        <Text style={styles.meta}>{formattedTime}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={16} color={palette.gray} />
+    </TouchableOpacity>
+  );
+}
+
+/**
+ * Gère la navigation selon le type de notification
+ */
+function handleNavigate(navigation: any, notification: Notification) {
+  const params = notification.actionParams || {};
+  
+  switch (notification.actionUrl) {
+    case 'club-detail':
+      navigation.navigate('clubDetail', { 
+        clubId: notification.relatedId,
+        ...params 
+      });
+      break;
+    case 'event-detail':
+      navigation.navigate('eventDetail', { 
+        eventId: notification.relatedId,
+        ...params 
+      });
+      break;
+    case 'chat-room':
+      navigation.navigate('chatRoom', { 
+        chatRoomId: notification.relatedId,
+        ...params 
+      });
+      break;
+    case 'rating':
+      navigation.navigate('rating', { 
+        bookingId: notification.relatedId,
+        previousTarget: 'account',
+        ...params 
+      });
+      break;
+    case 'club-community-management':
+      navigation.navigate('clubCommunityManagement', { 
+        clubId: notification.relatedId,
+        ...params 
+      });
+      break;
+    case 'club-reviews':
+      navigation.navigate('reviews', { 
+        clubId: notification.relatedId,
+        ...params 
+      });
+      break;
+    default:
+      console.log('Route non gérée:', notification.actionUrl);
+  }
 }
 
 const styles = StyleSheet.create({
@@ -169,12 +231,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   title: { color: palette.text, fontWeight: '700', fontSize: 15 },
   message: { color: palette.text, fontSize: 13, lineHeight: 18 },
   meta: { color: palette.gray, fontSize: 12 },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#F97316' },
-  clubRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
-  logo: { width: 28, height: 28, borderRadius: 8 },
-  clubName: { color: palette.text, fontWeight: '600', fontSize: 13 },
+  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#F97316', flexShrink: 0 },
 });
