@@ -15,7 +15,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp, doc, getDoc } from 'firebase/firestore';
 
 import ClubBottomNav from '@/components/ClubBottomNav';
 import { ClubStackParamList } from '@/navigation/types';
@@ -25,6 +25,9 @@ import { useUpdateBooking } from '@/hooks/useUpdateBooking';
 import { useCreateBooking } from '@/hooks/useCreateBooking';
 import { useFetchClubEducatorsForForm } from '@/hooks/useFetchClubEducatorsForForm';
 import { useFetchClubFieldsForForm } from '@/hooks/useFetchClubFieldsForForm';
+import { useCreateRatingInvitation } from '@/hooks/useCreateReview';
+import { useCreateNotification } from '@/hooks/useCreateNotification';
+import { db } from '@/firebaseConfig';
 import { BookingDisplay, BookingStatus } from '@/types/Booking';
 
 const palette = {
@@ -67,6 +70,10 @@ export default function ClubAppointmentsScreen({ navigation }: Props) {
     sessionDate: new Date(),
     educatorId: '',
   });
+  const [editingCourse, setEditingCourse] = useState<BookingDisplay | null>(null);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [participantsModalVisible, setParticipantsModalVisible] = useState(false);
+  const [selectedBookingForParticipants, setSelectedBookingForParticipants] = useState<BookingDisplay | null>(null);
   
   // Get clubId from user profile
   const { profile } = useAuth();
@@ -76,6 +83,8 @@ export default function ClubAppointmentsScreen({ navigation }: Props) {
   const { bookings, loading, error, stats } = useFetchClubAllBookings(clubId);
   const { confirmBooking, rejectBooking, completeBooking, deleteBooking, updateBooking, loading: updateLoading } = useUpdateBooking();
   const { createBooking, loading: createLoading } = useCreateBooking();
+  const { createInvitation, loading: invitationLoading } = useCreateRatingInvitation();
+  const { createNotification } = useCreateNotification();
   
   // Fetch educators and fields for the club
   const { educators, loading: educatorsLoading } = useFetchClubEducatorsForForm(clubId);
@@ -212,9 +221,58 @@ export default function ClubAppointmentsScreen({ navigation }: Props) {
 
   const handleComplete = async (bookingId: string) => {
     try {
+      // 1. Marquer la séance comme complétée
       await completeBooking(bookingId);
-      Alert.alert('Succès', 'Rendez-vous marqué comme terminé');
+
+      // 2. Récupérer les détails du booking pour créer les invitations
+      const bookingDoc = bookings.find((b) => b.id === bookingId);
+      if (!bookingDoc) {
+        Alert.alert('Succès', 'Rendez-vous marqué comme terminé');
+        return;
+      }
+
+      // 3. Récupérer les IDs des propriétaires de chiens participants
+      const ownerIds: string[] = [];
+      if (bookingDoc.userIds && bookingDoc.userIds.length > 0) {
+        for (const userId of bookingDoc.userIds) {
+          try {
+            const userDoc = await getDoc(doc(db, 'users', userId));
+            if (userDoc.exists()) {
+              ownerIds.push(userId);
+            }
+          } catch (err) {
+            console.error('Erreur récupération utilisateur:', err);
+          }
+        }
+      }
+
+      // 4. Créer les invitations d'avis
+      if (ownerIds.length > 0) {
+        await createInvitation(bookingId, clubId, bookingDoc.educatorId, ownerIds);
+
+        // 5. Envoyer des notifications aux propriétaires
+        for (const ownerId of ownerIds) {
+          try {
+            await createNotification({
+              userId: ownerId,
+              type: 'review_requested',
+              title: 'Donnez votre avis !',
+              message: `Votre séance avec ${bookingDoc.title} est terminée. Partagez votre expérience !`,
+              data: {
+                bookingId,
+                clubId,
+                previousTarget: 'account',
+              },
+            });
+          } catch (err) {
+            console.error('Erreur envoi notification:', err);
+          }
+        }
+      }
+
+      Alert.alert('Succès', 'Rendez-vous marqué comme terminé et invitations d\'avis envoyées');
     } catch (err) {
+      console.error('Erreur handleComplete:', err);
       Alert.alert('Erreur', 'Impossible de marquer comme terminé');
     }
   };
@@ -242,10 +300,8 @@ export default function ClubAppointmentsScreen({ navigation }: Props) {
   };
 
   const handleEditCourse = (booking: BookingDisplay) => {
-    // Navigate to edit page - we'll use clubEventsManagement with params
-    navigation.navigate('clubEventsManagement', {
-      editingBooking: booking,
-    } as any);
+    setEditingCourse(booking);
+    setEditModalVisible(true);
   };
 
   const openRejectModal = (bookingId: string) => {
@@ -518,8 +574,47 @@ export default function ClubAppointmentsScreen({ navigation }: Props) {
 
                       <View style={styles.cardFooter}>
                         <Text style={styles.price}>{booking.price}€</Text>
-                        {booking.createdBy === 'club' ? (
-                          // Les cours créés par le club: Modifier + Supprimer
+                        {booking.createdBy === 'club' && booking.type === 'club-based' ? (
+                          // Les cours créés par le club (club-based): Modifier + Participants + Terminer + Supprimer
+                          <View style={{ flexDirection: 'row', gap: 8 }}>
+                            <TouchableOpacity
+                              style={[styles.circleBtn, styles.circleBtnBorder]}
+                              onPress={() => handleEditCourse(booking)}
+                              title="Modifier"
+                            >
+                              <MaterialCommunityIcons name="pencil" size={16} color={palette.primary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.circleBtn, styles.circleBtnBorder]}
+                              onPress={() => {
+                                setSelectedBookingForParticipants(booking);
+                                setParticipantsModalVisible(true);
+                              }}
+                              title="Participants"
+                            >
+                              <Ionicons name="people" size={16} color={palette.primary} />
+                            </TouchableOpacity>
+                            {booking.status === 'available' && (
+                              <TouchableOpacity
+                                style={[styles.circleBtn, { backgroundColor: '#16A34A' }]}
+                                onPress={() => handleComplete(booking.id)}
+                                disabled={updateLoading}
+                                title="Terminer"
+                              >
+                                <MaterialCommunityIcons name="check" size={16} color="#fff" />
+                              </TouchableOpacity>
+                            )}
+                            <TouchableOpacity
+                              style={[styles.circleBtn, styles.circleBtnBorder]}
+                              onPress={() => handleDelete(booking.id)}
+                              disabled={updateLoading}
+                              title="Supprimer"
+                            >
+                              <MaterialCommunityIcons name="trash-can-outline" size={16} color="#B91C1C" />
+                            </TouchableOpacity>
+                          </View>
+                        ) : booking.createdBy === 'club' ? (
+                          // Demandes à domicile créées par le club: Modifier + Supprimer
                           <View style={{ flexDirection: 'row', gap: 8 }}>
                             <TouchableOpacity
                               style={[styles.circleBtn, styles.circleBtnBorder]}
@@ -1218,6 +1313,96 @@ export default function ClubAppointmentsScreen({ navigation }: Props) {
         </SafeAreaView>
       </Modal>
 
+      {/* Modal Édition Cours */}
+      <Modal visible={editModalVisible} transparent animationType="slide" onRequestClose={() => setEditModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Modifier le cours</Text>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                <Ionicons name="close" size={24} color={palette.text} />
+              </TouchableOpacity>
+            </View>
+
+            {editingCourse && (
+              <ScrollView style={{ maxHeight: 400 }}>
+                <Text style={{ fontSize: 13, color: palette.gray, marginBottom: 4 }}>Titre</Text>
+                <Text style={[styles.input, { paddingVertical: 10 }]}>{editingCourse.title}</Text>
+
+                <Text style={{ fontSize: 13, color: palette.gray, marginBottom: 4, marginTop: 12 }}>Description</Text>
+                <Text style={[styles.input, { paddingVertical: 10 }]}>{editingCourse.description}</Text>
+
+                <Text style={{ fontSize: 13, color: palette.gray, marginBottom: 4, marginTop: 12 }}>Tarif</Text>
+                <Text style={[styles.input, { paddingVertical: 10 }]}>{editingCourse.price}€</Text>
+
+                <Text style={{ fontSize: 13, color: palette.gray, marginBottom: 4, marginTop: 12 }}>Durée</Text>
+                <Text style={[styles.input, { paddingVertical: 10 }]}>{editingCourse.duration} minutes</Text>
+
+                {editingCourse.maxParticipants > 1 && (
+                  <>
+                    <Text style={{ fontSize: 13, color: palette.gray, marginBottom: 4, marginTop: 12 }}>Participants max</Text>
+                    <Text style={[styles.input, { paddingVertical: 10 }]}>{editingCourse.maxParticipants}</Text>
+                  </>
+                )}
+
+                <TouchableOpacity style={[styles.primaryBtn, { marginTop: 16, marginBottom: 8 }]} onPress={() => setEditModalVisible(false)}>
+                  <Text style={{ color: '#fff', fontWeight: '700' }}>Fermer</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Participants */}
+      <Modal visible={participantsModalVisible} transparent animationType="slide" onRequestClose={() => setParticipantsModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Participants ({selectedBookingForParticipants?.userIds?.length || 0})</Text>
+              <TouchableOpacity onPress={() => setParticipantsModalVisible(false)}>
+                <Ionicons name="close" size={24} color={palette.text} />
+              </TouchableOpacity>
+            </View>
+
+            {selectedBookingForParticipants && selectedBookingForParticipants.participantInfo && selectedBookingForParticipants.participantInfo.length > 0 ? (
+              <ScrollView style={{ maxHeight: 400 }}>
+                {selectedBookingForParticipants.participantInfo.map((participant: any, index: number) => (
+                  <View key={participant.userId} style={{ paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: palette.border }}>
+                    <Text style={{ color: palette.text, fontWeight: '600', fontSize: 14 }}>
+                      {index + 1}. {participant.name || 'Participant'}
+                    </Text>
+                    {participant.email && (
+                      <Text style={{ color: palette.gray, fontSize: 12, marginTop: 4 }}>
+                        📧 {participant.email}
+                      </Text>
+                    )}
+                    {participant.phone && (
+                      <Text style={{ color: palette.gray, fontSize: 12, marginTop: 2 }}>
+                        📱 {participant.phone}
+                      </Text>
+                    )}
+                    {participant.dog && (
+                      <Text style={{ color: palette.gray, fontSize: 12, marginTop: 2 }}>
+                        🐕 {participant.dog}
+                      </Text>
+                    )}
+                  </View>
+                ))}
+              </ScrollView>
+            ) : (
+              <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                <Text style={{ color: palette.gray }}>Aucun participant pour le moment</Text>
+              </View>
+            )}
+
+            <TouchableOpacity style={[styles.primaryBtn, { marginTop: 16 }]} onPress={() => setParticipantsModalVisible(false)}>
+              <Text style={{ color: '#fff', fontWeight: '700' }}>Fermer</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <ClubBottomNav current="clubAppointments" />
     </SafeAreaView>
   );
@@ -1463,6 +1648,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: palette.border,
+  },
+  primaryBtn: {
+    backgroundColor: palette.primary,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalOverlay: {
     flex: 1,

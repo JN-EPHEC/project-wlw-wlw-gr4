@@ -55,6 +55,7 @@ export type ClubRoute =
   | 'clubTeacherRequests'
   | 'clubLeaderboard'
   | 'clubDetail'
+  | 'clubReviews'
   | 'notifications';
 
 export type TeacherRoute =
@@ -99,8 +100,8 @@ export type UserStackParamList = {
   dogTasks: { dogId: number };
   dogBadges: { dogId: number };
   account: undefined;
-  ratingInvitation: { bookingId: number; previousTarget?: RootRouteName };
-  rating: { bookingId: number; previousTarget?: RootRouteName };
+  ratingInvitation: { bookingId: string; previousTarget?: RootRouteName };
+  rating: { bookingId: string; clubId: string; educatorId: string; previousTarget?: RootRouteName };
   notifications: { previousTarget?: RootRouteName } | undefined;
   verified: undefined;
   settings: undefined;
@@ -136,6 +137,7 @@ export type ClubStackParamList = {
   clubTeacherRequests: undefined;
   clubLeaderboard: undefined;
   clubDetail: { clubId: number };
+  clubReviews: undefined;
   notifications: { previousTarget?: string } | undefined;
 };
 

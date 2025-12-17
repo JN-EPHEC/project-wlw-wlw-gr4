@@ -1,9 +1,12 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { doc, getDoc, Timestamp } from 'firebase/firestore';
 
 import { RootStackParamList } from '@/navigation/types';
+import { db } from '@/firebaseConfig';
+import { BookingDisplay } from '@/types/Booking';
 
 const palette = {
   primary: '#41B6A6',
@@ -12,20 +15,60 @@ const palette = {
   border: '#E5E7EB',
 };
 
-const bookingMock = {
-  id: 1,
-  club: { name: 'Canin Club Paris', logo: 'https://images.unsplash.com/photo-1560807707-8cc77767d783?auto=format&fit=crop&w=200&q=80' },
-  trainer: { name: 'Sophie Martin', photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80', speciality: 'Éducation comportementale' },
-  date: '25 Octobre 2024',
-  time: '14:00 - 15:00',
-  service: 'Séance individuelle (1h)',
-  dog: 'Max',
-};
-
 type Props = NativeStackScreenProps<RootStackParamList, 'ratingInvitation'>;
 
 export default function RatingInvitationScreen({ navigation, route }: Props) {
   const { bookingId, previousTarget } = route.params;
+  const [booking, setBooking] = useState<BookingDisplay | null>(null);
+  const [educator, setEducator] = useState<any>(null);
+  const [club, setClub] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadData();
+  }, [bookingId]);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      
+      // Charger le booking
+      const bookingDoc = await getDoc(doc(db, 'bookings', bookingId));
+      if (!bookingDoc.exists()) {
+        setError('Réservation non trouvée');
+        setLoading(false);
+        return;
+      }
+
+      const bookingData = bookingDoc.data() as BookingDisplay;
+      bookingData.id = bookingDoc.id;
+      setBooking(bookingData);
+
+      // Charger le club
+      if (bookingData.clubId) {
+        const clubDoc = await getDoc(doc(db, 'clubs', bookingData.clubId));
+        if (clubDoc.exists()) {
+          setClub({ id: clubDoc.id, ...clubDoc.data() });
+        }
+      }
+
+      // Charger l'éducateur
+      if (bookingData.educatorId) {
+        const educatorDoc = await getDoc(doc(db, 'educators', bookingData.educatorId));
+        if (educatorDoc.exists()) {
+          setEducator({ id: educatorDoc.id, ...educatorDoc.data() });
+        }
+      }
+
+      setLoading(false);
+    } catch (err) {
+      console.error('Erreur chargement données:', err);
+      setError('Erreur chargement des données');
+      setLoading(false);
+    }
+  };
+
   const handleDismiss = () => {
     if (previousTarget) {
       navigation.navigate({ name: previousTarget, params: {} } as any);
@@ -33,6 +76,44 @@ export default function RatingInvitationScreen({ navigation, route }: Props) {
       navigation.navigate('account');
     }
   };
+
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return '';
+    const date = timestamp instanceof Timestamp ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  };
+
+  const formatTime = (timestamp: any) => {
+    if (!timestamp) return '';
+    const date = timestamp instanceof Timestamp ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={palette.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!booking || error) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ color: palette.text, fontSize: 16 }}>{error || 'Erreur chargement'}</Text>
+          <TouchableOpacity
+            style={[styles.primaryBtn, { marginTop: 20, width: 200 }]}
+            onPress={handleDismiss}
+          >
+            <Text style={styles.primaryBtnText}>Retour</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -52,44 +133,60 @@ export default function RatingInvitationScreen({ navigation, route }: Props) {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.title}>Séance complétée</Text>
-              <Text style={styles.sub}>Avec {bookingMock.dog}</Text>
+              <Text style={styles.sub}>{booking.title}</Text>
             </View>
           </View>
 
           <View style={styles.listRow}>
             <MaterialCommunityIcons name="calendar" size={18} color={palette.primary} />
-            <Text style={styles.sub}>{bookingMock.date}</Text>
+            <Text style={styles.sub}>{formatDate(booking.sessionDate)}</Text>
           </View>
           <View style={styles.listRow}>
             <MaterialCommunityIcons name="clock-outline" size={18} color={palette.primary} />
-            <Text style={styles.sub}>{bookingMock.time}</Text>
+            <Text style={styles.sub}>{formatTime(booking.sessionDate)}</Text>
           </View>
+          {club && (
+            <View style={styles.listRow}>
+              <MaterialCommunityIcons name="map-marker-outline" size={18} color={palette.primary} />
+              <Text style={styles.sub}>{club.name}</Text>
+            </View>
+          )}
           <View style={styles.listRow}>
-            <MaterialCommunityIcons name="map-marker-outline" size={18} color={palette.primary} />
-            <Text style={styles.sub}>{bookingMock.club.name}</Text>
-          </View>
-          <View style={styles.listRow}>
-            <MaterialCommunityIcons name="paw" size={18} color={palette.primary} />
-            <Text style={styles.sub}>{bookingMock.service}</Text>
+            <MaterialCommunityIcons name="clock-outline" size={18} color={palette.primary} />
+            <Text style={styles.sub}>{booking.duration}min</Text>
           </View>
         </View>
 
-        <View style={styles.trainerCard}>
-          <Image source={{ uri: bookingMock.trainer.photo }} style={styles.trainerPhoto} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.title}>{bookingMock.trainer.name}</Text>
-            <Text style={styles.sub}>{bookingMock.trainer.speciality}</Text>
+        {educator && (
+          <View style={styles.trainerCard}>
+            {educator.profilePicture && (
+              <Image source={{ uri: educator.profilePicture }} style={styles.trainerPhoto} />
+            )}
+            <View style={{ flex: 1 }}>
+              <Text style={styles.title}>{educator.name}</Text>
+              <Text style={styles.sub}>{educator.specialization || 'Éducateur'}</Text>
+            </View>
+            <TouchableOpacity style={styles.linkBtn}>
+              <Text style={styles.linkBtnText}>Profil</Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.linkBtn}>
-            <Text style={styles.linkBtnText}>Profil</Text>
-          </View>
-        </View>
+        )}
 
         <View style={styles.actions}>
           <TouchableOpacity style={styles.outlineBtn} onPress={handleDismiss}>
             <Text style={styles.outlineText}>Plus tard</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('rating', { bookingId, previousTarget: previousTarget ?? 'account' })}>
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={() =>
+              navigation.navigate('rating', {
+                bookingId,
+                clubId: booking.clubId,
+                educatorId: booking.educatorId,
+                previousTarget: previousTarget ?? 'account',
+              })
+            }
+          >
             <Text style={styles.primaryBtnText}>Noter maintenant</Text>
           </TouchableOpacity>
         </View>

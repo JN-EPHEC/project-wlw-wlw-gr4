@@ -2,13 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useMemo, useState, useEffect } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Alert } from 'react-native';
-import { doc, getDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, Timestamp, updateDoc, arrayUnion } from 'firebase/firestore';
 
 import { UserStackParamList } from '@/navigation/types';
 import { db } from '@/firebaseConfig';
+import { useAuth } from '@/context/AuthContext';
 import { useFetchClubAllBookings } from '@/hooks/useFetchClubAllBookings';
 
-type Step = 'datetime' | 'info' | 'payment' | 'confirmation';
+type Step = 'datetime' | 'info' | 'payment';
 
 const palette = {
   primary: '#41B6A6',
@@ -22,9 +23,11 @@ type Props = NativeStackScreenProps<UserStackParamList, 'booking'>;
 
 export default function BookingScreen({ navigation, route }: Props) {
   const { clubId } = route.params;
+  const { user } = useAuth();
   const [step, setStep] = useState<Step>('datetime');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
+  const [selectedBookingId, setSelectedBookingId] = useState('');
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', dogName: '' });
   const [club, setClub] = useState<any>(null);
   const [clubLoading, setClubLoading] = useState(true);
@@ -136,60 +139,92 @@ export default function BookingScreen({ navigation, route }: Props) {
     }
   };
 
+  const handleConfirmBooking = async () => {
+    console.log('🔵 [handleConfirmBooking] Called');
+    console.log('👤 User ID:', user?.uid);
+    console.log('📚 Selected Booking ID:', selectedBookingId);
+    
+    if (!user?.uid || !selectedBookingId) {
+      console.error('❌ Missing user or bookingId', { userId: user?.uid, bookingId: selectedBookingId });
+      Alert.alert('Erreur', 'Impossible de confirmer la réservation');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Récupérer le booking
+      const bookingRef = doc(db, 'Bookings', selectedBookingId);
+      console.log('📖 Fetching booking from:', bookingRef.path);
+      
+      const bookingSnap = await getDoc(bookingRef);
+      console.log('📖 Booking exists:', bookingSnap.exists());
+      
+      if (!bookingSnap.exists()) {
+        console.error('❌ Booking does not exist:', selectedBookingId);
+        Alert.alert('Erreur', 'Le cours n\'existe plus');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const bookingData = bookingSnap.data();
+      console.log('📖 Booking data:', bookingData);
+      
+      const currentUserIds = bookingData.userIds || [];
+      const currentParticipantInfo = bookingData.participantInfo || [];
+      console.log('👥 Current userIds:', currentUserIds);
+      
+      // Vérifier si l'utilisateur est déjà inscrit
+      if (currentUserIds.includes(user.uid)) {
+        console.warn('⚠️ User already registered');
+        Alert.alert('Erreur', 'Vous êtes déjà inscrit à ce cours');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Créer l'info du participant à sauvegarder
+      const participantInfo = {
+        userId: user.uid,
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        dog: formData.dogName.trim(),
+      };
+
+      // Ajouter l'utilisateur à userIds ET à participantInfo
+      console.log('✏️ Updating booking with userId:', user.uid);
+      console.log('✏️ Participant info:', participantInfo);
+      await updateDoc(bookingRef, {
+        userIds: arrayUnion(user.uid),
+        participantInfo: arrayUnion(participantInfo),
+        confirmedAt: Timestamp.now(),
+      });
+
+      console.log('✅ User added to booking:', user.uid, 'Booking:', selectedBookingId);
+      
+      // Afficher confirmation et revenir
+      Alert.alert(
+        '✅ Réservation confirmée',
+        `Votre rendez-vous pour "${bookingData.title}" a été confirmé ! Un email vous sera envoyé.`,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Revenir à la page précédente
+              navigation.goBack();
+            },
+          },
+        ]
+      );
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Erreur lors de la confirmation';
+      console.error('❌ Error confirming booking:', err);
+      Alert.alert('Erreur', errorMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const clubData = club || { name: 'Club', address: 'Adresse' };
-
-  if (step === 'confirmation') {
-    return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={20} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Réservation confirmée</Text>
-          <View style={{ width: 32 }} />
-        </View>
-        <ScrollView contentContainerStyle={styles.content}>
-          <View style={styles.confirmIcon}>
-            <Ionicons name="calendar-outline" size={48} color={palette.primary} />
-          </View>
-          <Text style={styles.title}>Réservation réussie !</Text>
-          <Text style={styles.subText}>Votre rendez-vous a été confirmé. Un email vous sera envoyé.</Text>
-
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Détails de la réservation</Text>
-            <View style={styles.row}>
-              <Ionicons name="calendar-outline" size={18} color={palette.primary} />
-              <View style={{ marginLeft: 10 }}>
-                <Text style={styles.label}>Date et heure</Text>
-                <Text style={styles.value}>
-                  {dates.find((d) => d.value === selectedDate)?.label} · {selectedTime}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.row}>
-              <Ionicons name="location-outline" size={18} color={palette.primary} />
-              <View style={{ marginLeft: 10 }}>
-                <Text style={styles.label}>Lieu - Club</Text>
-                <Text style={styles.value}>{clubData.name}</Text>
-                <Text style={styles.helper}>{clubData.address}</Text>
-              </View>
-            </View>
-            <View style={styles.row}>
-              <Ionicons name="paw-outline" size={18} color={palette.primary} />
-              <View style={{ marginLeft: 10 }}>
-                <Text style={styles.label}>Votre chien</Text>
-                <Text style={styles.value}>{formData.dogName}</Text>
-              </View>
-            </View>
-          </View>
-
-          <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.goBack()}>
-            <Text style={styles.primaryButtonText}>Retour à l'accueil</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -244,6 +279,7 @@ export default function BookingScreen({ navigation, route }: Props) {
                     onPress={() => {
                       setSelectedDate(d.value);
                       setSelectedTime('');
+                      setSelectedBookingId('');
                     }}
                   >
                     <View style={styles.row}>
@@ -267,7 +303,10 @@ export default function BookingScreen({ navigation, route }: Props) {
                       <TouchableOpacity
                         key={i}
                         style={[styles.slot, selectedTime === s.time && styles.slotActive]}
-                        onPress={() => setSelectedTime(s.time)}
+                        onPress={() => {
+                          setSelectedTime(s.time);
+                          setSelectedBookingId(s.bookingId);
+                        }}
                       >
                         <Text style={selectedTime === s.time ? styles.slotTextActive : styles.slotText}>{s.time}</Text>
                       </TouchableOpacity>
@@ -349,8 +388,16 @@ export default function BookingScreen({ navigation, route }: Props) {
             <TouchableOpacity style={[styles.outlineButton, { flex: 1 }]} onPress={() => setStep('info')}>
               <Text style={styles.outlineButtonText}>Retour</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.primaryButton, { flex: 1 }]} onPress={() => setStep('confirmation')}>
-              <Text style={styles.primaryButtonText}>Confirmer la réservation</Text>
+            <TouchableOpacity 
+              style={[styles.primaryButton, { flex: 1 }, isSubmitting && styles.primaryDisabled]} 
+              onPress={handleConfirmBooking}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.primaryButtonText}>Confirmer la réservation</Text>
+              )}
             </TouchableOpacity>
           </View>
         ) : null}

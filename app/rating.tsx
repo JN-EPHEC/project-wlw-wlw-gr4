@@ -1,10 +1,12 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Alert, ActivityIndicator } from 'react-native';
 
 import { RootStackParamList } from '@/navigation/types';
-import { notifyReviewReceived } from '@/utils/notificationHelpers';
+import { useAuth } from '@/context/AuthContext';
+import { useCreateReview } from '@/hooks/useCreateReview';
+import { useCreateNotification } from '@/hooks/useCreateNotification';
 
 const palette = {
   primary: '#41B6A6',
@@ -13,26 +15,29 @@ const palette = {
   border: '#E5E7EB',
 };
 
-const bookingMock = {
-  club: { name: 'Canin Club Paris', logo: 'https://images.unsplash.com/photo-1560807707-8cc77767d783?auto=format&fit=crop&w=200&q=80' },
-  trainer: { name: 'Sophie Martin', photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80', speciality: 'Éducation comportementale' },
-  date: '25 Octobre 2024',
-  service: 'Séance individuelle (1h)',
-};
-
 const clubTags = ['Installations propres', 'Bien situé', 'Bon équipement', 'Bonne ambiance', 'Parking facile', 'Accueil chaleureux'];
-const trainerTags = ['Professionnel', 'Pédagogue', 'Patient', 'Ponctuel', 'À l’écoute', 'Passionné'];
+const educatorTags = ['Professionnel', 'Pédagogue', 'Patient', 'Ponctuel', 'À l\'écoute', 'Passionné'];
+
 type Props = NativeStackScreenProps<RootStackParamList, 'rating'>;
 
 export default function RatingScreen({ navigation, route }: Props) {
-  const { bookingId, previousTarget } = route.params;
-  const [step, setStep] = useState<'club' | 'trainer' | 'done'>('club');
+  const { bookingId, clubId, educatorId, previousTarget } = route.params;
+  const { profile } = useAuth();
+  const ownerId = (profile as any)?.uid || '';
+  const ownerName = (profile as any)?.name || 'Utilisateur';
+
+  const [step, setStep] = useState<'club' | 'educator' | 'done'>('club' as 'club' | 'educator' | 'done');
   const [clubRating, setClubRating] = useState(0);
-  const [trainerRating, setTrainerRating] = useState(0);
+  const [educatorRating, setEducatorRating] = useState(0);
   const [clubComment, setClubComment] = useState('');
-  const [trainerComment, setTrainerComment] = useState('');
+  const [educatorComment, setEducatorComment] = useState('');
   const [clubSelectedTags, setClubSelectedTags] = useState<string[]>([]);
-  const [trainerSelectedTags, setTrainerSelectedTags] = useState<string[]>([]);
+  const [educatorSelectedTags, setEducatorSelectedTags] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  const { createClubReview, createEducatorReview, loading: reviewLoading } = useCreateReview();
+  const { createNotification } = useCreateNotification();
+
   const handleBack = () => {
     if (previousTarget) {
       navigation.navigate({ name: previousTarget as keyof RootStackParamList } as any);
@@ -40,8 +45,74 @@ export default function RatingScreen({ navigation, route }: Props) {
       navigation.navigate('account');
     }
   };
+
   const toggleTag = (tag: string, setFn: React.Dispatch<React.SetStateAction<string[]>>) => {
     setFn((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
+  };
+
+  const onSubmit = async () => {
+    if (step === 'club') {
+      if (clubRating === 0) {
+        Alert.alert('Erreur', 'Veuillez donner une note au club');
+        return;
+      }
+      setStep('educator' as any);
+      return;
+    }
+
+    if (step === 'educator') {
+      if (educatorRating === 0) {
+        Alert.alert('Erreur', 'Veuillez donner une note à l\'éducateur');
+        return;
+      }
+
+      setSubmitting(true);
+
+      try {
+        // Créer l'avis pour le club
+        await createClubReview({
+          clubId,
+          bookingId,
+          educatorId,
+          ownerId,
+          ownerName,
+          rating: clubRating,
+          comment: clubComment,
+          tags: clubSelectedTags,
+        });
+
+        // Créer l'avis pour l'éducateur
+        await createEducatorReview({
+          clubId,
+          bookingId,
+          educatorId,
+          ownerId,
+          ownerName,
+          rating: educatorRating,
+          comment: educatorComment,
+          tags: educatorSelectedTags,
+        });
+
+        // Envoyer une notification au club pour lui dire qu'il a reçu un avis
+        await createNotification({
+          userId: clubId, // Le clubId est aussi utilisé comme userId pour les clubs
+          type: 'review_received',
+          title: 'Nouvel avis reçu !',
+          message: `Vous avez reçu un nouvel avis : ${clubRating}★`,
+          data: {
+            clubId,
+            bookingId,
+          },
+        });
+
+        setStep('done' as any);
+        setSubmitting(false);
+      } catch (err) {
+        console.error('Erreur création avis:', err);
+        Alert.alert('Erreur', 'Impossible de soumettre votre avis');
+        setSubmitting(false);
+      }
+    }
   };
 
   if (step === 'done') {
@@ -61,23 +132,16 @@ export default function RatingScreen({ navigation, route }: Props) {
     );
   }
 
-  const onSubmit = async () => {
-    if (step === 'club') {
-      setStep('trainer');
-    } else {
-      // Send notification when review is submitted
-      try {
-        const clubId = bookingMock.club.name; // In real app, would get actual clubId
-        const clubName = bookingMock.club.name;
-        await notifyReviewReceived(clubId, clubName, trainerRating, clubRating);
-      } catch (notifErr) {
-        console.warn('Erreur création notification:', notifErr);
-      }
-      setStep('done');
-    }
-  };
-
-  const ratingBlock = (title: string, rating: number, setRating: (v: number) => void, tags: string[], selected: string[], setSelected: any, comment: string, setComment: any) => (
+  const ratingBlock = (
+    title: string,
+    rating: number,
+    setRating: (v: number) => void,
+    tags: string[],
+    selected: string[],
+    setSelected: any,
+    comment: string,
+    setComment: any
+  ) => (
     <View style={styles.card}>
       <Text style={styles.title}>{title}</Text>
       <View style={styles.starsRow}>
@@ -100,19 +164,20 @@ export default function RatingScreen({ navigation, route }: Props) {
             style={[styles.tag, selected.includes(t) && styles.tagActive]}
             onPress={() => toggleTag(t, setSelected)}
           >
-            <Text style={selected.includes(t) ? styles.tagTextActive : styles.tagText}>{t}</Text>
+            <Text style={[styles.tagText, selected.includes(t) && styles.tagTextActive]}>{t}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
       <Text style={styles.label}>Commentaire</Text>
       <TextInput
+        style={styles.input}
+        placeholder="Votre ressenti en quelques mots..."
+        placeholderTextColor={palette.gray}
+        multiline
+        numberOfLines={4}
         value={comment}
         onChangeText={setComment}
-        placeholder="Votre ressenti en quelques mots..."
-        placeholderTextColor="#9CA3AF"
-        style={[styles.input, { height: 110, textAlignVertical: 'top' }]}
-        multiline
       />
     </View>
   );
@@ -121,44 +186,50 @@ export default function RatingScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={{ paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => handleBack()} style={styles.back}>
-            <Ionicons name="arrow-back" size={20} color="#fff" />
+          <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Votre avis</Text>
-          <View style={{ width: 32 }} />
+          <View style={{ width: 24 }} />
         </View>
 
-        <View style={styles.sessionCard}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Image source={{ uri: bookingMock.club.logo }} style={styles.logo} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.title}>{bookingMock.club.name}</Text>
-              <Text style={styles.sub}>{bookingMock.date}</Text>
-              <Text style={styles.sub}>{bookingMock.service}</Text>
+        {(step as any) !== 'done' ? (
+          <>
+            {/* Progress */}
+            <View style={styles.progressRow}>
+              <View style={[styles.progressDot, step !== 'club' && styles.progressDotActive]} />
+              <View style={[styles.progressLine, step !== 'club' && styles.progressLineActive]} />
+              <View style={[styles.progressDot, step === 'educator' && styles.progressDotActive]} />
+              <View style={[styles.progressLine, step === 'educator' && styles.progressLineActive]} />
+              <View style={styles.progressDot} />
             </View>
-          </View>
-          <View style={styles.divider} />
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Image source={{ uri: bookingMock.trainer.photo }} style={styles.trainerPhoto} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.title}>{bookingMock.trainer.name}</Text>
-              <Text style={styles.sub}>{bookingMock.trainer.speciality}</Text>
-            </View>
-          </View>
-        </View>
 
-        {step === 'club'
-          ? ratingBlock('Notez le club', clubRating, setClubRating, clubTags, clubSelectedTags, setClubSelectedTags, clubComment, setClubComment)
-          : ratingBlock("Notez l'éducateur", trainerRating, setTrainerRating, trainerTags, trainerSelectedTags, setTrainerSelectedTags, trainerComment, setTrainerComment)}
+            {step === 'club'
+              ? ratingBlock('Notez le club', clubRating, setClubRating, clubTags, clubSelectedTags, setClubSelectedTags, clubComment, setClubComment)
+              : ratingBlock('Notez l\'éducateur', educatorRating, setEducatorRating, educatorTags, educatorSelectedTags, setEducatorSelectedTags, educatorComment, setEducatorComment)}
+          </>
+        ) : null}
 
-        <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-          <View style={styles.progressRow}>
-            <View style={[styles.progressDot, step === 'club' && styles.progressDotActive]} />
-            <View style={[styles.progressLine, step === 'trainer' && { backgroundColor: palette.primary }]} />
-            <View style={[styles.progressDot, step === 'trainer' && styles.progressDotActive]} />
-          </View>
-          <TouchableOpacity style={styles.primaryBtn} onPress={onSubmit}>
-            <Text style={styles.primaryBtnText}>{step === 'club' ? 'Continuer' : 'Envoyer mon avis'}</Text>
+        <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 8 }}>
+          {step === 'educator' && (
+            <TouchableOpacity
+              style={[styles.outlineBtn]}
+              onPress={() => setStep('club')}
+              disabled={submitting || reviewLoading}
+            >
+              <Text style={styles.outlineText}>Retour</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.primaryBtn, { flex: step === 'club' ? 1 : 1 }]}
+            onPress={onSubmit}
+            disabled={submitting || reviewLoading}
+          >
+            {submitting || reviewLoading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.primaryBtnText}>{step === 'club' ? 'Suivant' : 'Envoyer mon avis'}</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -172,51 +243,21 @@ const styles = StyleSheet.create({
     backgroundColor: palette.primary,
     paddingHorizontal: 16,
     paddingVertical: 16,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  back: { padding: 8, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)' },
+  backBtn: { padding: 8 },
   headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
-  sessionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: palette.border,
-    gap: 10,
-    margin: 16,
-    marginBottom: 8,
-  },
-  logo: { width: 52, height: 52, borderRadius: 12, backgroundColor: '#E5E7EB' },
-  trainerPhoto: { width: 52, height: 52, borderRadius: 12, backgroundColor: '#E5E7EB' },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: palette.border,
-    gap: 12,
-    marginHorizontal: 16,
-    marginTop: 8,
-  },
+  card: { backgroundColor: '#fff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: palette.border, gap: 12, margin: 16, marginBottom: 8 },
   title: { color: palette.text, fontSize: 16, fontWeight: '700' },
-  sub: { color: palette.gray, fontSize: 13 },
-  starsRow: { flexDirection: 'row', gap: 6 },
-  label: { color: palette.gray, fontSize: 13, marginTop: 6 },
+  starsRow: { flexDirection: 'row', justifyContent: 'center', gap: 12 },
+  label: { color: palette.text, fontSize: 13, fontWeight: '700', marginTop: 4 },
   tagsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  tag: {
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  tagActive: { borderColor: palette.primary, backgroundColor: '#E0F2F1' },
-  tagText: { color: palette.text, fontWeight: '600', fontSize: 12 },
-  tagTextActive: { color: palette.primary, fontWeight: '700', fontSize: 12 },
+  tag: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: palette.border, backgroundColor: '#F9FAFB' },
+  tagActive: { backgroundColor: palette.primary, borderColor: palette.primary },
+  tagText: { color: palette.text, fontSize: 12, fontWeight: '600' },
+  tagTextActive: { color: '#fff' },
   input: {
     borderWidth: 1,
     borderColor: palette.border,
@@ -225,25 +266,17 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     color: palette.text,
     backgroundColor: '#F9FAFB',
+    textAlignVertical: 'top',
   },
-  divider: { height: 1, backgroundColor: palette.border },
-  progressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 12,
-    paddingHorizontal: 4,
-  },
+  progressRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 12, paddingHorizontal: 16, marginTop: 12 },
   progressDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#E5E7EB' },
   progressDotActive: { backgroundColor: palette.primary },
   progressLine: { flex: 1, height: 2, backgroundColor: '#E5E7EB' },
-  primaryBtn: {
-    backgroundColor: palette.primary,
-    paddingVertical: 14,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
+  progressLineActive: { backgroundColor: palette.primary },
+  primaryBtn: { flex: 1, backgroundColor: palette.primary, paddingVertical: 14, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  outlineBtn: { flex: 1, borderWidth: 1, borderColor: palette.border, paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
+  outlineText: { color: palette.text, fontWeight: '700', fontSize: 15 },
   heroSmall: {
     backgroundColor: '#ECFDF3',
     alignItems: 'center',
