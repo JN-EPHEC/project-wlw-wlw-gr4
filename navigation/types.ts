@@ -33,7 +33,8 @@ export type UserRoute =
   | 'followedClubs'
   | 'djanaiResults'
   | 'djanai-program'
-  | 'editProfile';
+  | 'editProfile'
+  | 'ratingsInvitationsList';
 
 export type ClubRoute =
   | 'clubHome'
@@ -115,6 +116,7 @@ export type UserStackParamList = {
   DjanaiLoadingScreen: { dogId?: string };
   'djanai-program': { dogId?: string };
   editProfile: undefined;
+  ratingsInvitationsList: undefined;
 };
 
 export type ClubStackParamList = {

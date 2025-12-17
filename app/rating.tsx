@@ -21,7 +21,13 @@ const educatorTags = ['Professionnel', 'Pédagogue', 'Patient', 'Ponctuel', 'À 
 type Props = NativeStackScreenProps<RootStackParamList, 'rating'>;
 
 export default function RatingScreen({ navigation, route }: Props) {
-  const { bookingId, clubId, educatorId, previousTarget } = route.params;
+  // Extraction sécurisée des params
+  const params = route?.params as any;
+  const bookingId = params?.bookingId || '';
+  const clubId = params?.clubId || '';
+  const educatorId = params?.educatorId || '';
+  const previousTarget = params?.previousTarget || 'account';
+
   const { profile } = useAuth();
   const ownerId = (profile as any)?.uid || '';
   const ownerName = (profile as any)?.name || 'Utilisateur';
@@ -39,10 +45,10 @@ export default function RatingScreen({ navigation, route }: Props) {
   const { createNotification } = useCreateNotification();
 
   const handleBack = () => {
-    if (previousTarget) {
-      navigation.navigate({ name: previousTarget as keyof RootStackParamList } as any);
+    if (previousTarget && String(previousTarget) !== 'account') {
+      navigation.navigate(String(previousTarget) as any);
     } else {
-      navigation.navigate('account');
+      navigation.goBack();
     }
   };
 
@@ -94,16 +100,22 @@ export default function RatingScreen({ navigation, route }: Props) {
         });
 
         // Envoyer une notification au club pour lui dire qu'il a reçu un avis
-        await createNotification({
-          userId: clubId, // Le clubId est aussi utilisé comme userId pour les clubs
-          type: 'review_received',
-          title: 'Nouvel avis reçu !',
-          message: `Vous avez reçu un nouvel avis : ${clubRating}★`,
-          data: {
-            clubId,
-            bookingId,
-          },
-        });
+        try {
+          await createNotification({
+            userId: String(clubId),
+            type: 'review_received',
+            title: 'Nouvel avis reçu !',
+            message: `Vous avez reçu un nouvel avis : ${clubRating}★`,
+            senderId: String(ownerId),
+            senderName: String(ownerName),
+            data: {
+              clubId: String(clubId),
+              bookingId: String(bookingId),
+            },
+          });
+        } catch (notifErr) {
+          console.warn('⚠️ Notification error (non-blocking):', notifErr);
+        }
 
         setStep('done' as any);
         setSubmitting(false);
