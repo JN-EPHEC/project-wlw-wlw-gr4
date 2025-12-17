@@ -167,7 +167,7 @@ export default function AccountScreen() {
     { id: 'dogs', icon: 'paw-outline' as const, label: 'Mes chiens', badge: null, onPress: () => navigation.navigate('dogs') },
     { id: 'clubs', icon: 'heart-outline' as const, label: 'Clubs suivis', badge: null, onPress: () => navigation.navigate('followedClubs') },
     { id: 'notifications', icon: 'notifications-outline' as const, label: 'Notifications', badge: null, onPress: () => navigation.navigate('notifications', { previousTarget: 'account' }) },
-    { id: 'ratingInvitation', icon: 'star-outline' as const, label: 'Invitations avis', badge: null, onPress: () => navigation.navigate('ratingInvitation', { bookingId: 501, previousTarget: 'account' }) },
+    { id: 'ratingInvitation', icon: 'star-outline' as const, label: 'Invitations avis', badge: null, onPress: () => navigation.navigate('ratingsInvitationsList') },
     { id: 'settings', icon: 'settings-outline' as const, label: 'Paramètres', badge: null, onPress: () => navigation.navigate('settings') },
   ];
 

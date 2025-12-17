@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, onSnapshot } from 'firebase/firestore';
 import { db } from '@/firebaseConfig';
 
 export interface RatingInvitationData {
@@ -29,81 +29,81 @@ export const useUserRatingInvitations = (userId: string | null) => {
       return;
     }
 
-    const loadInvitations = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+    setLoading(true);
 
-        // Chercher tous les bookings où l'utilisateur est dans userIds
-        const bookingsQuery = query(
-          collection(db, 'Bookings'),
-          where('userIds', 'array-contains', userId),
-          where('status', '==', 'completed')
-        );
+    // Listener real-time sur les invitations de l'utilisateur
+    const invitationRef = collection(db, 'ratingInvitations');
+    const invitationQuery = query(
+      invitationRef,
+      where('ownerId', '==', userId)
+    );
 
-        const bookingsDocs = await getDocs(bookingsQuery);
-        const invitationsList: RatingInvitationData[] = [];
+    const unsubscribe = onSnapshot(
+      invitationQuery,
+      async (snapshot) => {
+        try {
+          const invitationsList: RatingInvitationData[] = [];
 
-        // Pour chaque booking, vérifier si l'utilisateur a déjà voté
-        for (const bookingDoc of bookingsDocs.docs) {
-          const bookingData = bookingDoc.data();
-          
-          // Chercher dans ratingInvitations pour voir si l'utilisateur a déjà voté
-          const invitationId = `${bookingDoc.id}_${userId}`;
-          
-          // Charger l'invitation pour vérifier son statut
-          try {
-            const invitationRef = collection(db, 'ratingInvitations');
-            const invitationQuery = query(
-              invitationRef,
-              where('bookingId', '==', bookingDoc.id),
-              where('ownerId', '==', userId)
-            );
+          // Pour chaque invitation, charger les détails du booking
+          for (const invitationDoc of snapshot.docs) {
+            const invitationData = invitationDoc.data();
             
-            const invitationDocs = await getDocs(invitationQuery);
-            
-            if (!invitationDocs.empty) {
-              const invitationDoc = invitationDocs.docs[0];
-              const invitationData = invitationDoc.data();
+            // Charger les détails du booking
+            try {
+              const bookingsQuery = query(
+                collection(db, 'Bookings'),
+                where('id', '==', invitationData.bookingId)
+              );
               
-              // Ajouter uniquement si pas encore voté
-              if (!invitationData.hasLeftClubReview || !invitationData.hasLeftEducatorReview) {
-                invitationsList.push({
-                  id: bookingDoc.id,
-                  title: String(bookingData.title || 'Séance'),
-                  clubId: String(bookingData.clubId || ''),
-                  clubName: bookingData.clubName,
-                  educatorId: String(bookingData.educatorId || ''),
-                  educatorName: bookingData.educatorName,
-                  sessionDate: bookingData.sessionDate,
-                  duration: Number(bookingData.duration) || 60,
-                  status: 'pending',
-                });
+              const bookingDocs = await getDocs(bookingsQuery);
+              
+              if (!bookingDocs.empty) {
+                const bookingDoc = bookingDocs.docs[0];
+                const bookingData = bookingDoc.data();
+                
+                // Ajouter uniquement si pas encore voté
+                if (!invitationData.hasLeftClubReview || !invitationData.hasLeftEducatorReview) {
+                  invitationsList.push({
+                    id: bookingDoc.id,
+                    title: String(bookingData.title || 'Séance'),
+                    clubId: String(bookingData.clubId || ''),
+                    clubName: bookingData.clubName,
+                    educatorId: String(bookingData.educatorId || ''),
+                    educatorName: bookingData.educatorName,
+                    sessionDate: bookingData.sessionDate,
+                    duration: Number(bookingData.duration) || 60,
+                    status: 'pending',
+                  });
+                }
               }
+            } catch (err) {
+              console.warn('Error loading booking for invitation:', err);
             }
-          } catch (err) {
-            console.warn('Error checking invitation:', err);
           }
+
+          // Trier par date décroissante
+          invitationsList.sort((a, b) => {
+            const dateA = a.sessionDate instanceof Timestamp ? a.sessionDate.toDate() : new Date(a.sessionDate);
+            const dateB = b.sessionDate instanceof Timestamp ? b.sessionDate.toDate() : new Date(b.sessionDate);
+            return dateB.getTime() - dateA.getTime();
+          });
+
+          setInvitations(invitationsList);
+          setLoading(false);
+        } catch (err) {
+          console.error('Error processing invitations:', err);
+          setLoading(false);
         }
-
-        // Trier par date décroissante
-        invitationsList.sort((a, b) => {
-          const dateA = a.sessionDate instanceof Timestamp ? a.sessionDate.toDate() : new Date(a.sessionDate);
-          const dateB = b.sessionDate instanceof Timestamp ? b.sessionDate.toDate() : new Date(b.sessionDate);
-          return dateB.getTime() - dateA.getTime();
-        });
-
-        setInvitations(invitationsList);
-        setLoading(false);
-      } catch (err) {
-        const error = err as Error;
-        setError(error);
-        console.error('Error loading rating invitations:', error);
+      },
+      (error) => {
+        console.error('Error listening to invitations:', error);
+        setError(error as Error);
         setLoading(false);
       }
-    };
+    );
 
-    loadInvitations();
+    // Cleanup: unsubscribe when component unmounts or userId changes
+    return () => unsubscribe();
   }, [userId]);
 
   return { invitations, loading, error };
