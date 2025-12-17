@@ -160,9 +160,15 @@ export default function ClubProfileScreen({ navigation }: Props) {
                 <Text style={styles.heroBadgeText}>Verifié</Text>
               </View>
             </View>
-            <Text style={styles.heroRating}>
-              <Ionicons name="star" size={14} color="#FBBF24" /> 4.8 (156 avis)
-            </Text>
+            <TouchableOpacity 
+              style={styles.ratingContainer}
+              onPress={() => navigation.navigate('clubReviews')}
+            >
+              <Text style={styles.heroRating}>
+                <Ionicons name="star" size={14} color="#FBBF24" /> 4.8 (156 avis)
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={palette.primaryDark} />
+            </TouchableOpacity>
             <Text style={styles.heroMember}>Membre depuis Janvier 2020</Text>
           </View>
         </View>
@@ -615,7 +621,7 @@ export default function ClubProfileScreen({ navigation }: Props) {
               </View>
               {settings.requireDeposit && (
                 <View style={styles.depositInfo}>
-                  <MaterialCommunityIcons name="information-circle" size={16} color={palette.orange} />
+                  <MaterialCommunityIcons name="information" size={16} color={palette.orange} />
                   <Text style={styles.depositText}>Montant de l'acompte</Text>
                   <Text style={styles.depositValue}>20 %</Text>
                 </View>
@@ -757,6 +763,17 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginTop: 4,
+    marginHorizontal: -10,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.1)',
   },
   heroRating: {
     color: '#fff',

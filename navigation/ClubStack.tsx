@@ -15,6 +15,7 @@ import ClubLeaderboardScreen from '@/app/club-leaderboard';
 import ClubMembersScreen from '@/app/club-members';
 import ClubPaymentsScreen from '@/app/club-payments';
 import ClubProfileScreen from '@/app/club-profile';
+import ClubReviewsScreen from '@/app/club-reviews';
 import ClubTeacherRequestsScreen from '@/app/club-teacher-requests';
 import ClubTeachersPaymentScreen from '@/app/club-teachers-payment';
 import ClubTeachersPricingScreen from '@/app/club-teachers-pricing';
@@ -47,6 +48,7 @@ export default function ClubStack() {
       <Stack.Screen name="clubTeacherRequests" component={ClubTeacherRequestsScreen} />
       <Stack.Screen name="clubLeaderboard" component={ClubLeaderboardScreen} />
       <Stack.Screen name="clubDetail" component={ClubDetailScreen} />
+      <Stack.Screen name="clubReviews" component={ClubReviewsScreen} />
       <Stack.Screen name="notifications" component={NotificationsScreen} />
     </Stack.Navigator>
   );

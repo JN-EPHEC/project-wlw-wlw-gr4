@@ -8,6 +8,7 @@ import { UserStackParamList } from '@/navigation/types';
 import { db } from '@/firebaseConfig';
 import { useAuth } from '@/context/AuthContext';
 import { notifyClubNewBooking } from '@/utils/notificationHelpers';
+import { useCreateBooking } from '@/hooks/useCreateBooking';
 
 const palette = {
   primary: '#41B6A6',
@@ -21,6 +22,7 @@ type Props = NativeStackScreenProps<UserStackParamList, 'eventBooking'>;
 export default function EventBookingScreen({ navigation, route }: Props) {
   const { eventId } = route.params;
   const { user } = useAuth();
+  const { createBooking } = useCreateBooking();
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -115,6 +117,31 @@ export default function EventBookingScreen({ navigation, route }: Props) {
       await updateDoc(eventRef, {
         participantData: [...currentParticipants, newParticipant],
       });
+
+      // ALSO create a booking in the Bookings collection so it appears in user's reservations
+      try {
+        await createBooking({
+          clubId: currentData.clubId,
+          educatorId: currentData.educatorId || '',
+          title: currentData.title || event.title,
+          description: currentData.description || event.description,
+          trainingType: 'event',
+          isGroupCourse: true,
+          sessionDate: currentData.startDate || Timestamp.now(),
+          duration: currentData.duration || 60,
+          userIds: [user.uid],
+          dogIds: [form.dog.trim()],
+          maxParticipants: currentData.dogSlots || 1,
+          price: currentData.price || event.price || 0,
+          status: 'confirmed',
+          type: 'event',
+          createdBy: 'user',
+        });
+        console.log('✅ Booking also created in Bookings collection');
+      } catch (bookingErr) {
+        console.warn('⚠️ Warning: Booking creation in Bookings collection failed:', bookingErr);
+        // Don't fail the whole operation if this step fails
+      }
 
       // Send notification to the club that organized the event
       try {
