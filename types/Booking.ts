@@ -76,6 +76,13 @@ export interface BookingDisplay extends Booking {
   availableSpots?: number; // Places restantes
   userNames?: string[]; // Noms des utilisateurs
   dogNames?: string[]; // Noms des chiens
+  participantInfo?: Array<{
+    userId: string;
+    name: string;
+    email: string;
+    phone: string;
+    dog: string;
+  }>;
 }
 
 /**

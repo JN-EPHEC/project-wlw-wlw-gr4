@@ -87,12 +87,17 @@ export const useCreateNotification = () => {
       const notificationId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const notificationRef = doc(collection(db, 'notifications', userId, 'items'), notificationId);
 
-      await setDoc(notificationRef, {
-        id: notificationId,
-        ...notificationDTO,
-        isRead: false,
-        createdAt: Timestamp.now(),
-      });
+      // Filtrer les valeurs undefined pour éviter les erreurs Firestore
+      const notificationData = Object.fromEntries(
+        Object.entries({
+          id: notificationId,
+          ...notificationDTO,
+          isRead: false,
+          createdAt: Timestamp.now(),
+        }).filter(([_, value]) => value !== undefined)
+      );
+
+      await setDoc(notificationRef, notificationData);
 
       setLoading(false);
       return notificationId;

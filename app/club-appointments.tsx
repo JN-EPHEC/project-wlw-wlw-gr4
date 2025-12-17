@@ -258,6 +258,8 @@ export default function ClubAppointmentsScreen({ navigation }: Props) {
               type: 'review_requested',
               title: 'Donnez votre avis !',
               message: `Votre séance avec ${bookingDoc.title} est terminée. Partagez votre expérience !`,
+              senderId: clubId,
+              senderName: 'Club',
               data: {
                 bookingId,
                 clubId,
@@ -580,7 +582,6 @@ export default function ClubAppointmentsScreen({ navigation }: Props) {
                             <TouchableOpacity
                               style={[styles.circleBtn, styles.circleBtnBorder]}
                               onPress={() => handleEditCourse(booking)}
-                              title="Modifier"
                             >
                               <MaterialCommunityIcons name="pencil" size={16} color={palette.primary} />
                             </TouchableOpacity>
@@ -590,7 +591,6 @@ export default function ClubAppointmentsScreen({ navigation }: Props) {
                                 setSelectedBookingForParticipants(booking);
                                 setParticipantsModalVisible(true);
                               }}
-                              title="Participants"
                             >
                               <Ionicons name="people" size={16} color={palette.primary} />
                             </TouchableOpacity>
@@ -599,7 +599,6 @@ export default function ClubAppointmentsScreen({ navigation }: Props) {
                                 style={[styles.circleBtn, { backgroundColor: '#16A34A' }]}
                                 onPress={() => handleComplete(booking.id)}
                                 disabled={updateLoading}
-                                title="Terminer"
                               >
                                 <MaterialCommunityIcons name="check" size={16} color="#fff" />
                               </TouchableOpacity>
@@ -608,7 +607,6 @@ export default function ClubAppointmentsScreen({ navigation }: Props) {
                               style={[styles.circleBtn, styles.circleBtnBorder]}
                               onPress={() => handleDelete(booking.id)}
                               disabled={updateLoading}
-                              title="Supprimer"
                             >
                               <MaterialCommunityIcons name="trash-can-outline" size={16} color="#B91C1C" />
                             </TouchableOpacity>
