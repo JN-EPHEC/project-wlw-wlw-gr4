@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -22,16 +22,12 @@ import { useApproveOrRejectMember } from '@/hooks/useApproveOrRejectMember';
 import { useAuth } from '@/context/AuthContext';
 import { notifyUserMembershipApproved, notifyUserMembershipRejected } from '@/utils/notificationHelpers';
 
-const colors = {
-    primary: '#27b3a3',
-    text: '#233042',
-    textMuted: '#6a7286',
-    surface: '#ffffff',
-    background: '#F0F2F5',
-    shadow: 'rgba(26, 51, 64, 0.12)',
-    error: '#DC2626',
-    success: '#10B981',
-    warning: '#F59E0B',
+const palette = {
+  primary: '#7C3AED',
+  accent: '#41B6A6',
+  text: '#1F2937',
+  gray: '#6B7280',
+  border: '#E5E7EB',
 };
 
 type Props = NativeStackScreenProps<ClubStackParamList, 'clubMembers'>;
@@ -44,188 +40,369 @@ export default function ClubMembersScreen({ navigation, route }: Props) {
   const { pendingMembers, loading: pendingLoading } = useFetchPendingMembers(clubId);
   const { approveOrRejectMember, loading: actionLoading } = useApproveOrRejectMember();
   const [search, setSearch] = useState('');
-  const [isOwner, setIsOwner] = useState(false);
+  const [clubData, setClubData] = useState<any>(null);
 
-  useEffect(() => {
+  // Récupérer les données du club pour vérifier le propriétaire
+  React.useEffect(() => {
     const fetchClubData = async () => {
-      if (!clubId) return;
       try {
         const clubRef = doc(db, 'club', clubId);
         const snapshot = await getDoc(clubRef);
         if (snapshot.exists()) {
-          setIsOwner(snapshot.data()?.ownerUserId === user?.uid);
+          setClubData(snapshot.data());
         }
-      } catch (err) { console.error('Error fetching club data:', err); }
+      } catch (err) {
+        console.error('Error fetching club data:', err);
+      }
     };
-    fetchClubData();
-  }, [clubId, user?.uid]);
+    if (clubId) {
+      fetchClubData();
+    }
+  }, [clubId]);
 
-  const filteredMembers = useMemo(() => {
+  // Vérifier si l'utilisateur est propriétaire du club
+  // L'owner est identifié par ownerUserId dans clubData
+  const isOwner = clubData?.ownerUserId === user?.uid;
+  
+  React.useEffect(() => {
+    console.log('🔐 [club-members] clubData?.ownerUserId:', clubData?.ownerUserId);
+    console.log('🔐 [club-members] user?.uid:', user?.uid);
+    console.log('🔐 [club-members] isOwner:', isOwner);
+    console.log('🔐 [club-members] pendingMembers count:', pendingMembers.length);
+  }, [clubData, user, isOwner, pendingMembers]);
+
+  const filtered = useMemo(() => {
     if (!search.trim()) return members;
-    return members.filter(m => m.name.toLowerCase().includes(search.toLowerCase()));
+    const lower = search.toLowerCase();
+    return members.filter(
+      (m) => m.name.toLowerCase().includes(lower) || m.email?.toLowerCase().includes(lower)
+    );
   }, [members, search]);
 
-  const handleApprove = async (pending: any) => {
+  const handleApprove = async (pendingMember: any) => {
     try {
-      await approveOrRejectMember({ clubId, userId: pending.userId, email: pending.email, name: pending.name, action: 'approve' });
-      const clubData = await getDoc(doc(db, 'club', clubId));
-      await notifyUserMembershipApproved(pending.userId, clubId, clubData.data()?.name || 'le club');
-      Alert.alert('Succès', `${pending.name} a été ajouté.`);
-    } catch (err) { Alert.alert('Erreur', err instanceof Error ? err.message : 'Une erreur est survenue.'); }
+      await approveOrRejectMember({
+        clubId,
+        userId: pendingMember.userId,
+        email: pendingMember.email,
+        name: pendingMember.name,
+        action: 'approve',
+      });
+      
+      // Créer une notification pour l'utilisateur
+      try {
+        const clubData = await getDoc(doc(db, 'club', clubId));
+        const clubName = clubData.data()?.name || 'le club';
+        await notifyUserMembershipApproved(pendingMember.userId, clubId, clubName);
+      } catch (notifErr) {
+        console.warn('Erreur création notification:', notifErr);
+      }
+      
+      Alert.alert('Succès', `${pendingMember.name} a été ajouté aux membres`);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Erreur';
+      Alert.alert('Erreur', errorMsg);
+    }
   };
 
-  const handleReject = (pending: any) => {
-    Alert.alert('Confirmer le rejet', `Refuser la demande de ${pending.name} ?`, [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Refuser', style: 'destructive', onPress: async () => {
-        try {
-          await approveOrRejectMember({ clubId, userId: pending.userId, email: pending.email, name: pending.name, action: 'reject' });
-          const clubData = await getDoc(doc(db, 'club', clubId));
-          await notifyUserMembershipRejected(pending.userId, clubId, clubData.data()?.name || 'le club');
-          Alert.alert('Succès', `La demande de ${pending.name} a été refusée.`);
-        } catch (err) { Alert.alert('Erreur', err instanceof Error ? err.message : 'Une erreur est survenue.'); }
-      }},
-    ]);
+  const handleReject = async (pendingMember: any) => {
+    Alert.alert(
+      'Confirmer',
+      `Êtes-vous sûr de vouloir refuser la demande de ${pendingMember.name}?`,
+      [
+        { text: 'Annuler', onPress: () => {} },
+        {
+          text: 'Refuser',
+          onPress: async () => {
+            try {
+              await approveOrRejectMember({
+                clubId,
+                userId: pendingMember.userId,
+                email: pendingMember.email,
+                name: pendingMember.name,
+                action: 'reject',
+              });
+              
+              // Créer une notification pour l'utilisateur
+              try {
+                const clubData = await getDoc(doc(db, 'club', clubId));
+                const clubName = clubData.data()?.name || 'le club';
+                await notifyUserMembershipRejected(pendingMember.userId, clubId, clubName);
+              } catch (notifErr) {
+                console.warn('Erreur création notification:', notifErr);
+              }
+              
+              Alert.alert('Succès', `La demande de ${pendingMember.name} a été refusée`);
+            } catch (err) {
+              const errorMsg = err instanceof Error ? err.message : 'Erreur';
+              Alert.alert('Erreur', errorMsg);
+            }
+          },
+          style: 'destructive',
+        },
+      ]
+    );
   };
 
   if (loading || pendingLoading) {
-    return <SafeAreaView style={styles.centered}><ActivityIndicator size="large" color={colors.primary} /></SafeAreaView>;
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={palette.primary} />
+        </View>
+      </SafeAreaView>
+    );
   }
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
+          <View style={styles.headerRow}>
             <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={24} color="#fff" />
+              <Ionicons name="arrow-back" size={20} color="#fff" />
             </TouchableOpacity>
             <View>
-                <Text style={styles.headerTitle}>Membres</Text>
-                <Text style={styles.headerSub}>{members.length} membre(s) au total</Text>
+              <Text style={styles.headerTitle}>Membres</Text>
+              <Text style={styles.headerSub}>{members.length} membre(s)</Text>
             </View>
+          </View>
         </View>
 
-        <View style={styles.content}>
-          <View style={styles.searchContainer}>
-              <Ionicons name="search" size={20} color={colors.textMuted} />
-              <TextInput style={styles.searchInput} placeholder="Rechercher un membre..." value={search} onChangeText={setSearch} />
+        <View style={styles.container}>
+          <View style={styles.searchBox}>
+            <Ionicons name="search" size={18} color={palette.gray} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Rechercher un membre..."
+              placeholderTextColor={palette.gray}
+              value={search}
+              onChangeText={setSearch}
+            />
+            {search ? (
+              <TouchableOpacity onPress={() => setSearch('')}>
+                <Ionicons name="close-circle" size={18} color={palette.gray} />
+              </TouchableOpacity>
+            ) : null}
           </View>
-          
+
+          {/* SECTION: MEMBERS EN ATTENTE (si propriétaire) */}
           {isOwner && pendingMembers.length > 0 && (
-            <Section title={`En attente (${pendingMembers.length})`}>
-              {pendingMembers.map((pending) => (
-                <View key={pending.userId} style={[styles.card, styles.pendingCard]}>
-                    <Text style={styles.avatarText}>{(pending.name || 'U')[0]}</Text>
-                    <View style={styles.cardContent}>
-                        <Text style={styles.cardTitle}>{pending.name}</Text>
-                        <Text style={styles.cardSubtitle}>{pending.email}</Text>
+            <View style={{ gap: 12 }}>
+              <Text style={styles.sectionTitle}>
+                🔔 En attente d'approbation ({pendingMembers.length})
+              </Text>
+              <View style={styles.membersList}>
+                {pendingMembers.map((pendingMember) => (
+                  <View key={pendingMember.userId} style={styles.pendingMemberCard}>
+                    <View style={styles.memberAvatar}>
+                      <Text style={styles.avatarText}>
+                        {(pendingMember.name || 'U')[0].toUpperCase()}
+                      </Text>
                     </View>
-                    <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.success}]} onPress={() => handleApprove(pending)} disabled={actionLoading}>
-                        <Ionicons name="checkmark" size={20} color="#fff" />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.actionButton, {backgroundColor: colors.error}]} onPress={() => handleReject(pending)} disabled={actionLoading}>
-                        <Ionicons name="close" size={20} color="#fff" />
-                    </TouchableOpacity>
-                </View>
-              ))}
-            </Section>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.memberName}>{pendingMember.name || 'Utilisateur'}</Text>
+                      {pendingMember.email && <Text style={styles.memberEmail}>{pendingMember.email}</Text>}
+                    </View>
+                    <View style={styles.actionButtons}>
+                      <TouchableOpacity
+                        style={styles.btnApprove}
+                        onPress={() => handleApprove(pendingMember)}
+                        disabled={actionLoading}
+                      >
+                        <Ionicons name="checkmark" size={18} color="#fff" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.btnReject}
+                        onPress={() => handleReject(pendingMember)}
+                        disabled={actionLoading}
+                      >
+                        <Ionicons name="close" size={18} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
           )}
 
-          <Section title={`Membres approuvés (${filteredMembers.length})`}>
-            {filteredMembers.length === 0 ? (
+          {/* SECTION: MEMBERS APPROUVÉS */}
+          <View>
+            <Text style={styles.sectionTitle}>Membres ({members.length})</Text>
+            {filtered.length === 0 ? (
               <View style={styles.emptyState}>
-                <Ionicons name="people-outline" size={40} color={colors.textMuted} />
-                <Text style={styles.emptyText}>Aucun membre ne correspond à votre recherche.</Text>
+                <Ionicons name="people-outline" size={48} color={palette.gray} />
+                <Text style={styles.emptyText}>Aucun membre trouvé</Text>
               </View>
             ) : (
-              filteredMembers.map((member) => (
-                <View key={member.id} style={styles.card}>
-                  <Text style={[styles.avatarText, {backgroundColor: 'rgba(39, 179, 163, 0.1)', color: colors.primary}]}>{(member.name || '?')[0]}</Text>
-                  <View style={styles.cardContent}>
-                      <Text style={styles.cardTitle}>{member.name}</Text>
-                      <Text style={styles.cardSubtitle}>{member.email}</Text>
+              <View style={styles.membersList}>
+                {filtered.map((member) => (
+                  <View key={member.id || member.userId} style={styles.memberCard}>
+                    <View style={styles.memberAvatar}>
+                      <Text style={styles.avatarText}>
+                        {(member.name || member.displayName || '?')[0].toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.memberName}>{member.name || member.displayName}</Text>
+                      {member.email && <Text style={styles.memberEmail}>{member.email}</Text>}
+                      {member.joinedAt && (
+                        <Text style={styles.memberMeta}>
+                          Rejoint le {new Date(member.joinedAt).toLocaleDateString('fr-FR')}
+                        </Text>
+                      )}
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={palette.gray} />
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-                </View>
-              ))
+                ))}
+              </View>
             )}
-          </Section>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const Section = ({ title, children }: { title: string, children: React.ReactNode }) => (
-    <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        {children}
-    </View>
-);
-
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  container: { paddingBottom: 100 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
+  safe: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
   header: {
-    backgroundColor: colors.primary,
-    padding: 16,
-    paddingTop: 24,
+    backgroundColor: palette.primary,
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 18,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
   },
-  backBtn: { padding: 8, },
-  headerTitle: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
-  headerSub: { color: 'rgba(255,255,255,0.8)', fontSize: 15 },
-  content: { padding: 16, gap: 24 },
-  searchContainer: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 16,
+    gap: 12,
+  },
+  backBtn: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  headerSub: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  container: {
     paddingHorizontal: 16,
-    height: 50,
-    gap: 12,
+    paddingVertical: 16,
+    gap: 20,
   },
-  searchInput: { flex: 1, fontSize: 15, color: colors.text },
-  section: { gap: 16 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: colors.text },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 12,
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: palette.text,
+    marginBottom: 4,
+  },
+  searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: palette.text,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
     gap: 12,
-    elevation: 2,
-    shadowColor: colors.shadow,
   },
-  pendingCard: { borderColor: colors.warning, borderWidth: 2 },
-  avatarText: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    textAlign: 'center',
-    lineHeight: 48,
-    fontSize: 20,
-    fontWeight: 'bold',
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    color: colors.warning,
-    overflow: 'hidden'
+  emptyText: {
+    fontSize: 14,
+    color: palette.gray,
   },
-  cardContent: { flex: 1, gap: 2 },
-  cardTitle: { fontSize: 16, fontWeight: 'bold', color: colors.text },
-  cardSubtitle: { fontSize: 14, color: colors.textMuted },
-  actionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  membersList: {
+    gap: 10,
+  },
+  memberCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  pendingMemberCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    gap: 12,
+    borderWidth: 2,
+    borderColor: '#FCD34D', // Jaune pour pending
+  },
+  memberAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: palette.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  emptyState: { paddingVertical: 40, alignItems: 'center', gap: 12 },
-  emptyText: { fontSize: 15, color: colors.textMuted, textAlign: 'center' },
+  avatarText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  memberName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: palette.text,
+  },
+  memberEmail: {
+    fontSize: 12,
+    color: palette.gray,
+    marginTop: 2,
+  },
+  memberMeta: {
+    fontSize: 11,
+    color: palette.gray,
+    marginTop: 4,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  btnApprove: {
+    backgroundColor: '#10B981', // Vert
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  btnReject: {
+    backgroundColor: '#EF4444', // Rouge
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Modal, Alert, ActivityIndicator } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Modal, Alert, ActivityIndicator, ScrollView as RNScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -112,7 +112,8 @@ export default function HomeTrainingBookingScreen({ navigation, route }: Props) 
         <View style={{ width: 32 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>        {/* Type de cours */}
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Type de cours */}
         <View>
           <Text style={styles.title}>Type de cours</Text>
           <TouchableOpacity
@@ -342,7 +343,7 @@ function Input({
         placeholderTextColor="#9CA3AF"
         keyboardType={keyboardType}
         multiline={multiline}
-        style={[ 
+        style={[
           styles.input,
           multiline && { height: height || 100, textAlignVertical: 'top' },
         ]}

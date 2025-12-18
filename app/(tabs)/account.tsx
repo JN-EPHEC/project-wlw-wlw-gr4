@@ -44,49 +44,7 @@ const sampleClubs = [
   { id: 'agility-pro', name: 'Agility Pro', icon: '🏃‍♂️' },
   { id: 'amis-chiens', name: 'Les Amis des Chiens', icon: '🦴' },
 ];
-
-const formatDogAge = (birthDate?: string | number) => {
-  if (!birthDate) return 'Âge inconnu';
-  try {
-    let birth: Date;
-    if (typeof birthDate === 'number') {
-      birth = new Date(birthDate);
-    } else if (typeof birthDate === 'string' && !isNaN(Number(birthDate))) {
-      birth = new Date(parseInt(birthDate, 10));
-    } else {
-      birth = new Date(birthDate);
-    }
-    if (isNaN(birth.getTime())) {
-      return 'Âge inconnu';
-    }
-
-    const today = new Date();
-    let years = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      years--;
-    }
-
-    if (years <= 0) {
-      const months = monthDiff < 0 ? 12 + monthDiff : monthDiff;
-      return `${Math.max(months, 1)} mois`;
-    }
-    return `${years} an${years > 1 ? 's' : ''}`;
-  } catch {
-    return 'Âge inconnu';
-  }
-};
-
 type AccountNavigationProp = NativeStackNavigationProp<UserStackParamList, 'account'>;
-
-interface FollowedClubSummary {
-  id: string;
-  name: string;
-  image: string;
-  rating: number | null;
-  distance: string;
-  verified: boolean;
-}
 
 
 export default function AccountScreen() {
@@ -99,7 +57,7 @@ export default function AccountScreen() {
   const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
   const [followedClubsCount, setFollowedClubsCount] = useState(0);
-  const [realClubs, setRealClubs] = useState<FollowedClubSummary[]>([]);
+  const [realClubs, setRealClubs] = useState<any[]>([]);
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -119,23 +77,14 @@ export default function AccountScreen() {
           return;
         }
 
-        const clubsData: FollowedClubSummary[] = [];
+        const clubsData: any[] = [];
         for (const clubId of clubIds.slice(0, 3)) { // Limiter à 3 clubs pour la page compte
           const clubDoc = await getDoc(doc(db, 'club', clubId));
           if (clubDoc.exists()) {
-            const data = clubDoc.data() as Record<string, any>;
-            const distanceText =
-              typeof data?.distanceKm === 'number'
-                ? `${Math.max(0, data.distanceKm).toFixed(1)} km`
-                : 'Distance inconnue';
-
             clubsData.push({
               id: clubDoc.id,
-              name: data?.name || 'Sans nom',
-              image: data?.PhotoUrl || data?.logoUrl || 'https://via.placeholder.com/300x200?text=Club',
-              rating: typeof data?.averageRating === 'number' ? data.averageRating : null,
-              distance: distanceText,
-              verified: Boolean(data?.isVerified),
+              name: clubDoc.data().name || 'Sans nom',
+              icon: '🏆',
             });
           }
         }
@@ -215,6 +164,8 @@ export default function AccountScreen() {
 
   const menuItems = [
     { id: 'bookings', icon: 'calendar-outline' as const, label: 'Mes réservations', badge: bookings.length ? String(bookings.length) : null, onPress: () => navigation.navigate('bookings') },
+    { id: 'dogs', icon: 'paw-outline' as const, label: 'Mes chiens', badge: null, onPress: () => navigation.navigate('dogs') },
+    { id: 'clubs', icon: 'heart-outline' as const, label: 'Clubs suivis', badge: null, onPress: () => navigation.navigate('followedClubs') },
     { id: 'notifications', icon: 'notifications-outline' as const, label: 'Notifications', badge: null, onPress: () => navigation.navigate('notifications', { previousTarget: 'account' }) },
     { id: 'ratingInvitation', icon: 'star-outline' as const, label: 'Invitations avis', badge: null, onPress: () => navigation.navigate('ratingsInvitationsList') },
     { id: 'settings', icon: 'settings-outline' as const, label: 'Paramètres', badge: null, onPress: () => navigation.navigate('settings') },
@@ -329,56 +280,21 @@ export default function AccountScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Mes chiens</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('mydog')}>
+            <TouchableOpacity onPress={() => navigation.navigate('dogs')}>
               <Text style={styles.sectionLink}>Voir tout</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.myDogsRow}
-          >
-            {dogsData && dogsData.map((dog, idx) => (
-              <TouchableOpacity
-                key={dog.id ?? idx}
-                style={styles.myDogCard}
-                activeOpacity={0.9}
-                onPress={() => dog.id && navigation.navigate('dogDetail', { dogId: dog.id })}
-              >
-                <Image
-                  source={{ uri: dog.photoUrl || 'https://via.placeholder.com/200x120?text=Dog' }}
-                  style={styles.myDogImage}
-                />
-                <View style={styles.myDogBody}>
-                  <View style={styles.myDogHeader}>
-                    <Text style={styles.myDogName} numberOfLines={1}>
-                      {dog.name || 'Mon chien'}
-                    </Text>
-                    {dog.gender ? (
-                      <View style={styles.genderBadge}>
-                        <Text style={styles.genderBadgeText}>{dog.gender}</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  <Text style={styles.myDogBreed} numberOfLines={1}>
-                    {dog.breed || 'Race inconnue'}
-                  </Text>
-                  <View style={styles.myDogMetaRow}>
-                    <View style={styles.myDogMetaItem}>
-                      <Ionicons name="time-outline" size={14} color={palette.gray} />
-                      <Text style={styles.metaText}>{formatDogAge(dog.birthDate as any)}</Text>
-                    </View>
-                    <View style={styles.myDogMetaItem}>
-                      <Ionicons name="paw-outline" size={14} color={palette.gray} />
-                      <Text style={styles.metaText}>
-                        {dog.weight ? `${dog.weight} kg` : 'Poids inconnu'}
-                      </Text>
-                    </View>
-                  </View>
+          <View style={styles.cardGrid}>
+            {dogsData && dogsData.slice(0, 2).map((dog, idx) => (
+              <View key={dog.id ?? idx} style={styles.dogCard}>
+                <Image source={{ uri: dog.photoUrl || 'https://via.placeholder.com/120' }} style={styles.dogImage} />
+                <View style={styles.dogBody}>
+                  <Text style={styles.dogName}>{dog.name}</Text>
+                  <Text style={styles.dogBreed}>{dog.breed}</Text>
                 </View>
-              </TouchableOpacity>
+              </View>
             ))}
-          </ScrollView>
+          </View>
         </View>
 
         <View style={styles.section}>
@@ -388,50 +304,22 @@ export default function AccountScreen() {
               <Text style={styles.sectionLink}>Voir tout</Text>
             </TouchableOpacity>
           </View>
-          {realClubs && realClubs.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.clubsRow}
-            >
-              {realClubs.map((club, idx) => (
+          <View style={styles.clubsRow}>
+            {realClubs && realClubs.length > 0 ? (
+              realClubs.map((club, idx) => (
                 <TouchableOpacity
                   key={club.id ?? idx}
-                  style={styles.followedClubCard}
+                  style={styles.clubCard}
                   onPress={() => navigation.navigate('clubDetail', { clubId: club.id })}
                 >
-                  <Image source={{ uri: club.image }} style={styles.followedClubImage} />
-                  <View style={styles.followedClubBody}>
-                    <View style={styles.followedClubHeader}>
-                      <Text style={styles.followedClubName} numberOfLines={1}>
-                        {club.name}
-                      </Text>
-                      {club.verified ? (
-                        <View style={styles.verifiedBadge}>
-                          <Ionicons name="checkmark-circle" size={14} color="#fff" />
-                          <Text style={styles.verifiedBadgeText}>Vérifié</Text>
-                        </View>
-                      ) : null}
-                    </View>
-                    <View style={styles.followedClubMeta}>
-                      <View style={styles.followedClubMetaItem}>
-                        <Ionicons name="star" size={14} color="#F59E0B" />
-                        <Text style={styles.metaText}>
-                          {typeof club.rating === 'number' ? club.rating.toFixed(1) : 'N/A'}
-                        </Text>
-                      </View>
-                      <View style={styles.followedClubMetaItem}>
-                        <Ionicons name="location-outline" size={14} color={palette.gray} />
-                        <Text style={styles.metaText}>{club.distance}</Text>
-                      </View>
-                    </View>
-                  </View>
+                  <Text style={styles.clubIcon}>{club.icon ?? '🏆'}</Text>
+                  <Text style={styles.clubName}>{club.name}</Text>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
-          ) : (
-            <Text style={styles.emptyClubs}>Aucun club suivi</Text>
-          )}
+              ))
+            ) : (
+              <Text style={styles.emptyClubs}>Aucun club suivi</Text>
+            )}
+          </View>
         </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -597,9 +485,9 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionTitle: { color: palette.text, fontSize: 16, fontWeight: '700' },
   sectionLink: { color: palette.primary, fontWeight: '700', fontSize: 13 },
-  myDogsRow: { flexDirection: 'row', gap: 12, paddingRight: 16 },
-  myDogCard: {
-    width: 220,
+  cardGrid: { flexDirection: 'row', gap: 12 },
+  dogCard: {
+    flex: 1,
     backgroundColor: '#fff',
     borderRadius: 16,
     borderWidth: 1,
@@ -611,51 +499,28 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 5 },
     elevation: 3,
   },
-  myDogImage: { width: '100%', height: 120, backgroundColor: '#E5E7EB' },
-  myDogBody: { padding: 12, gap: 8 },
-  myDogHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  myDogName: { color: palette.text, fontSize: 15, fontWeight: '700', flex: 1 },
-  myDogBreed: { color: palette.gray, fontSize: 12 },
-  myDogMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  myDogMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  genderBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: '#E0F2F1',
-  },
-  genderBadgeText: { color: palette.primary, fontWeight: '700', fontSize: 11 },
-  clubsRow: { flexDirection: 'row', gap: 12, paddingRight: 16 },
-  followedClubCard: {
-    width: 220,
+  dogImage: { width: '100%', height: 120, backgroundColor: '#E5E7EB' },
+  dogBody: { padding: 12, gap: 4 },
+  dogName: { color: palette.text, fontSize: 15, fontWeight: '700' },
+  dogBreed: { color: palette.gray, fontSize: 12 },
+  clubsRow: { flexDirection: 'row', gap: 12 },
+  clubCard: {
+    flex: 1,
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    overflow: 'hidden',
+    padding: 12,
+    alignItems: 'center',
+    gap: 6,
     shadowColor: '#000',
     shadowOpacity: 0.04,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
-  followedClubImage: { width: '100%', height: 110, backgroundColor: '#E5E7EB' },
-  followedClubBody: { padding: 12, gap: 8 },
-  followedClubHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  followedClubName: { color: palette.text, fontSize: 14, fontWeight: '700', flex: 1 },
-  verifiedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: palette.primary,
-  },
-  verifiedBadgeText: { color: '#fff', fontWeight: '700', fontSize: 11 },
-  followedClubMeta: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  followedClubMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { color: palette.gray, fontSize: 12, fontWeight: '600' },
+  clubIcon: { fontSize: 20 },
+  clubName: { color: palette.text, fontSize: 12, textAlign: 'center' },
   emptyClubs: { color: palette.gray, fontSize: 13, textAlign: 'center' },
   error: { color: '#DC2626', fontSize: 13, textAlign: 'center', marginBottom: 8 },
   logoutButton: {

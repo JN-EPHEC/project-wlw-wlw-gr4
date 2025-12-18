@@ -123,25 +123,8 @@ export default function ClubsScreen() {
 
   // Récupérer les favoris de tous les types
   const favoriteItems = useMemo(() => {
-    const matchesFilterType = (favoriteType?: string) => {
-      if (!favoriteType) return false;
-      switch (filter) {
-        case 'clubs':
-          return favoriteType === 'club';
-        case 'trainers':
-          return favoriteType === 'educator';
-        case 'events':
-          return favoriteType === 'event';
-        case 'all':
-        default:
-          return true;
-      }
-    };
-
-    return [...clubs, ...educators, ...events].filter(item =>
-      matchesFilterType(favorites.get(item.id as string)),
-    );
-  }, [clubs, educators, events, favorites, filter]);
+    return [...clubs, ...educators, ...events].filter(item => isFavorite(item.id as string));
+  }, [clubs, educators, events, isFavorite]);
 
   const getNumericId = (id: string | number): number => {
     if (typeof id === 'number') return id;

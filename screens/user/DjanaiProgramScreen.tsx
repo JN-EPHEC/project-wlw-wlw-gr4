@@ -23,7 +23,7 @@ export default function DjanaiProgramScreen({ navigation, route }: Props) {
 
   const handleBack = () => {
     // Naviguer directement vers la liste des chiens
-    (navigation as any).navigate('mydog');
+    (navigation as any).navigate('dogs');
   };
 
   if (!program) {
