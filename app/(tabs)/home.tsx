@@ -166,11 +166,7 @@ export default function HomeScreen() {
             </View>
             <TouchableOpacity style={styles.notif} onPress={() => navigation.navigate('notifications', { previousTarget: 'home' })}>
               <Ionicons name="notifications-outline" size={22} color="#fff" />
-              <View style={styles.notifBadge}>
-                <Text style={styles.notifBadgeText}>3</Text>
-              </View>
             </TouchableOpacity>
-          </View>
 
           <View style={styles.searchBar}>
             <Ionicons name="search" size={18} color="#9CA3AF" />
