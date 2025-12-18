@@ -28,6 +28,7 @@ import BookingsScreen from '@/screens/user/BookingsScreen';
 import DjanaiProgramScreen from '@/screens/user/DjanaiProgramScreen';
 import DjanaiResultsScreen from '@/screens/user/DjanaiResultsScreen';
 import DjanaiLoadingScreen from '@/screens/user/DjanaiLoadingScreen';
+import DjanaiQuizCompleteScreen from '@/screens/user/DjanaiQuizCompleteScreen';
 import DjanaiScreen from '@/screens/user/DjanaiScreen';
 import DogBadgesScreen from '@/screens/user/DogBadgesScreen';
 import DogProgressionScreen from '@/screens/user/DogProgressionScreen';
@@ -83,6 +84,7 @@ export default function UserStack() {
       <Stack.Screen name="djanaiResults" component={DjanaiResultsScreen} />
       <Stack.Screen name="DjanaiLoadingScreen" component={DjanaiLoadingScreen} />
       <Stack.Screen name="djanai-program" component={DjanaiProgramScreen} />
+      <Stack.Screen name="djanaiQuizComplete" component={DjanaiQuizCompleteScreen} />
       <Stack.Screen name="editProfile" component={EditProfileScreen} />
     </Stack.Navigator>
   );

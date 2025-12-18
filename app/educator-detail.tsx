@@ -105,7 +105,7 @@ export default function EducatorDetailScreen({ navigation, route }: Props) {
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
           <Image 
-            source={{ uri: educator.photoUrl || 'https://via.placeholder.com/400x300?text=Educator' }} 
+            source={{ uri: educator.photoUrl || 'https://via.placeholder.com/400x300?text=Educator' }}
             style={styles.heroImage} 
           />
           <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
@@ -136,7 +136,7 @@ export default function EducatorDetailScreen({ navigation, route }: Props) {
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statValue}>{educator.experienceYears || 0}</Text>
-              <Text style={styles.statLabel}>Ans d'exp.</Text>
+              <Text style={styles.statLabel}>Ans d\'exp.</Text>
             </View>
           </View>
         </View>
@@ -150,7 +150,7 @@ export default function EducatorDetailScreen({ navigation, route }: Props) {
 
         {educator.methods && educator.methods.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Méthodes d'enseignement</Text>
+            <Text style={styles.sectionTitle}>Méthodes d\'enseignement</Text>
             <View style={styles.chips}>
               {educator.methods.map((m: string) => (
                 <View key={m} style={styles.chip}>

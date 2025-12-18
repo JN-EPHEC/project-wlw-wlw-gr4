@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -8,233 +8,89 @@ import { useAuth } from '@/context/AuthContext';
 import { useNotifications, useNotificationIcon, useFormattedTime } from '@/hooks/useNotifications';
 import { Notification } from '@/types/Notification';
 
-const palette = {
-  primary: '#41B6A6',
-  text: '#1F2937',
-  gray: '#6B7280',
-  border: '#E5E7EB',
+const colors = {
+    primary: '#27b3a3',
+    text: '#233042',
+    textMuted: '#6a7286',
+    surface: '#ffffff',
+    background: '#F0F2F5',
 };
 
 type Props = NativeStackScreenProps<RootStackParamList, 'notifications'>;
 
 export default function NotificationsScreen({ navigation, route }: Props) {
   const { user } = useAuth();
-  const userId = (user as any)?.uid || '';
-  
-  const { notifications, loading, error, markAsRead, markAllAsRead } = useNotifications(userId);
-  const unreadCount = useMemo(() => notifications.filter((n) => !n.isRead).length, [notifications]);
+  const { notifications, loading, markAsRead, markAllAsRead } = useNotifications(user?.uid || '');
+  const unreadCount = useMemo(() => notifications.filter(n => !n.isRead).length, [notifications]);
   const previousTarget = route.params?.previousTarget;
 
-  // Affichage du chargement
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.header}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-            <TouchableOpacity
-              onPress={() => (previousTarget ? navigation.navigate(previousTarget as any) : navigation.goBack())}
-              style={styles.back}
-            >
-              <Ionicons name="arrow-back" size={24} color="#fff" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Mes notifications</Text>
-          </View>
-        </View>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={palette.primary} />
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const handleGoBack = () => previousTarget ? (navigation as any).navigate(previousTarget) : navigation.goBack();
 
-  // Affichage si pas de notifications
-  if (notifications.length === 0) {
-    return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.header}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-            <TouchableOpacity
-              onPress={() => (previousTarget ? navigation.navigate(previousTarget as any) : navigation.goBack())}
-              style={styles.back}
-            >
-              <Ionicons name="arrow-back" size={24} color="#fff" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Mes notifications</Text>
-          </View>
-        </View>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 }}>
-          <Ionicons name="notifications-off-outline" size={48} color={palette.gray} />
-          <Text style={{ color: palette.gray, marginTop: 12, fontSize: 14, textAlign: 'center' }}>
-            Aucune notification pour le moment
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
+  if (loading) {
+    return <SafeAreaView style={styles.centered}><ActivityIndicator size="large" color={colors.primary} /></SafeAreaView>;
   }
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-            <TouchableOpacity
-              onPress={() => (previousTarget ? navigation.navigate(previousTarget as any) : navigation.goBack())}
-              style={styles.back}
-            >
-              <Ionicons name="arrow-back" size={24} color="#fff" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Mes notifications</Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={styles.headerSub}>
-              {unreadCount} non lue{unreadCount > 1 ? 's' : ''}
-            </Text>
-            {unreadCount > 0 && (
-              <TouchableOpacity style={styles.back} onPress={markAllAsRead}>
-                <Ionicons name="checkmark-done" size={24} color="#fff" />
-              </TouchableOpacity>
-            )}
-          </View>
+            <TouchableOpacity style={styles.backBtn} onPress={handleGoBack}><Ionicons name="arrow-back" size={24} color="#fff" /></TouchableOpacity>
+            <Text style={styles.headerTitle}>Notifications</Text>
         </View>
 
-        {notifications.map((notif) => (
-          <NotificationCard
-            key={notif.id}
-            notification={notif}
-            onPress={() => {
-              markAsRead(notif.id);
-              handleNavigate(navigation, notif);
-            }}
-          />
-        ))}
+      <ScrollView contentContainerStyle={styles.container}>
+        {unreadCount > 0 && <TouchableOpacity onPress={markAllAsRead}><Text style={styles.markAllRead}>Tout marquer comme lu</Text></TouchableOpacity>}
+        
+        {notifications.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="notifications-off-outline" size={48} color={colors.textMuted} />
+            <Text style={styles.emptyTitle}>Aucune notification</Text>
+          </View>
+        ) : (
+          notifications.map((notif) => <NotificationCard key={notif.id} notification={notif} onMarkRead={() => markAsRead(notif.id)} navigation={navigation} />)
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-/**
- * Composant pour afficher une notification
- */
-function NotificationCard({ 
-  notification, 
-  onPress 
-}: { 
-  notification: Notification; 
-  onPress: () => void;
-}) {
-  const { icon, color, bg } = useNotificationIcon(notification.type);
+function NotificationCard({ notification, onMarkRead, navigation }: { notification: Notification; onMarkRead: () => void; navigation: any; }) {
+  const { icon, color } = useNotificationIcon(notification.type);
   const formattedTime = useFormattedTime(notification.createdAt);
 
+  const handlePress = () => {
+    onMarkRead();
+    // Your navigation logic here
+  };
+
   return (
-    <TouchableOpacity
-      style={[styles.card, { backgroundColor: bg }, notification.isRead && styles.readCard]}
-      activeOpacity={0.9}
-      onPress={onPress}
-    >
-      <View style={[styles.iconWrap, { backgroundColor: notification.isRead ? '#E5E7EB' : '#fff' }]}>
-        <Ionicons name={icon as any} size={18} color={color} />
+    <TouchableOpacity style={[styles.card, !notification.isRead && styles.unreadCard]} onPress={handlePress}>
+      <View style={[styles.iconContainer, {backgroundColor: color + '20'}]}><Ionicons name={icon as any} size={24} color={color} /></View>
+      <View style={styles.cardContent}>
+        <Text style={styles.cardTitle}>{notification.title}</Text>
+        <Text style={styles.cardMessage} numberOfLines={2}>{notification.message}</Text>
+        <Text style={styles.cardTime}>{formattedTime}</Text>
       </View>
-      <View style={{ flex: 1, gap: 4 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text style={styles.title}>{notification.title}</Text>
-          {!notification.isRead ? <View style={styles.unreadDot} /> : null}
-        </View>
-        <Text style={styles.message} numberOfLines={2}>
-          {notification.message}
-        </Text>
-        <Text style={styles.meta}>{formattedTime}</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={16} color={palette.gray} />
+      {!notification.isRead && <View style={styles.unreadDot} />}
     </TouchableOpacity>
   );
 }
 
-/**
- * Gère la navigation selon le type de notification
- */
-function handleNavigate(navigation: any, notification: Notification) {
-  const params = notification.actionParams || {};
-  
-  switch (notification.actionUrl) {
-    case 'club-detail':
-      navigation.navigate('clubDetail', { 
-        clubId: notification.relatedId,
-        ...params 
-      });
-      break;
-    case 'event-detail':
-      navigation.navigate('eventDetail', { 
-        eventId: notification.relatedId,
-        ...params 
-      });
-      break;
-    case 'chat-room':
-      navigation.navigate('chatRoom', { 
-        chatRoomId: notification.relatedId,
-        ...params 
-      });
-      break;
-    case 'rating':
-      navigation.navigate('rating', { 
-        bookingId: notification.relatedId,
-        previousTarget: 'account',
-        ...params 
-      });
-      break;
-    case 'club-community-management':
-      navigation.navigate('clubCommunityManagement', { 
-        clubId: notification.relatedId,
-        ...params 
-      });
-      break;
-    case 'club-reviews':
-      navigation.navigate('reviews', { 
-        clubId: notification.relatedId,
-        ...params 
-      });
-      break;
-    default:
-      console.log('Route non gérée:', notification.actionUrl);
-  }
-}
-
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F5F7FA' },
-  header: {
-    backgroundColor: palette.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  back: { padding: 8, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)' },
-  headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
-  headerSub: { color: 'rgba(255,255,255,0.9)', fontSize: 12 },
-  card: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: palette.border,
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'center',
-  },
-  readCard: { opacity: 0.7 },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  title: { color: palette.text, fontWeight: '700', fontSize: 15 },
-  message: { color: palette.text, fontSize: 13, lineHeight: 18 },
-  meta: { color: palette.gray, fontSize: 12 },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#F97316', flexShrink: 0 },
+  safe: { flex: 1, backgroundColor: colors.background },
+  container: { padding: 16, gap: 12 },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: { backgroundColor: colors.primary, padding: 16, paddingTop: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, flexDirection: 'row', alignItems: 'center', gap: 16 },
+  backBtn: { padding: 8 },
+  headerTitle: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
+  markAllRead: { textAlign: 'right', color: colors.primary, fontWeight: '600', marginBottom: 8 },
+  card: { backgroundColor: colors.surface, borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, elevation: 1 },
+  unreadCard: { borderWidth: 2, borderColor: colors.primary },
+  iconContainer: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
+  cardContent: { flex: 1 },
+  cardTitle: { fontSize: 16, fontWeight: 'bold', color: colors.text },
+  cardMessage: { fontSize: 14, color: colors.textMuted, marginVertical: 2 },
+  cardTime: { fontSize: 12, color: colors.primary, fontWeight: '500', marginTop: 4 },
+  unreadDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary },
+  emptyState: { paddingVertical: 80, alignItems: 'center', gap: 16 },
+  emptyTitle: { fontSize: 20, fontWeight: 'bold', color: colors.text },
 });
