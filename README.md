@@ -22,6 +22,8 @@ Interface Utilisateur:
 - Pour la page d’un club, manque les terrains, FAIT
 - Connexion avec BDD et link FAIT
 - Voir pour club suivit comment on avez fais avec bouton ou apres premiere seance ? 
+- Revoir les stats avcec un vrai systeme qui les clacules 
+- revoir les images avec la collection image d'un club
 
 .Commu 
 
