@@ -256,7 +256,7 @@ export default function HomeTrainingBookingScreen({ navigation, route }: Props) 
           onPress={() => setShowTrainingTypeDropdown(false)}
         >
           <View style={styles.dropdownContainer}>
-            <RNScrollView style={styles.dropdownList} showsVerticalScrollIndicator={false}>
+            <ScrollView style={styles.dropdownList} showsVerticalScrollIndicator={false}>
               {trainingTypes.map((type) => (
                 <TouchableOpacity
                   key={type.value}
@@ -271,7 +271,7 @@ export default function HomeTrainingBookingScreen({ navigation, route }: Props) 
                   </Text>
                 </TouchableOpacity>
               ))}
-            </RNScrollView>
+            </ScrollView>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -288,7 +288,7 @@ export default function HomeTrainingBookingScreen({ navigation, route }: Props) 
           onPress={() => setShowEducatorDropdown(false)}
         >
           <View style={styles.dropdownContainer}>
-            <RNScrollView style={styles.dropdownList} showsVerticalScrollIndicator={false}>
+            <ScrollView style={styles.dropdownList} showsVerticalScrollIndicator={false}>
               {educators.length === 0 ? (
                 <Text style={styles.dropdownItemText}>Aucun éducateur disponible</Text>
               ) : (
@@ -307,7 +307,7 @@ export default function HomeTrainingBookingScreen({ navigation, route }: Props) 
                   </TouchableOpacity>
                 ))
               )}
-            </RNScrollView>
+            </ScrollView>
           </View>
         </TouchableOpacity>
       </Modal>
