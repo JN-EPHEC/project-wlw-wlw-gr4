@@ -42,13 +42,13 @@ interface Dog {
 }
 
 const palette = {
-  primary: '#41B6A6',
-  secondary: '#359889',
-  accent: '#E9B782',
-  text: '#1F2937',
-  gray: '#6B7280',
-  lightGray: '#F3F4F6',
-  border: '#E5E7EB',
+    primary: '#41B6A6',
+    secondary: '#359889',
+    accent: '#E9B782',
+    text: '#1F2937',
+    gray: '#6B7280',
+    lightGray: '#F3F4F6',
+    border: '#E5E7EB',
 };
 
 export default function DogDetailPage() {
@@ -315,7 +315,7 @@ export default function DogDetailPage() {
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Niveau 3</Text>
             <View style={styles.progressList}>
-              {[
+              {[ 
                 { skill: 'Assis', progress: 100 },
                 { skill: 'Couché', progress: 100 },
                 { skill: 'Pas bouger', progress: 85 },
@@ -329,7 +329,7 @@ export default function DogDetailPage() {
                   </View>
                   <View style={styles.progressBar}>
                     <View
-                      style={[
+                      style={[ 
                         styles.progressFill,
                         { width: `${item.progress}%` },
                       ]}
@@ -343,7 +343,7 @@ export default function DogDetailPage() {
           {/* Upcoming Appointments */}
           <Text style={styles.sectionTitle}>Prochains rendez-vous</Text>
           <View style={styles.appointmentsList}>
-            {[
+            {[ 
               {
                 type: 'Vétérinaire',
                 date: '15 Nov 2025',
@@ -413,7 +413,7 @@ export default function DogDetailPage() {
           {/* Health & Tracking */}
           <Text style={styles.sectionTitle}>Santé & suivi</Text>
           <View style={styles.healthGrid}>
-            {[
+            {[ 
               {
                 label: 'Vaccins',
                 status: 'À jour',
@@ -448,7 +448,7 @@ export default function DogDetailPage() {
           <View style={styles.card}>
             <Text style={styles.badgeCount}>12 badges</Text>
             <View style={styles.badgesGrid}>
-              {[
+              {[ 
                 { emoji: '🏆', name: 'Champion', unlocked: true },
                 { emoji: '⭐', name: 'Étoile', unlocked: true },
                 { emoji: '🎯', name: 'Précision', unlocked: true },
@@ -460,7 +460,7 @@ export default function DogDetailPage() {
               ].map((badge, index) => (
                 <View
                   key={index}
-                  style={[
+                  style={[ 
                     styles.badge,
                     !badge.unlocked && styles.badgeLockedContainer,
                   ]}

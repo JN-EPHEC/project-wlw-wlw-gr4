@@ -11,10 +11,10 @@ import { useDogs } from '@/hooks/useDogs';
 import { useDogDocuments, DogDocument } from '@/hooks/useDogDocuments';
 
 const palette = {
-  primary: '#41B6A6',
-  text: '#1F2937',
-  gray: '#6B7280',
-  border: '#E5E7EB',
+    primary: '#41B6A6',
+    text: '#1F2937',
+    gray: '#6B7280',
+    border: '#E5E7EB',
 };
 
 type Props = NativeStackScreenProps<UserStackParamList, 'addDog'>;
@@ -168,7 +168,7 @@ export default function AddDogScreen({ navigation }: Props) {
         <View style={styles.photoCard}>
           <View style={styles.photoCircle}>
             {photo ? (
-              <Image source={{ uri: photo }} style={styles.photo} />
+              <Image source={{uri: photo}} style={styles.photo} />
             ) : (
               <MaterialCommunityIcons name="paw" size={36} color={palette.gray} />
             )}
