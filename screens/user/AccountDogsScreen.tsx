@@ -100,7 +100,7 @@ export default function AccountDogsScreen({ navigation }: Props) {
       </View>
       <FlatList
         data={dogs}
-        keyExtractor={(item) => item.id || item.name}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
           <TouchableOpacity

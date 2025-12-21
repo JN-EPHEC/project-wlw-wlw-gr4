@@ -59,10 +59,9 @@ export default function ClubDetailScreen({ navigation, route }: Props) {
   // Auth et join club hook
   const { user, profile } = useAuth();
   const { joinClub } = useJoinClub();
-  const { promotions } = useClubPromotions(clubId);
-  const { terrains } = useClubTerrains(clubId);
   
-  // Récupérer les éducateurs du club
+  // Récupérer les terrains et éducateurs du club
+  const { fields, loading: fieldsLoading } = useFetchClubFields(clubId);
   const educatorId = club?.educatorId ? [club.educatorId] : [];
   const { educators, loading: educatorsLoading } = useFetchClubEducators(educatorId);
   const { bookings, loading: bookingsLoading } = useFetchClubUpcomingBookings(clubId);
@@ -73,97 +72,18 @@ export default function ClubDetailScreen({ navigation, route }: Props) {
       try {
         setLoading(true);
         console.log('🔍 [club-detail] Fetching club with ID:', clubId);
-        
-        // D'abord, essayer de récupérer directement depuis la collection 'club'
+        // clubId vient directement de Firebase (string)
         const clubRef = doc(db, 'club', clubId);
-        let clubSnap = await getDoc(clubRef);
+        const clubSnap = await getDoc(clubRef);
 
-        // Si pas trouvé, chercher un club avec cet ownerUserId (cas des clubs créés récemment)
-        if (!clubSnap.exists()) {
-          console.log('⚠️ [club-detail] Club not found directly, searching by ownerUserId:', clubId);
-          const clubsCollection = collection(db, 'club');
-          const q = query(clubsCollection, where('ownerUserId', '==', clubId));
-          const snapshot = await getDocs(q);
-          
-          if (snapshot.docs.length > 0) {
-            clubSnap = snapshot.docs[0]; // Prendre le premier résultat
-          }
-        }
-
-        // Récupérer aussi les données du user pour faire un fallback si nécessaire
-        let userData: any = null;
-        try {
-          const userRef = doc(db, 'users', clubId);
-          const userSnap = await getDoc(userRef);
-          if (userSnap.exists()) {
-            userData = userSnap.data();
-          }
-        } catch (err) {
-          console.warn('⚠️ [club-detail] Could not fetch user data:', err);
-        }
-
-        // Si pas trouvé dans la collection club, construire depuis les données user
-        if (!clubSnap.exists()) {
-          if (userData) {
-            console.log('ℹ️ [club-detail] Club found in users collection, building from profile');
-            const servicesArray = userData.profile?.services || [];
-            
-            const constructedClubData: ClubData = {
-              id: clubId,
-              name: userData.profile?.clubName || userData.displayName || 'Club',
-              averageRating: 0,
-              reviewsCount: 0,
-              distanceKm: 0,
-              isVerified: false,
-              PhotoUrl: userData.profile?.logoUrl,
-              logoUrl: userData.profile?.logoUrl,
-              description: userData.profile?.description || '',
-              address: userData.profile?.address || '',
-              phone: userData.profile?.phone || '',
-              email: userData.email || '',
-              website: userData.profile?.website || '',
-              certifications: undefined,
-              services: servicesArray.join(', '),
-              stats: undefined,
-            };
-
-            console.log('✅ [club-detail] Club constructed from user data:', constructedClubData);
-            setClub(constructedClubData);
-            setError(null);
-            return;
-          }
-
-          console.log('❌ [club-detail] Club NOT found anywhere with ID:', clubId);
+        if (clubSnap.exists()) {
+          console.log('✅ [club-detail] Club found:', clubSnap.data());
+          setClub({ id: clubSnap.id, ...clubSnap.data() } as ClubData);
+          setError(null);
+        } else {
+          console.log('❌ [club-detail] Club NOT found with ID:', clubId);
           setError('Club non trouvé');
-          return;
         }
-
-        // Club trouvé : fusionner avec les données user pour combler les champs manquants
-        const clubData = clubSnap.data() as any;
-        const servicesArray = userData?.profile?.services || clubData.services || [];
-        
-        const mergedClubData: ClubData = {
-          id: clubSnap.id,
-          name: clubData.name || userData?.profile?.clubName || userData?.displayName || 'Club',
-          averageRating: clubData.averageRating ?? 0,
-          reviewsCount: clubData.reviewsCount ?? 0,
-          distanceKm: clubData.distanceKm ?? 0,
-          isVerified: clubData.isVerified ?? false,
-          PhotoUrl: clubData.PhotoUrl || clubData.logoUrl || userData?.profile?.logoUrl,
-          logoUrl: clubData.logoUrl || userData?.profile?.logoUrl,
-          description: clubData.description || userData?.profile?.description || '',
-          address: clubData.address || userData?.profile?.address || '',
-          phone: clubData.phone || userData?.profile?.phone || '',
-          email: clubData.email || userData?.email || '',
-          website: clubData.website || userData?.profile?.website || '',
-          certifications: clubData.certifications,
-          services: Array.isArray(servicesArray) ? servicesArray.join(', ') : (clubData.services || ''),
-          stats: clubData.stats,
-        };
-
-        console.log('✅ [club-detail] Club found and merged with user data:', mergedClubData);
-        setClub(mergedClubData);
-        setError(null);
       } catch (err) {
         console.error('❌ [club-detail] Error fetching club:', err);
         setError('Erreur lors du chargement du club');
@@ -329,32 +249,6 @@ export default function ClubDetailScreen({ navigation, route }: Props) {
           )}
         </View>
 
-        {/* SECTION PROMOTIONS */}
-        {promotions && promotions.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.title}>Promotions en cours</Text>
-            <View style={{ gap: 12 }}>
-              {promotions.map((promo) => {
-                const isActive = promo.isActive && new Date(promo.validUntil?.toDate?.() || promo.validUntil) > new Date();
-                return isActive ? (
-                  <View key={promo.id} style={styles.promotionCard}>
-                    <View style={styles.promotionHeader}>
-                      <Text style={styles.promotionTitle}>{promo.title}</Text>
-                      <View style={styles.discountBadge}>
-                        <Text style={styles.discountBadgeText}>-{promo.discountPercentage}%</Text>
-                      </View>
-                    </View>
-                    <Text style={styles.promotionCode}>Code: {promo.code}</Text>
-                    <Text style={styles.promotionDate}>
-                      Jusqu'au {new Date(promo.validUntil?.toDate?.() || promo.validUntil).toLocaleDateString('fr-FR')}
-                    </Text>
-                  </View>
-                ) : null;
-              })}
-            </View>
-          </View>
-        )}
-
         {/* BOUTON REJOINDRE LA COMMUNAUTÉ */}
         <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
           <TouchableOpacity 
@@ -381,29 +275,39 @@ export default function ClubDetailScreen({ navigation, route }: Props) {
         {/* SECTION TERRAINS */}
         <View style={styles.section}>
           <Text style={styles.title}>Terrains & Équipements</Text>
-          {terrains && terrains.length > 0 ? (
-            terrains.map((terrain) => (
-              <View key={terrain.id} style={styles.fieldCard}>
+          {fieldsLoading ? (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              <ActivityIndicator color={palette.primary} />
+            </View>
+          ) : fields.length > 0 ? (
+            fields.map((field) => (
+              <View key={field.id} style={styles.fieldCard}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <MaterialCommunityIcons 
-                    name="grass" 
+                    name={field.isIndoor ? 'home-outline' : 'grass'} 
                     size={24} 
                     color={palette.primary} 
                   />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.fieldName}>{terrain.name}</Text>
-                    {terrain.address && (
-                      <Text style={styles.sub}>{terrain.address}</Text>
+                    <Text style={styles.fieldName}>{field.name}</Text>
+                    {field.trainingType && (
+                      <Text style={styles.sub}>{field.trainingType}</Text>
                     )}
-                    {terrain.trainingStyle && (
-                      <View style={{ marginTop: 6 }}>
-                        <View style={[styles.badge, { backgroundColor: palette.primary }]}>
-                          <Text style={styles.badgeText}>{terrain.trainingStyle}</Text>
-                        </View>
-                      </View>
+                    {field.surfaceType && (
+                      <Text style={[styles.sub, { fontSize: 12 }]}>
+                        Surface: {field.surfaceType}
+                      </Text>
                     )}
                   </View>
+                  {field.isIndoor && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>Couvert</Text>
+                    </View>
+                  )}
                 </View>
+                {field.notes && (
+                  <Text style={[styles.sub, { marginTop: 8 }]}>📝 {field.notes}</Text>
+                )}
               </View>
             ))
           ) : (
@@ -961,45 +865,5 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 8,
     backgroundColor: palette.border,
-  },
-  promotionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: palette.border,
-  },
-  promotionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  promotionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: palette.text,
-    flex: 1,
-  },
-  discountBadge: {
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  discountBadgeText: {
-    color: '#F59E0B',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  promotionCode: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: palette.text,
-    marginBottom: 4,
-  },
-  promotionDate: {
-    fontSize: 11,
-    color: palette.gray,
   },
 });
