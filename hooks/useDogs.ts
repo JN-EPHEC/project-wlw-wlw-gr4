@@ -101,6 +101,8 @@ export function useDogs() {
       const newDog: Dog = {
         id: docRef.id,
         ...docData,
+        name: '',
+        breed: ''
       };
 
       setDogs((prev) => [...prev, newDog]);
