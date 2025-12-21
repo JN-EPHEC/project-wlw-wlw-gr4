@@ -96,52 +96,41 @@ export default function ClubsScreen() {
 
   // Combiner toutes les données selon le filtre sélectionné
   const displayedItems = useMemo(() => {
+    // Filtrer les éducateurs par recherche
+    const filteredEducators = educators.filter(edu => {
+      if (query.trim()) {
+        const q = query.toLowerCase();
+        return edu.title?.toLowerCase().includes(q) || edu.subtitle?.toLowerCase().includes(q);
+      }
+      return true;
+    });
+
+    // Filtrer les événements par recherche
+    const filteredEvents = events.filter(evt => {
+      if (query.trim()) {
+        const q = query.toLowerCase();
+        return evt.title?.toLowerCase().includes(q) || evt.description?.toLowerCase().includes(q);
+      }
+      return true;
+    });
+
     switch (filter) {
       case 'clubs':
         return filteredClubs;
       case 'trainers':
-        return educators.filter(edu => {
-          if (query.trim()) {
-            const q = query.toLowerCase();
-            return edu.title?.toLowerCase().includes(q) || edu.subtitle?.toLowerCase().includes(q);
-          }
-          return true;
-        });
+        return filteredEducators;
       case 'events':
-        return events.filter(evt => {
-          if (query.trim()) {
-            const q = query.toLowerCase();
-            return evt.title?.toLowerCase().includes(q) || evt.description?.toLowerCase().includes(q);
-          }
-          return true;
-        });
+        return filteredEvents;
       case 'all':
       default:
-        return [...filteredClubs, ...educators, ...events];
+        return [...filteredClubs, ...filteredEducators, ...filteredEvents];
     }
   }, [filter, filteredClubs, educators, events, query]);
 
   // Récupérer les favoris de tous les types
   const favoriteItems = useMemo(() => {
-    const matchesFilterType = (favoriteType?: string) => {
-      if (!favoriteType) return false;
-      switch (filter) {
-        case 'clubs':
-          return favoriteType === 'club';
-        case 'trainers':
-          return favoriteType === 'educator';
-        case 'events':
-          return favoriteType === 'event';
-        case 'all':
-        default:
-          return true;
-      }
-    };
-
-    return [...clubs, ...educators, ...events].filter(item =>
-      matchesFilterType(favorites.get(item.id as string)),
-    );
-  }, [clubs, educators, events, favorites, filter]);
+    return [...clubs, ...educators, ...events].filter(item => isFavorite(item.id as string));
+  }, [clubs, educators, events, isFavorite]);
 
   const getNumericId = (id: string | number): number => {
     if (typeof id === 'number') return id;
@@ -415,149 +404,173 @@ export default function ClubsScreen() {
         </View>
 
         <View style={{ paddingHorizontal: 16, gap: 18 }}>
-          <View style={styles.filtersRow}>
-            <Chip label="Tous" active={filter === 'all'} onPress={() => setFilter('all')} />
-            <Chip label="Clubs" active={filter === 'clubs'} onPress={() => setFilter('clubs')} />
-            <Chip label="Dresseurs" active={filter === 'trainers'} onPress={() => setFilter('trainers')} />
-            <Chip label="Évènements" active={filter === 'events'} onPress={() => setFilter('events')} />
-          </View>
-
-          <Section 
-            title={titles.boosted}
-            icon={getSectionIcon('boosted').icon}
-            iconColor={getSectionIcon('boosted').color}
-          >
-            {loading ? (
-              <Text style={styles.loadingText}>Chargement...</Text>
-            ) : filter === 'all' && boostedClubs.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-                {boostedClubs.map((item) => (
-                  <TileCard key={item.id} item={item as any} />
-                ))}
-              </ScrollView>
-            ) : filter !== 'all' && displayedItems.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-                {displayedItems.slice(0, 4).map((item) => (
-                  <TileCard key={item.id} item={item as any} />
-                ))}
-              </ScrollView>
-            ) : (
-              <Text style={styles.emptyText}>{filter === 'all' ? 'Aucun club boosté disponible' : 'Aucun résultat'}</Text>
-            )}
-          </Section>
-
-          <Section 
-            title={titles.favorites}
-            icon={getSectionIcon('favorites').icon}
-            iconColor={getSectionIcon('favorites').color}
-          >
-            {loading ? (
-              <Text style={styles.loadingText}>Chargement...</Text>
-            ) : favoriteItems.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-                {favoriteItems.slice(0, 4).map((item) => (
-                  <TileCard key={item.id} item={item as any} />
-                ))}
-              </ScrollView>
-            ) : (
-              <Text style={styles.emptyText}>Vous n'avez pas encore de favoris</Text>
-            )}
-          </Section>
-
-          {filter === 'all' && (
+          {/* Si une recherche est active, afficher les résultats de recherche */}
+          {query.trim() ? (
+            <Section 
+              title={`Résultats pour "${query}"`}
+              icon="search"
+              iconColor={palette.primary}
+            >
+              {loading ? (
+                <Text style={styles.loadingText}>Chargement...</Text>
+              ) : displayedItems.length > 0 ? (
+                <View style={styles.grid2}>
+                  {displayedItems.map((item) => (
+                    <SmallCard key={item.id} item={item as any} />
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.emptyText}>Aucun résultat trouvé</Text>
+              )}
+            </Section>
+          ) : (
             <>
+              {/* Vue par défaut (sans recherche) */}
+              <View style={styles.filtersRow}>
+                <Chip label="Tous" active={filter === 'all'} onPress={() => setFilter('all')} />
+                <Chip label="Clubs" active={filter === 'clubs'} onPress={() => setFilter('clubs')} />
+                <Chip label="Dresseurs" active={filter === 'trainers'} onPress={() => setFilter('trainers')} />
+                <Chip label="Évènements" active={filter === 'events'} onPress={() => setFilter('events')} />
+              </View>
+
               <Section 
-                title="Événements à venir"
-                icon={getSectionIcon('events').icon}
-                iconColor={getSectionIcon('events').color}
+                title={titles.boosted}
+                icon={getSectionIcon('boosted').icon}
+                iconColor={getSectionIcon('boosted').color}
               >
-                {eventsLoading ? (
+                {loading ? (
                   <Text style={styles.loadingText}>Chargement...</Text>
-                ) : events.length > 0 ? (
+                ) : filter === 'all' && boostedClubs.length > 0 ? (
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-                    {events.slice(0, 4).map((item) => (
+                    {boostedClubs.map((item) => (
+                      <TileCard key={item.id} item={item as any} />
+                    ))}
+                  </ScrollView>
+                ) : filter !== 'all' && displayedItems.length > 0 ? (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                    {displayedItems.slice(0, 4).map((item) => (
                       <TileCard key={item.id} item={item as any} />
                     ))}
                   </ScrollView>
                 ) : (
-                  <Text style={styles.emptyText}>Aucun événement à venir</Text>
+                  <Text style={styles.emptyText}>{filter === 'all' ? 'Aucun club boosté disponible' : 'Aucun résultat'}</Text>
                 )}
               </Section>
 
               <Section 
-                title="Dresseurs populaires"
-                icon={getSectionIcon('trainers').icon}
-                iconColor={getSectionIcon('trainers').color}
+                title={titles.favorites}
+                icon={getSectionIcon('favorites').icon}
+                iconColor={getSectionIcon('favorites').color}
               >
-                {educatorsLoading ? (
+                {loading ? (
                   <Text style={styles.loadingText}>Chargement...</Text>
-                ) : educators.length > 0 ? (
+                ) : favoriteItems.length > 0 ? (
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-                    {educators.slice(0, 4).map((item) => (
+                    {favoriteItems.slice(0, 4).map((item) => (
                       <TileCard key={item.id} item={item as any} />
                     ))}
                   </ScrollView>
                 ) : (
-                  <Text style={styles.emptyText}>Aucun dresseur disponible</Text>
+                  <Text style={styles.emptyText}>Vous n'avez pas encore de favoris</Text>
+                )}
+              </Section>
+
+              {filter === 'all' && (
+                <>
+                  <Section 
+                    title="Événements à venir"
+                    icon={getSectionIcon('events').icon}
+                    iconColor={getSectionIcon('events').color}
+                  >
+                    {eventsLoading ? (
+                      <Text style={styles.loadingText}>Chargement...</Text>
+                    ) : events.length > 0 ? (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                        {events.slice(0, 4).map((item) => (
+                          <TileCard key={item.id} item={item as any} />
+                        ))}
+                      </ScrollView>
+                    ) : (
+                      <Text style={styles.emptyText}>Aucun événement à venir</Text>
+                    )}
+                  </Section>
+
+                  <Section 
+                    title="Dresseurs populaires"
+                    icon={getSectionIcon('trainers').icon}
+                    iconColor={getSectionIcon('trainers').color}
+                  >
+                    {educatorsLoading ? (
+                      <Text style={styles.loadingText}>Chargement...</Text>
+                    ) : educators.length > 0 ? (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                        {educators.slice(0, 4).map((item) => (
+                          <TileCard key={item.id} item={item as any} />
+                        ))}
+                      </ScrollView>
+                    ) : (
+                      <Text style={styles.emptyText}>Aucun dresseur disponible</Text>
+                    )}
+                  </Section>
+                </>
+              )}
+
+              <Section 
+                title={titles.near}
+                action={() => navigation.navigate('home')}
+                icon={getSectionIcon('near').icon}
+                iconColor={getSectionIcon('near').color}
+              >
+                {loading ? (
+                  <Text style={styles.loadingText}>Chargement...</Text>
+                ) : displayedItems.length > 0 ? (
+                  <View style={styles.grid2}>
+                    {displayedItems.slice(0, 6).map((item) => (
+                      <SmallCard key={item.id} item={item as any} />
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={styles.emptyText}>Aucun résultat</Text>
+                )}
+              </Section>
+
+              <Section 
+                title={titles.new}
+                icon={getSectionIcon('new').icon}
+                iconColor={getSectionIcon('new').color}
+              >
+                {loading ? (
+                  <Text style={styles.loadingText}>Chargement...</Text>
+                ) : displayedItems.length > 0 ? (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                    {displayedItems.slice(4, 8).map((item) => (
+                      <TileCard key={item.id} item={item as any} />
+                    ))}
+                  </ScrollView>
+                ) : (
+                  <Text style={styles.emptyText}>Aucun résultat</Text>
+                )}
+              </Section>
+
+              <Section 
+                title={titles.special}
+                icon={getSectionIcon('special').icon}
+                iconColor={getSectionIcon('special').color}
+              >
+                {loading ? (
+                  <Text style={styles.loadingText}>Chargement...</Text>
+                ) : displayedItems.length > 0 ? (
+                  <View style={styles.grid2}>
+                    {displayedItems.slice(0, 4).map((item) => (
+                      <SmallCard key={item.id} item={item as any} />
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={styles.emptyText}>Aucun résultat</Text>
                 )}
               </Section>
             </>
           )}
-
-          <Section 
-            title={titles.near}
-            action={() => navigation.navigate('home')}
-            icon={getSectionIcon('near').icon}
-            iconColor={getSectionIcon('near').color}
-          >
-            {loading ? (
-              <Text style={styles.loadingText}>Chargement...</Text>
-            ) : displayedItems.length > 0 ? (
-              <View style={styles.grid2}>
-                {displayedItems.slice(0, 6).map((item) => (
-                  <SmallCard key={item.id} item={item as any} />
-                ))}
-              </View>
-            ) : (
-              <Text style={styles.emptyText}>Aucun résultat</Text>
-            )}
-          </Section>
-
-          <Section 
-            title={titles.new}
-            icon={getSectionIcon('new').icon}
-            iconColor={getSectionIcon('new').color}
-          >
-            {loading ? (
-              <Text style={styles.loadingText}>Chargement...</Text>
-            ) : displayedItems.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-                {displayedItems.slice(4, 8).map((item) => (
-                  <TileCard key={item.id} item={item as any} />
-                ))}
-              </ScrollView>
-            ) : (
-              <Text style={styles.emptyText}>Aucun résultat</Text>
-            )}
-          </Section>
-
-          <Section 
-            title={titles.special}
-            icon={getSectionIcon('special').icon}
-            iconColor={getSectionIcon('special').color}
-          >
-            {loading ? (
-              <Text style={styles.loadingText}>Chargement...</Text>
-            ) : displayedItems.length > 0 ? (
-              <View style={styles.grid2}>
-                {displayedItems.slice(0, 4).map((item) => (
-                  <SmallCard key={item.id} item={item as any} />
-                ))}
-              </View>
-            ) : (
-              <Text style={styles.emptyText}>Aucun résultat</Text>
-            )}
-          </Section>
         </View>
       </ScrollView>
       

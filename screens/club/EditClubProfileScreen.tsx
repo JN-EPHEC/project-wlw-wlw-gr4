@@ -64,6 +64,7 @@ export default function EditClubProfileScreen({ navigation }: Props) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [openingHours, setOpeningHours] = useState<Array<{ day: string; open: string; close: string }>>([]);
 
   // Charger les données du club actuelles
   useEffect(() => {
@@ -89,6 +90,7 @@ export default function EditClubProfileScreen({ navigation }: Props) {
           console.log('✅ Services mis en state:', loadedServices);
           setServices(loadedServices);
           setPhotoUrl(data.logoUrl || null);
+          setOpeningHours(data.openingHours || []);
         }
         setEmail(user.email || '');
       } catch (err) {
@@ -158,6 +160,7 @@ export default function EditClubProfileScreen({ navigation }: Props) {
         'profile.website': website.trim(),
         'profile.description': description.trim(),
         'profile.services': services,
+        'profile.openingHours': openingHours,
         'profile.logoUrl': newLogoUrl,
       });
       console.log('✅ Profil sauvegardé avec services:', services);
@@ -364,6 +367,79 @@ export default function EditClubProfileScreen({ navigation }: Props) {
                   numberOfLines={5}
                   textAlignVertical="top"
                 />
+              </View>
+
+              {/* Horaires d'ouverture */}
+              <View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <Text style={styles.label}>Horaires d'ouverture</Text>
+                  <TouchableOpacity 
+                    onPress={() => {
+                      setOpeningHours([...openingHours, { day: '', open: '', close: '' }]);
+                    }}
+                    style={{ padding: 8 }}
+                  >
+                    <Ionicons name="add-circle" size={24} color={palette.primary} />
+                  </TouchableOpacity>
+                </View>
+                {openingHours.map((hours, idx) => (
+                  <View key={idx} style={{ gap: 8, marginBottom: 12, padding: 12, backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: palette.border }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.label}>Jour</Text>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Ex: Lundi-Vendredi"
+                          value={hours.day}
+                          onChangeText={(text) => {
+                            const updated = [...openingHours];
+                            updated[idx].day = text;
+                            setOpeningHours(updated);
+                          }}
+                          placeholderTextColor={palette.gray}
+                        />
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setOpeningHours(openingHours.filter((_, i) => i !== idx));
+                        }}
+                        style={{ paddingTop: 28 }}
+                      >
+                        <Ionicons name="trash-outline" size={20} color={palette.danger} />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.label}>Ouverture</Text>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Ex: 9h"
+                          value={hours.open}
+                          onChangeText={(text) => {
+                            const updated = [...openingHours];
+                            updated[idx].open = text;
+                            setOpeningHours(updated);
+                          }}
+                          placeholderTextColor={palette.gray}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.label}>Fermeture</Text>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Ex: 19h"
+                          value={hours.close}
+                          onChangeText={(text) => {
+                            const updated = [...openingHours];
+                            updated[idx].close = text;
+                            setOpeningHours(updated);
+                          }}
+                          placeholderTextColor={palette.gray}
+                        />
+                      </View>
+                    </View>
+                  </View>
+                ))}
               </View>
 
               {/* Services proposés */}

@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -11,156 +11,336 @@ import {
   ActivityIndicator,
 } from 'react-native';
 
+import UserBottomNav from '@/components/UserBottomNav';
 import { UserStackParamList } from '@/navigation/types';
 import { useAuth } from '@/context/AuthContext';
 import { useCommunityChannels } from '@/hooks/useCommunityChannels';
 import { useCommunityMembers } from '@/hooks/useCommunityMembers';
 import { useClubEvents } from '@/hooks/useClubEvents';
 
-const colors = {
-    primary: '#27b3a3',
-    text: '#233042',
-    textMuted: '#6a7286',
-    surface: '#ffffff',
-    background: '#F0F2F5',
-    shadow: 'rgba(26, 51, 64, 0.12)',
-    accent: '#E9B782',
+const palette = {
+  primary: '#41B6A6',
+  terracotta: '#F28B6F',
+  text: '#1F2937',
+  gray: '#6B7280',
+  border: '#E5E7EB',
 };
 
 type Props = NativeStackScreenProps<UserStackParamList, 'clubCommunity'>;
 
 export default function ClubCommunityScreen({ navigation, route }: Props) {
   const { clubId } = route.params as { clubId: string };
+  const clubIdStr = clubId;
   const { user } = useAuth();
 
-  const { channels, loading: channelsLoading } = useCommunityChannels(clubId);
-  const { members, loading: membersLoading } = useCommunityMembers(clubId);
-  const { events, loading: eventsLoading } = useClubEvents(clubId);
+  console.log('🔍 [ClubCommunity] clubId:', clubId);
+  console.log('👤 [ClubCommunity] Current user ID:', user?.uid);
+  console.log('📧 [ClubCommunity] Current user email:', user?.email);
+
+  // Fetch channels, members and events
+  const { channels, loading: channelsLoading, error: channelsError } = useCommunityChannels(clubIdStr);
+  const { members, loading: membersLoading } = useCommunityMembers(clubIdStr);
+  const { events, loading: eventsLoading } = useClubEvents(clubIdStr);
 
   const handleChannelClick = (channelId: string, channelName: string) => {
-    navigation.navigate('chatRoom' as any, { clubId, channelId, channelName });
+    navigation.navigate('chatRoom' as any, {
+      clubId: clubIdStr,
+      channelId,
+      channelName,
+    });
   };
 
+  const handleAnnouncementsClick = () => {
+    navigation.navigate('clubAnnouncements' as any);
+  };
+
+  const handleEventsClick = () => {
+    navigation.navigate('events', { clubId: clubIdStr });
+  };
+
+  // Separate channels by type
   const announcementChannels = channels.filter((ch) => ch.type === 'announcements');
   const discussionChannels = channels.filter((ch) => ch.type === 'chat');
 
-  const loading = channelsLoading || membersLoading || eventsLoading;
+  const styles = StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: '#F8FAFC',
+    },
+    header: {
+      backgroundColor: palette.primary,
+      paddingHorizontal: 16,
+      paddingTop: 18,
+      paddingBottom: 20,
+      borderBottomLeftRadius: 24,
+      borderBottomRightRadius: 24,
+    },
+    backButton: {
+      padding: 6,
+      borderRadius: 12,
+      backgroundColor: 'rgba(255,255,255,0.15)',
+    },
+    headerTitle: {
+      color: '#fff',
+      fontSize: 20,
+      fontWeight: '700',
+    },
+    headerSub: {
+      color: '#E2E8F0',
+      fontSize: 13,
+    },
+    sectionHeading: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: palette.text,
+      marginBottom: 12,
+      marginTop: 24,
+    },
+    channelCard: {
+      backgroundColor: '#fff',
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 12,
+      borderLeftWidth: 4,
+      borderLeftColor: palette.primary,
+    },
+    announcementCard: {
+      borderLeftColor: palette.terracotta,
+      backgroundColor: '#FFFAF0',
+    },
+    channelName: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: palette.text,
+      marginBottom: 4,
+    },
+    channelDesc: {
+      fontSize: 12,
+      color: palette.gray,
+      marginBottom: 8,
+    },
+    channelMeta: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    lastMessage: {
+      fontSize: 12,
+      color: palette.gray,
+      flex: 1,
+    },
+    unreadBadge: {
+      backgroundColor: palette.primary,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+      marginLeft: 8,
+    },
+    unreadText: {
+      color: '#fff',
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    containerPadding: {
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+    },
+    emptyState: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 40,
+    },
+    membersBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: 'rgba(65, 182, 166, 0.1)',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 12,
+      marginBottom: 20,
+    },
+    membersBadgeText: {
+      color: palette.primary,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+  });
 
-  if (loading) {
-    return <SafeAreaView style={styles.centered}><ActivityIndicator size="large" color={colors.primary} /></SafeAreaView>;
+  if (channelsLoading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={palette.primary} />
+        </View>
+      </SafeAreaView>
+    );
   }
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={24} color="#fff" />
+      <View style={styles.header}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={18} color="#fff" />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.headerTitle}>Communauté</Text>
+            <Text style={styles.headerSub}>{channels.length} canaux • {members.length} membres</Text>
+          </View>
+        </View>
+
+        {/* Members badge */}
+        <View style={styles.membersBadge}>
+          <MaterialCommunityIcons name="account-multiple" size={16} color={palette.primary} />
+          <Text style={styles.membersBadgeText}>{members.length} membres en ligne</Text>
+        </View>
+      </View>
+
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.containerPadding}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Announcements Section */}
+        {announcementChannels.length > 0 && (
+          <>
+            <TouchableOpacity onPress={handleAnnouncementsClick} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 24 }}>
+              <Text style={styles.sectionHeading}>📢 Annonces</Text>
+              <Text style={{ color: palette.primary, fontSize: 14, fontWeight: '600' }}>Voir tout</Text>
             </TouchableOpacity>
-            <View>
-                <Text style={styles.headerTitle}>Communauté</Text>
-                <Text style={styles.headerSub}>{members.length} membres • {channels.length} canaux</Text>
+            {announcementChannels.map((channel) => (
+              <TouchableOpacity
+                key={channel.id}
+                style={[styles.channelCard, styles.announcementCard]}
+                onPress={() => handleChannelClick(channel.id, channel.name)}
+              >
+                <Text style={styles.channelName}>{channel.name}</Text>
+                <Text style={styles.channelDesc}>{channel.type === 'announcements' ? 'Seuls les éducateurs peuvent publier' : ''}</Text>
+                <View style={styles.channelMeta}>
+                  <Text style={styles.lastMessage} numberOfLines={1}>
+                    Seuls les éducateurs peuvent publier
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </>
+        )}
+
+        {announcementChannels.length === 0 && (
+          <View style={{ marginTop: 24, paddingHorizontal: 16 }}>
+            <Text style={styles.sectionHeading}>📢 Annonces</Text>
+            <View style={styles.emptyState}>
+              <MaterialCommunityIcons name="bell-outline" size={40} color={palette.gray} />
+              <Text style={{ color: palette.gray, marginTop: 12, fontSize: 14 }}>
+                Pas d'annonces pour le moment
+              </Text>
             </View>
-        </View>
+          </View>
+        )}
 
-        <View style={styles.content}>
-            <Section title="📢 Annonces" actionText="Voir tout" onActionPress={() => navigation.navigate('clubAnnouncements' as any)}>
-                {announcementChannels.length > 0 ? announcementChannels.map(channel => (
-                    <ChannelCard key={channel.id} channel={channel} onPress={handleChannelClick} />
-                )) : <EmptyState text="Aucune annonce pour le moment." />}
-            </Section>
+        {/* Events Section */}
+        {events.length > 0 && (
+          <>
+            <TouchableOpacity onPress={handleEventsClick} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 24 }}>
+              <Text style={styles.sectionHeading}>📅 Événements</Text>
+              <Text style={{ color: palette.primary, fontSize: 14, fontWeight: '600' }}>Voir tout</Text>
+            </TouchableOpacity>
+            {events.slice(0, 3).map((event) => {
+              const startDate = event.startDate?.toDate?.() || new Date(event.startDate);
+              const dateStr = startDate.toLocaleDateString('fr-FR', { 
+                weekday: 'short', 
+                day: 'numeric', 
+                month: 'short' 
+              });
+              const timeStr = startDate.toLocaleTimeString('fr-FR', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              });
+              const availableSlots = event.dogSlots - (event.participants?.reduce((sum, p) => sum + (p.numDogs || 0), 0) || 0);
 
-            <Section title="📅 Événements à venir" actionText="Calendrier" onActionPress={() => navigation.navigate('events', { clubId })}>
-                {events.length > 0 ? events.slice(0,2).map(event => (
-                    <EventCard key={event.id} event={event} onPress={() => navigation.navigate('eventDetail', { eventId: event.id, clubId: event.clubId })} />
-                )) : <EmptyState text="Aucun événement prévu." />}
-            </Section>
+              return (
+                <TouchableOpacity
+                  key={event.id}
+                  style={styles.channelCard}
+                  onPress={handleEventsClick}
+                >
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                    <Text style={[styles.channelName, { flex: 1 }]} numberOfLines={2}>{event.title}</Text>
+                    <View style={{ marginLeft: 8 }}>
+                      <Text style={{ 
+                        backgroundColor: '#E0F2F1', 
+                        color: palette.primary, 
+                        paddingHorizontal: 8, 
+                        paddingVertical: 2, 
+                        borderRadius: 8, 
+                        fontWeight: '700', 
+                        fontSize: 11 
+                      }}>
+                        {availableSlots}/{event.dogSlots}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name="calendar-outline" size={12} color={palette.gray} />
+                      <Text style={styles.channelDesc}>{dateStr}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name="time-outline" size={12} color={palette.gray} />
+                      <Text style={styles.channelDesc}>{timeStr}</Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Ionicons name="location-outline" size={12} color={palette.gray} />
+                    <Text style={[styles.channelDesc, { flex: 1 }]} numberOfLines={1}>
+                      {event.location || 'Lieu non spécifié'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </>
+        )}
 
-            <Section title="💬 Salons de discussion">
-                {discussionChannels.length > 0 ? discussionChannels.map(channel => (
-                    <ChannelCard key={channel.id} channel={channel} onPress={handleChannelClick} />
-                )) : <EmptyState text="Aucun salon de discussion disponible." />}
-            </Section>
-        </View>
+        {/* Discussion Channels Section */}
+        {discussionChannels.length > 0 && (
+          <>
+            <Text style={styles.sectionHeading}>💬 Discussions</Text>
+            {discussionChannels.map((channel) => (
+              <TouchableOpacity
+                key={channel.id}
+                style={styles.channelCard}
+                onPress={() => handleChannelClick(channel.id, channel.name)}
+              >
+                <Text style={styles.channelName}>{channel.name}</Text>
+                <Text style={styles.channelDesc}>Salon de discussion du club</Text>
+                <View style={styles.channelMeta}>
+                  <Text style={styles.lastMessage} numberOfLines={1}>
+                    Tapez pour accéder au salon
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </>
+        )}
+
+        {channels.length === 0 && (
+          <View style={styles.emptyState}>
+            <MaterialCommunityIcons name="chat-outline" size={48} color={palette.gray} />
+            <Text style={{ color: palette.gray, marginTop: 12, fontSize: 14 }}>
+              Aucun salon pour le moment
+            </Text>
+          </View>
+        )}
       </ScrollView>
+
+      <UserBottomNav current="community" />
     </SafeAreaView>
   );
 }
-
-const Section = ({ title, actionText, onActionPress, children }: any) => (
-    <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{title}</Text>
-            {onActionPress && <TouchableOpacity onPress={onActionPress}><Text style={styles.link}>{actionText}</Text></TouchableOpacity>}
-        </View>
-        {children}
-    </View>
-);
-
-const ChannelCard = ({ channel, onPress }: any) => (
-    <TouchableOpacity style={styles.card} onPress={() => onPress(channel.id, channel.name)}>
-        <View style={styles.cardIcon}>
-            <Ionicons name={channel.type === 'announcements' ? 'megaphone-outline' : 'chatbubbles-outline'} size={22} color={colors.primary} />
-        </View>
-        <View style={styles.cardContent}>
-            <Text style={styles.cardTitle}>{channel.name}</Text>
-            <Text style={styles.cardSubtitle} numberOfLines={1}>{channel.lastMessage || 'Appuyez pour voir les messages'}</Text>
-        </View>
-        {channel.unreadCount > 0 && <View style={styles.unreadBadge}><Text style={styles.unreadText}>{channel.unreadCount}</Text></View>}
-        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-    </TouchableOpacity>
-);
-
-const EventCard = ({ event, onPress }: any) => {
-    const startDate = event.startDate?.toDate ? event.startDate.toDate() : new Date();
-    const dateStr = startDate.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
-    const timeStr = startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    const availableSlots = event.dogSlots - (event.participants?.length || 0);
-
-    return (
-        <TouchableOpacity style={styles.card} onPress={onPress}>
-            <View style={styles.eventDate}>
-                <Text style={styles.eventDateDay}>{dateStr.split(' ')[0]}</Text>
-                <Text style={styles.eventDateMonth}>{dateStr.split(' ')[1]}</Text>
-            </View>
-            <View style={styles.cardContent}>
-                <Text style={styles.cardTitle} numberOfLines={1}>{event.title}</Text>
-                <Text style={styles.cardSubtitle} numberOfLines={1}>{event.location}</Text>
-            </View>
-            <View style={styles.slotsBadge}><Text style={styles.slotsText}>{availableSlots} places</Text></View>
-        </TouchableOpacity>
-    );
-};
-
-const EmptyState = ({ text }: { text: string }) => (
-    <View style={styles.emptyState}><Text style={styles.emptyText}>{text}</Text></View>
-);
-
-const styles = StyleSheet.create({
-    safe: { flex: 1, backgroundColor: colors.background },
-    container: { paddingBottom: 100 },
-    centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
-    header: { backgroundColor: colors.primary, padding: 16, paddingTop: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, flexDirection: 'row', alignItems: 'center', gap: 16 },
-    backBtn: { padding: 8 },
-    headerTitle: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
-    headerSub: { color: 'rgba(255,255,255,0.8)', fontSize: 15 },
-    content: { padding: 16, gap: 24 },
-    section: { gap: 16 },
-    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    sectionTitle: { fontSize: 20, fontWeight: 'bold', color: colors.text },
-    link: { fontSize: 14, fontWeight: '600', color: colors.primary },
-    card: { backgroundColor: colors.surface, borderRadius: 16, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12, elevation: 2, shadowColor: colors.shadow },
-    cardIcon: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(39, 179, 163, 0.1)' },
-    cardContent: { flex: 1 },
-    cardTitle: { fontSize: 16, fontWeight: 'bold', color: colors.text },
-    cardSubtitle: { fontSize: 14, color: colors.textMuted },
-    unreadBadge: { backgroundColor: colors.primary, minWidth: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 8 },
-    unreadText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
-    eventDate: { width: 48, height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.accent, marginRight: 4 },
-    eventDateDay: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-    eventDateMonth: { fontSize: 12, color: 'rgba(255,255,255,0.9)', textTransform: 'uppercase' },
-    slotsBadge: { backgroundColor: 'rgba(39, 179, 163, 0.1)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
-    slotsText: { color: colors.primary, fontWeight: '600', fontSize: 12 },
-    emptyState: { alignItems: 'center', paddingVertical: 20 },
-    emptyText: { fontSize: 15, color: colors.textMuted },
-});
