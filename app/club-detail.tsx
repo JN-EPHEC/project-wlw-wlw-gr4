@@ -2,409 +2,1004 @@ import React, { useEffect, useState } from 'react';
 import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { doc, getDoc } from 'firebase/firestore';
-import { ref, getDownloadURL } from 'firebase/storage';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 import { UserStackParamList } from '@/navigation/types';
-import { db, storage } from '@/firebaseConfig';
-import { useFetchClubFields } from '@/hooks/useFetchClubFields';
+import { db } from '@/firebaseConfig';
 import { useFetchClubEducators } from '@/hooks/useFetchClubEducators';
 import { useFetchClubUpcomingBookings } from '@/hooks/useFetchClubUpcomingBookings';
 import { useFetchClubUpcomingEvents } from '@/hooks/useFetchClubUpcomingEvents';
-import { useFetchClubGallery } from '@/hooks/useFetchClubGallery';
-import { useClubRatingStats } from '@/hooks/useClubRatingStats';
+import { useFetchEducatorById } from '@/hooks/useFetchEducatorById';
 import { useJoinClub } from '@/hooks/useJoinClub';
+import { useClubPromotions } from '@/hooks/useClubPromotions';
+import { useClubTerrains } from '@/hooks/useClubTerrains';
 import { useAuth } from '@/context/AuthContext';
 
-const colors = {
-    primary: '#27b3a3',
-    text: '#233042',
-    textMuted: '#6a7286',
-    surface: '#ffffff',
-    background: '#F0F2F5',
-    shadow: 'rgba(26, 51, 64, 0.12)',
-    accent: '#E9B782',
+const palette = {
+  primary: '#41B6A6',
+  text: '#1F2937',
+  gray: '#6B7280',
+  border: '#E5E7EB',
 };
 
 type Props = NativeStackScreenProps<UserStackParamList, 'clubDetail'>;
 
-// Helper pour convertir un chemin Storage en URL téléchargeable
-const getImageUrl = async (imagePath: string | any): Promise<string | null> => {
-  if (!imagePath) return null;
-  
-  // Si c'est déjà une URL complète, retourner tel quel
-  if (typeof imagePath === 'string' && (imagePath.startsWith('http://') || imagePath.startsWith('https://'))) {
-    return imagePath;
-  }
-
-  // Si c'est un chemin Storage (commence par gs:// ou est un simple chemin)
-  try {
-    if (typeof imagePath === 'string') {
-      const imageRef = ref(storage, imagePath);
-      return await getDownloadURL(imageRef);
-    }
-  } catch (err) {
-    console.warn('⚠️ Impossible de générer l\'URL pour:', imagePath, err);
-  }
-
-  return imagePath?.toString() || null;
-};
+interface ClubData {
+  id: string;
+  name: string;
+  averageRating: number;
+  reviewsCount: number;
+  distanceKm: number;
+  isVerified: boolean;
+  PhotoUrl?: string;
+  logoUrl?: string;
+  description: string;
+  address: string;
+  phone: string;
+  email: string;
+  website?: string;
+  certifications?: string;
+  services?: string;
+  stats?: {
+    totalBookings: number;
+    totalDogs: number;
+    totalMembers: number;
+  };
+  // Autres champs
+  [key: string]: any;
+}
 
 export default function ClubDetailScreen({ navigation, route }: Props) {
   const { clubId } = route.params;
-  const [club, setClub] = useState<any>(null);
-  const [clubPhotoUrl, setClubPhotoUrl] = useState<string | null>(null);
+  const [club, setClub] = useState<ClubData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [joiningLoading, setJoiningLoading] = useState(false);
+  
+  // Auth et join club hook
   const { user, profile } = useAuth();
-  const { joinClub, loading: joiningLoading } = useJoinClub();
-
-  const { fields, loading: fieldsLoading } = useFetchClubFields(clubId);
-  const { educators, loading: educatorsLoading } = useFetchClubEducators(club?.educatorIds || [club?.educatorId].filter(Boolean));
+  const { joinClub } = useJoinClub();
+  const { promotions } = useClubPromotions(clubId);
+  const { terrains } = useClubTerrains(clubId);
+  
+  // Récupérer les éducateurs du club
+  const educatorId = club?.educatorId ? [club.educatorId] : [];
+  const { educators, loading: educatorsLoading } = useFetchClubEducators(educatorId);
   const { bookings, loading: bookingsLoading } = useFetchClubUpcomingBookings(clubId);
   const { events, loading: eventsLoading } = useFetchClubUpcomingEvents(clubId);
-  const { photos, loading: galleryLoading } = useFetchClubGallery(clubId);
-  const { stats: ratingStats, loading: ratingLoading } = useClubRatingStats(clubId);
 
   useEffect(() => {
     const fetchClub = async () => {
-      setLoading(true);
       try {
+        setLoading(true);
+        console.log('🔍 [club-detail] Fetching club with ID:', clubId);
+        
+        // D'abord, essayer de récupérer directement depuis la collection 'club'
         const clubRef = doc(db, 'club', clubId);
-        const clubSnap = await getDoc(clubRef);
-        if (clubSnap.exists()) {
-          const clubData = { id: clubSnap.id, ...clubSnap.data() };
-          setClub(clubData);
+        let clubSnap = await getDoc(clubRef);
+
+        // Si pas trouvé, chercher un club avec cet ownerUserId (cas des clubs créés récemment)
+        if (!clubSnap.exists()) {
+          console.log('⚠️ [club-detail] Club not found directly, searching by ownerUserId:', clubId);
+          const clubsCollection = collection(db, 'club');
+          const q = query(clubsCollection, where('ownerUserId', '==', clubId));
+          const snapshot = await getDocs(q);
           
-          // Convertir le PhotoUrl si c'est un chemin Storage
-          if (clubData.PhotoUrl) {
-            const url = await getImageUrl(clubData.PhotoUrl);
-            setClubPhotoUrl(url);
+          if (snapshot.docs.length > 0) {
+            clubSnap = snapshot.docs[0]; // Prendre le premier résultat
           }
         }
-      } catch (err) { console.error(err); } 
-      finally { setLoading(false); }
+
+        // Récupérer aussi les données du user pour faire un fallback si nécessaire
+        let userData: any = null;
+        try {
+          const userRef = doc(db, 'users', clubId);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            userData = userSnap.data();
+          }
+        } catch (err) {
+          console.warn('⚠️ [club-detail] Could not fetch user data:', err);
+        }
+
+        // Si pas trouvé dans la collection club, construire depuis les données user
+        if (!clubSnap.exists()) {
+          if (userData) {
+            console.log('ℹ️ [club-detail] Club found in users collection, building from profile');
+            const servicesArray = userData.profile?.services || [];
+            
+            const constructedClubData: ClubData = {
+              id: clubId,
+              name: userData.profile?.clubName || userData.displayName || 'Club',
+              averageRating: 0,
+              reviewsCount: 0,
+              distanceKm: 0,
+              isVerified: false,
+              PhotoUrl: userData.profile?.logoUrl,
+              logoUrl: userData.profile?.logoUrl,
+              description: userData.profile?.description || '',
+              address: userData.profile?.address || '',
+              phone: userData.profile?.phone || '',
+              email: userData.email || '',
+              website: userData.profile?.website || '',
+              certifications: undefined,
+              services: servicesArray.join(', '),
+              stats: undefined,
+            };
+
+            console.log('✅ [club-detail] Club constructed from user data:', constructedClubData);
+            setClub(constructedClubData);
+            setError(null);
+            return;
+          }
+
+          console.log('❌ [club-detail] Club NOT found anywhere with ID:', clubId);
+          setError('Club non trouvé');
+          return;
+        }
+
+        // Club trouvé : fusionner avec les données user pour combler les champs manquants
+        const clubData = clubSnap.data() as any;
+        const servicesArray = userData?.profile?.services || clubData.services || [];
+        
+        const mergedClubData: ClubData = {
+          id: clubSnap.id,
+          name: clubData.name || userData?.profile?.clubName || userData?.displayName || 'Club',
+          averageRating: clubData.averageRating ?? 0,
+          reviewsCount: clubData.reviewsCount ?? 0,
+          distanceKm: clubData.distanceKm ?? 0,
+          isVerified: clubData.isVerified ?? false,
+          PhotoUrl: clubData.PhotoUrl || clubData.logoUrl || userData?.profile?.logoUrl,
+          logoUrl: clubData.logoUrl || userData?.profile?.logoUrl,
+          description: clubData.description || userData?.profile?.description || '',
+          address: clubData.address || userData?.profile?.address || '',
+          phone: clubData.phone || userData?.profile?.phone || '',
+          email: clubData.email || userData?.email || '',
+          website: clubData.website || userData?.profile?.website || '',
+          certifications: clubData.certifications,
+          services: Array.isArray(servicesArray) ? servicesArray.join(', ') : (clubData.services || ''),
+          stats: clubData.stats,
+        };
+
+        console.log('✅ [club-detail] Club found and merged with user data:', mergedClubData);
+        setClub(mergedClubData);
+        setError(null);
+      } catch (err) {
+        console.error('❌ [club-detail] Error fetching club:', err);
+        setError('Erreur lors du chargement du club');
+      } finally {
+        setLoading(false);
+      }
     };
+
     fetchClub();
   }, [clubId]);
 
+  // Handler pour rejoindre la communauté
   const handleJoinCommunity = async () => {
-    if (!user || !profile) return Alert.alert('Erreur', 'Veuillez vous connecter.');
+    if (!user || !profile) {
+      Alert.alert('Erreur', 'Veuillez vous connecter');
+      return;
+    }
+
+    setJoiningLoading(true);
     try {
-      await joinClub({ clubId, userEmail: user.email!, userName: `${(profile as any).firstName} ${(profile as any).lastName}` });
-      Alert.alert('Succès', 'Votre demande a été envoyée.');
-    } catch (err) { Alert.alert('Erreur', err instanceof Error ? err.message : 'Une erreur est survenue.'); }
+      const userName = (profile as any).firstName && (profile as any).lastName
+        ? `${(profile as any).firstName} ${(profile as any).lastName}`
+        : (profile as any).displayName || 'Utilisateur';
+
+      await joinClub({
+        clubId,
+        userEmail: user.email || '',
+        userName,
+      });
+
+      Alert.alert('✓ Succès', 'Votre demande d\'adhésion a été envoyée au club. Un responsable l\'examinera prochainement.');
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Erreur lors de l\'adhésion';
+      Alert.alert('Erreur', errorMsg);
+    } finally {
+      setJoiningLoading(false);
+    }
   };
 
   if (loading) {
-    return <SafeAreaView style={styles.centered}><ActivityIndicator size="large" color={colors.primary} /></SafeAreaView>;
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={palette.primary} />
+        </View>
+      </SafeAreaView>
+    );
   }
 
-  if (!club) {
-    return <SafeAreaView style={styles.centered}><Text>Club non trouvé</Text></SafeAreaView>;
+  if (error || !club) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16 }}>
+          <Text style={{ color: '#DC2626', fontSize: 16, textAlign: 'center' }}>
+            {error || 'Club non trouvé'}
+          </Text>
+          <TouchableOpacity 
+            style={{ marginTop: 16, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: palette.primary, borderRadius: 8 }}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={{ color: '#fff', fontWeight: '600' }}>Retour</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container}>
-        {clubPhotoUrl && <Image source={{ uri: clubPhotoUrl }} style={styles.heroImage} />}
-        {!clubPhotoUrl && <View style={[styles.heroImage, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}><Text style={{color: colors.textMuted}}>Pas de photo</Text></View>}
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}><Ionicons name="arrow-back" size={24} color={colors.text} /></TouchableOpacity>
-        
-        <View style={styles.header}>
-            <Text style={styles.clubName}>{club.name}</Text>
-            <View style={styles.metaRow}>
-                <TouchableOpacity onPress={() => navigation.navigate('reviews', { clubId })}>
-                  <MetaItem icon="star" text={`${ratingStats.averageRating.toFixed(1)} (${ratingStats.totalReviews} avis)`} color={colors.accent} />
-                </TouchableOpacity>
-                <MetaItem icon="location-outline" text={`${club.distanceKm?.toFixed(1) || 'N/A'} km`} />
-                {club.isVerified && <MetaItem icon="checkmark-circle" text="Vérifié" color={colors.primary} />}
+      <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+        <View style={styles.hero}>
+          <Image 
+            source={{ uri: club.PhotoUrl || club.logoUrl || 'https://via.placeholder.com/400x220?text=Club' }} 
+            style={styles.heroImage} 
+          />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
+          <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={20} color="#1F2937" />
+          </TouchableOpacity>
+          <View style={styles.heroContent}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.heroTitle}>{club.name}</Text>
+              {club.isVerified && <MaterialCommunityIcons name="check-decagram" size={18} color="#fff" />}
             </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={styles.rating}>
+                <MaterialCommunityIcons name="star" size={14} color="#E9B782" />
+                <Text style={styles.ratingText}>{club.averageRating?.toFixed(1) || 'N/A'}</Text>
+              </View>
+              <TouchableOpacity onPress={() => navigation.navigate('reviews', { clubId })}>
+                <Text style={[styles.heroMeta, styles.linkText]}>
+                  {club.reviewsCount || 0} avis
+                </Text>
+              </TouchableOpacity>
+              <Text style={styles.heroMeta}>{club.distanceKm?.toFixed(1) || 'N/A'} km</Text>
+            </View>
+          </View>
         </View>
 
-        <View style={styles.content}>
-            <Section title="Description"><Text style={styles.description}>{club.description || 'Aucune description.'}</Text></Section>
-            
-            {club.services && (
-              <Section title="Certifications">
-                <View style={styles.chipsContainer}>
-                  {club.services.split(',').map((service: string, idx: number) => (
-                    <View key={idx} style={styles.chip}>
-                      <Text style={styles.chipText}>{service.trim()}</Text>
-                    </View>
-                  ))}
-                </View>
-              </Section>
-            )}
+        <View style={styles.section}>
+          <Text style={styles.title}>Description</Text>
+          <Text style={styles.sub}>{club.description || 'Pas de description disponible'}</Text>
+        </View>
 
-            <Section title="Contact & Infos">
-              <View style={styles.statsRow}>
-                <View style={styles.statCard}>
-                  <Text style={styles.statNumber}>{club.stats?.totalMembers || 0}</Text>
-                  <Text style={styles.statLabel}>Membres</Text>
+        {club.address && (
+          <View style={styles.sectionRow}>
+            <Ionicons name="location-outline" size={18} color={palette.primary} />
+            <Text style={styles.sub}>{club.address}</Text>
+          </View>
+        )}
+        {club.phone && (
+          <View style={styles.sectionRow}>
+            <Ionicons name="call-outline" size={18} color={palette.primary} />
+            <Text style={styles.sub}>{club.phone}</Text>
+          </View>
+        )}
+        {club.email && (
+          <View style={styles.sectionRow}>
+            <Ionicons name="mail-outline" size={18} color={palette.primary} />
+            <Text style={styles.sub}>{club.email}</Text>
+          </View>
+        )}
+        {club.website && (
+          <View style={styles.sectionRow}>
+            <Ionicons name="globe-outline" size={18} color={palette.primary} />
+            <Text style={styles.sub}>{club.website}</Text>
+          </View>
+        )}
+
+        {club.certifications && (
+          <View style={styles.section}>
+            <Text style={styles.title}>Certifications</Text>
+            <View style={styles.chips}>
+              {(Array.isArray(club.certifications) 
+                ? club.certifications 
+                : club.certifications.split(',').map((c: string) => c.trim())
+              ).map((c: string) => (
+                <View key={c} style={styles.chip}>
+                  <Text style={styles.chipText}>{c}</Text>
                 </View>
-                <View style={styles.statCard}>
-                  <Text style={styles.statNumber}>{club.stats?.totalBookings || 0}</Text>
-                  <Text style={styles.statLabel}>Réservations</Text>
-                </View>
-                <View style={styles.statCard}>
-                  <Text style={styles.statNumber}>{club.stats?.totalDogs || 0}</Text>
-                  <Text style={styles.statLabel}>Chiens</Text>
-                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        <View style={styles.section}>
+          <Text style={styles.title}>Contact & Infos</Text>
+          {club.stats && (
+            <View style={styles.statsContainer}>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{club.stats.totalMembers || 0}</Text>
+                <Text style={styles.statLabel}>Membres</Text>
               </View>
-              <View style={styles.contactInfoContainer}>
-                {club.address && <ContactInfoRow icon="location-outline" label="Adresse" value={club.address} />}
-                {club.phone && <ContactInfoRow icon="call-outline" label="Téléphone" value={club.phone} />}
-                {club.email && <ContactInfoRow icon="mail-outline" label="Email" value={club.email} />}
-                {club.website && <ContactInfoRow icon="globe-outline" label="Site web" value={club.website} />}
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{club.stats.totalBookings || 0}</Text>
+                <Text style={styles.statLabel}>Réservations</Text>
               </View>
-            </Section>
-            
-            <TouchableOpacity style={styles.joinButton} onPress={handleJoinCommunity} disabled={joiningLoading}>
-                {joiningLoading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <>
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                        <Ionicons name="people-outline" size={20} color="#fff" />
-                        <Text style={styles.joinButtonText}>Rejoindre la communauté</Text>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{club.stats.totalDogs || 0}</Text>
+                <Text style={styles.statLabel}>Chiens</Text>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* SECTION PROMOTIONS */}
+        {promotions && promotions.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.title}>Promotions en cours</Text>
+            <View style={{ gap: 12 }}>
+              {promotions.map((promo) => {
+                const isActive = promo.isActive && new Date(promo.validUntil?.toDate?.() || promo.validUntil) > new Date();
+                return isActive ? (
+                  <View key={promo.id} style={styles.promotionCard}>
+                    <View style={styles.promotionHeader}>
+                      <Text style={styles.promotionTitle}>{promo.title}</Text>
+                      <View style={styles.discountBadge}>
+                        <Text style={styles.discountBadgeText}>-{promo.discountPercentage}%</Text>
                       </View>
-                      <Text style={styles.joinButtonSubtext}>Accédez aux salons, annonces et événements</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={24} color="#fff" />
-                  </>
-                )}
-            </TouchableOpacity>
+                    <Text style={styles.promotionCode}>Code: {promo.code}</Text>
+                    <Text style={styles.promotionDate}>
+                      Jusqu'au {new Date(promo.validUntil?.toDate?.() || promo.validUntil).toLocaleDateString('fr-FR')}
+                    </Text>
+                  </View>
+                ) : null;
+              })}
+            </View>
+          </View>
+        )}
 
-            {bookings.length > 0 && <Section title="Prochains cours"><BookingList bookings={bookings} navigation={navigation} clubId={clubId} educators={educators} fields={fields} /></Section>}
-            {bookings.length === 0 && <Section title="Prochains cours"><Text style={styles.emptyState}>Aucun cours à venir</Text></Section>}
-            
-            {events.length > 0 && <Section title="Événements à venir"><EventList events={events} navigation={navigation} /></Section>}
-            {events.length === 0 && <Section title="Événements à venir"><Text style={styles.emptyState}>Aucun événement à venir</Text></Section>}
-            
-            {educators.length > 0 && <Section title="Éducateurs du club"><EducatorList educators={educators} navigation={navigation} /></Section>}
-            {fields.length > 0 && <Section title="Terrains disponibles"><FieldList fields={fields} /></Section>}
-            {photos.length > 0 && <Section title="Galerie Officielle"><GalleryList photos={photos} /></Section>}
-            {photos.length === 0 && <Section title="Galerie Officielle"><Text style={styles.emptyState}>Aucune photo disponible</Text></Section>}
+        {/* BOUTON REJOINDRE LA COMMUNAUTÉ */}
+        <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+          <TouchableOpacity 
+            style={[styles.joinCommunityBtn, joiningLoading && { opacity: 0.7 }]}
+            onPress={handleJoinCommunity}
+            disabled={joiningLoading}
+            activeOpacity={0.8}
+          >
+            {joiningLoading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <>
+                <Ionicons name="people" size={20} color="#fff" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.joinCommunityTitle}>Rejoindre la communauté</Text>
+                  <Text style={styles.joinCommunitySubtitle}>Accédez aux salons, annonces et événements</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#fff" />
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* SECTION TERRAINS */}
+        <View style={styles.section}>
+          <Text style={styles.title}>Terrains & Équipements</Text>
+          {terrains && terrains.length > 0 ? (
+            terrains.map((terrain) => (
+              <View key={terrain.id} style={styles.fieldCard}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <MaterialCommunityIcons 
+                    name="grass" 
+                    size={24} 
+                    color={palette.primary} 
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.fieldName}>{terrain.name}</Text>
+                    {terrain.address && (
+                      <Text style={styles.sub}>{terrain.address}</Text>
+                    )}
+                    {terrain.trainingStyle && (
+                      <View style={{ marginTop: 6 }}>
+                        <View style={[styles.badge, { backgroundColor: palette.primary }]}>
+                          <Text style={styles.badgeText}>{terrain.trainingStyle}</Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </View>
+            ))
+          ) : (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              <MaterialCommunityIcons name="grass" size={40} color={palette.border} />
+              <Text style={[styles.sub, { marginTop: 8, textAlign: 'center' }]}>Pas encore de terrains</Text>
+            </View>
+          )}
+        </View>
+
+        {/* SECTION ÉDUCATEURS */}
+        <View style={styles.section}>
+          <Text style={styles.title}>Éducateurs du Club</Text>
+          {educatorsLoading ? (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              <ActivityIndicator color={palette.primary} />
+            </View>
+          ) : educators.length > 0 ? (
+            educators.map((educator) => (
+              <TouchableOpacity
+                key={educator.id}
+                style={styles.educatorCard}
+                onPress={() => navigation.navigate('educatorDetail', { educatorId: educator.id })}
+                activeOpacity={0.7}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  {educator.photoUrl ? (
+                    <Image
+                      source={{ uri: educator.photoUrl }}
+                      style={styles.educatorPhoto}
+                    />
+                  ) : (
+                    <View style={[styles.educatorPhoto, { backgroundColor: palette.primary, justifyContent: 'center', alignItems: 'center' }]}>
+                      <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>
+                        {educator.firstName.charAt(0)}{educator.lastName.charAt(0)}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.educatorName}>
+                      {educator.firstName} {educator.lastName}
+                    </Text>
+                    {educator.averageRating && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <MaterialCommunityIcons name="star" size={14} color="#E9B782" />
+                        <Text style={[styles.sub, { fontWeight: '600' }]}>
+                          {educator.averageRating.toFixed(1)}
+                        </Text>
+                        <Text style={styles.sub}>({educator.reviewsCount || 0})</Text>
+                      </View>
+                    )}
+                    {educator.hourlyRate && (
+                      <Text style={[styles.sub, { marginTop: 4 }]}>
+                        {educator.hourlyRate}€/h • {educator.experienceYears} ans d'exp.
+                      </Text>
+                    )}
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={palette.gray} />
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              <MaterialCommunityIcons name="account-outline" size={40} color={palette.border} />
+              <Text style={[styles.sub, { marginTop: 8, textAlign: 'center' }]}>Pas encore d'éducateurs</Text>
+            </View>
+          )}
+        </View>
+
+        {/* SECTION PROCHAINS COURS (BOOKINGS) */}
+        <View style={styles.section}>
+          <Text style={styles.title}>Prochains cours</Text>
+          {bookingsLoading ? (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              <ActivityIndicator color={palette.primary} />
+            </View>
+          ) : bookings.length > 0 ? (
+            <View>
+              {bookings
+                .sort((a, b) => {
+                  const dateA = a.sessionDate?.toDate?.() || new Date(a.sessionDate);
+                  const dateB = b.sessionDate?.toDate?.() || new Date(b.sessionDate);
+                  return dateA.getTime() - dateB.getTime();
+                })
+                .map((item) => (
+                  <CourseCardWithEducator key={item.id} booking={item} clubId={clubId} navigation={navigation} />
+                ))}
+            </View>
+          ) : (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              <MaterialCommunityIcons name="calendar-outline" size={40} color={palette.border} />
+              <Text style={[styles.sub, { marginTop: 8, textAlign: 'center' }]}>Pas encore de cours à venir</Text>
+            </View>
+          )}
+        </View>
+
+        {/* SECTION PROCHAINS ÉVÉNEMENTS */}
+        <View style={styles.section}>
+          <Text style={styles.title}>Prochains événements</Text>
+          {eventsLoading ? (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              <ActivityIndicator color={palette.primary} />
+            </View>
+          ) : events.length > 0 ? (
+            <View>
+              {events
+                .sort((a, b) => {
+                  const dateA = a.startDate?.toDate?.() || new Date(a.startDate);
+                  const dateB = b.startDate?.toDate?.() || new Date(b.startDate);
+                  return dateA.getTime() - dateB.getTime();
+                })
+                .map((item) => (
+                  <EventCard key={item.id} event={item} navigation={navigation} />
+                ))}
+            </View>
+          ) : (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              <MaterialCommunityIcons name="calendar-outline" size={40} color={palette.border} />
+              <Text style={[styles.sub, { marginTop: 8, textAlign: 'center' }]}>Pas encore d'événements</Text>
+            </View>
+          )}
+        </View>
+
+        {/* SECTION PHOTOS */}
+        {club.PhotoUrl && (
+          <View style={styles.section}>
+            <Text style={styles.title}>Galerie Officielle</Text>
+            <Image
+              source={{ uri: club.PhotoUrl }}
+              style={styles.mainPhoto}
+            />
+            {club.logoUrl && (
+              <View style={{ marginTop: 10 }}>
+                <Text style={[styles.sub, { marginBottom: 8 }]}>Logo du club</Text>
+                <Image
+                  source={{ uri: club.logoUrl }}
+                  style={styles.logoPhoto}
+                />
+              </View>
+            )}
+          </View>
+        )}
+
+        <View style={styles.bottomActions}>
+          <TouchableOpacity style={styles.secondary} onPress={() => navigation.navigate('homeTrainingBooking', { clubId })}>
+            <Text style={styles.secondaryText}>Séance à domicile</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('booking', { clubId })}>
+            <Text style={styles.primaryBtnText}>Réserver</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
-      <View style={styles.footer}>
-          <TouchableOpacity style={styles.footerButtonSecondary} onPress={() => navigation.navigate('homeTrainingBooking', { clubId })}>
-            <Text style={styles.footerButtonSecondaryText}>Séance à domicile</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.footerButton} onPress={() => navigation.navigate('booking', { clubId })}>
-            <Text style={styles.footerButtonText}>Réserver</Text>
-          </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }
 
-const Section = ({ title, children }: any) => <View style={styles.section}><Text style={styles.sectionTitle}>{title}</Text>{children}</View>;
-const MetaItem = ({ icon, text, color }: any) => <View style={styles.metaItem}><Ionicons name={icon} size={14} color={color || colors.textMuted} /><Text style={[styles.metaText, {color: color || colors.textMuted}]}>{text}</Text></View>;
-const ContactInfoRow = ({ icon, label, value }: any) => (
-  <View style={styles.contactInfoRow}>
-    <Ionicons name={icon} size={18} color={colors.primary} />
-    <View style={{ flex: 1, marginLeft: 12 }}>
-      <Text style={styles.contactInfoLabel}>{label}</Text>
-      <Text style={styles.contactInfoValue}>{value}</Text>
-    </View>
-  </View>
-);
+// Composant pour afficher une carte de cours avec l'éducateur
+function CourseCardWithEducator({ booking, clubId, navigation }: any) {
+  const { educator } = useFetchEducatorById(booking.educatorId);
 
-const BookingList = ({ bookings, navigation, clubId, educators, fields }: any) => {
-  const getEducatorName = (id: string) => {
-    const educator = educators?.find((e: any) => e.id === id);
-    return educator ? `${educator.firstName} ${educator.lastName}` : 'Éducateur';
-  };
-  
-  const getFieldName = (id: string) => {
-    const field = fields?.find((f: any) => f.id === id);
-    return field?.name || '';
-  };
+  const dateObj = booking.sessionDate?.toDate?.() || new Date(booking.sessionDate);
+  const dateStr = dateObj.toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
+  const timeStr = dateObj.toLocaleTimeString('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
   return (
-  <View style={{gap: 12}}>
-    {bookings.map((b:any) => (
-      <TouchableOpacity key={b.id} style={styles.bookingCard} onPress={() => navigation.navigate('booking', {clubId})}>
-        <View style={{ flex: 1 }}>
-          <View style={styles.bookingHeader}>
-            <Text style={styles.bookingTitle}>{b.title || 'Cours sans titre'}</Text>
-            <Text style={styles.bookingPrice}>{b.price}€</Text>
+    <TouchableOpacity
+      style={styles.courseCard}
+      onPress={() => navigation.navigate('booking', { clubId })}
+      activeOpacity={0.7}
+    >
+      <View style={{ flex: 1, gap: 10 }}>
+        {/* Titre du cours */}
+        <Text style={[styles.courseTitle, { marginBottom: 2 }]}>
+          {booking.isGroupCourse ? booking.title : 'Séance privée'}
+        </Text>
+
+        {/* Description */}
+        {booking.description && (
+          <Text style={[styles.sub, { fontSize: 13, color: palette.gray }]} numberOfLines={2}>
+            {booking.description}
+          </Text>
+        )}
+
+        {/* Infos: Date, Heure, Durée */}
+        <View style={{ gap: 6, marginTop: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="calendar-outline" size={14} color={palette.primary} />
+            <Text style={[styles.sub, { fontSize: 12, color: palette.text, fontWeight: '500' }]}>
+              {dateStr}
+            </Text>
           </View>
-          {b.description && <Text style={styles.bookingDescription}>{b.description}</Text>}
-          <View style={styles.bookingMeta}>
-            {b.sessionDate && <View style={styles.metaBadge}><Ionicons name="calendar-outline" size={12} color={colors.primary} /><Text style={styles.metaBadgeText}>{new Date(b.sessionDate.toDate?.() || b.sessionDate).toLocaleDateString('fr-FR')}</Text></View>}
-            {b.startTime && <View style={styles.metaBadge}><Ionicons name="time-outline" size={12} color={colors.primary} /><Text style={styles.metaBadgeText}>{b.startTime}</Text></View>}
-            {b.duration && <View style={styles.metaBadge}><Ionicons name="hourglass-outline" size={12} color={colors.primary} /><Text style={styles.metaBadgeText}>{b.duration} min</Text></View>}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="time-outline" size={14} color={palette.primary} />
+            <Text style={[styles.sub, { fontSize: 12, color: palette.text, fontWeight: '500' }]}>
+              {timeStr}
+            </Text>
           </View>
-          {b.educatorId && <Text style={styles.bookingEducator}>👨‍🏫 {getEducatorName(b.educatorId)}</Text>}
-          {b.fieldId && <Text style={styles.bookingField}>📍 {getFieldName(b.fieldId)}</Text>}
+          {booking.duration && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="timer-outline" size={14} color={palette.primary} />
+              <Text style={[styles.sub, { fontSize: 12, color: palette.text, fontWeight: '500' }]}>
+                {booking.duration} minutes
+              </Text>
+            </View>
+          )}
         </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.primary} style={{ marginLeft: 10 }} />
-      </TouchableOpacity>
-    ))}
-  </View>
-  );
-};
 
-const EventList = ({ events, navigation }: any) => (
-  <View style={{gap: 12}}>
-    {events.map((e:any) => (
-      <TouchableOpacity key={e.id} style={styles.eventCard} onPress={() => navigation.navigate('eventBooking', {eventId: e.id})}>
-        <View style={{ flex: 1 }}>
-          <View style={styles.eventHeader}>
-            <Text style={styles.eventTitle}>{e.title}</Text>
-            <Text style={styles.eventPrice}>{e.price}€</Text>
-          </View>
-          <Text style={styles.eventDesc}>{e.description}</Text>
-          {e.location && <Text style={styles.eventLocation}>📍 {e.location}</Text>}
-          <View style={styles.eventMeta}>
-            {e.startDate && <View style={styles.metaBadge}><Ionicons name="calendar-outline" size={12} color={colors.primary} /><Text style={styles.metaBadgeText}>{new Date(e.startDate.toDate?.() || e.startDate).toLocaleDateString('fr-FR')}</Text></View>}
-            {e.dogSlots && <View style={styles.metaBadge}><MaterialCommunityIcons name="dog" size={12} color={colors.primary} /><Text style={styles.metaBadgeText}>{e.dogSlots} chiens</Text></View>}
-            {e.spectatorSlots && <View style={styles.metaBadge}><Ionicons name="people-outline" size={12} color={colors.primary} /><Text style={styles.metaBadgeText}>{e.spectatorSlots} spectateurs</Text></View>}
-          </View>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.primary} />
-      </TouchableOpacity>
-    ))}
-  </View>
-);
-
-
-const EducatorList = ({ educators, navigation }: any) => (
-  <View style={{gap: 12}}>
-    {educators.map((e:any) => (
-      <TouchableOpacity key={e.id} style={styles.educatorCard} onPress={() => navigation.navigate('educatorDetail', {educatorId: e.id})}>
-        {e.photoUrl && <Image source={{uri: e.photoUrl}} style={styles.educatorPhoto} />}
-        <View style={styles.educatorInfo}>
-          <Text style={styles.educatorName}>{e.firstName} {e.lastName}</Text>
-          {e.experienceYears && <Text style={styles.educatorMeta}>{e.experienceYears} ans d'expérience</Text>}
-          <View style={styles.educatorFooter}>
-            {e.hourlyRate && <Text style={styles.educatorRate}>{e.hourlyRate}€/h</Text>}
-            {e.averageRating && (
-              <View style={styles.educatorRating}>
-                <MaterialCommunityIcons name="star" size={12} color="#FBBF24" />
-                <Text style={styles.educatorRatingText}>{e.averageRating.toFixed(1)} ({e.reviewsCount || 0})</Text>
+        {/* Éducateur */}
+        {educator && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+            {educator.photoUrl ? (
+              <Image
+                source={{ uri: educator.photoUrl }}
+                style={{ width: 28, height: 28, borderRadius: 14 }}
+              />
+            ) : (
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: palette.primary, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 10 }}>
+                  {educator.firstName.charAt(0)}{educator.lastName.charAt(0)}
+                </Text>
               </View>
             )}
-        <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+            <Text style={[styles.sub, { fontSize: 12, color: palette.text }]}>
+              {educator.firstName} {educator.lastName}
+            </Text>
           </View>
-        </View>
-      </TouchableOpacity>
-    ))}
-  </View>
-);
-
-const FieldList = ({ fields }: any) => (
-  <View style={{gap: 12}}>
-    {fields.map((f:any) => (
-      <View key={f.id} style={styles.fieldCard}>
-        <View style={styles.fieldHeader}>
-          <Text style={styles.fieldName}>{f.name}</Text>
-          {f.isIndoor && <View style={styles.indoorBadge}><Text style={styles.indoorBadgeText}>Intérieur</Text></View>}
-          {!f.isIndoor && <View style={styles.outdoorBadge}><Text style={styles.outdoorBadgeText}>Extérieur</Text></View>}
-        </View>
-        <View style={styles.fieldMeta}>
-          {f.surfaceType && <View style={styles.fieldMetaItem}><MaterialCommunityIcons name="texture" size={12} color={colors.primary} /><Text style={styles.fieldMetaText}>{f.surfaceType}</Text></View>}
-          {f.trainingType && <View style={styles.fieldMetaItem}><MaterialCommunityIcons name="dumbbell" size={12} color={colors.primary} /><Text style={styles.fieldMetaText}>{f.trainingType}</Text></View>}
-          {f.capacity && <View style={styles.fieldMetaItem}><MaterialCommunityIcons name="account-multiple" size={12} color={colors.primary} /><Text style={styles.fieldMetaText}>Cap: {f.capacity}</Text></View>}
-        </View>
-        {f.address && <Text style={styles.fieldAddress}>📍 {f.address}</Text>}
-        {f.notes && <Text style={styles.fieldNotes}>{f.notes}</Text>}
+        )}
       </View>
-    ))}
-  </View>
-);
 
-const GalleryList = ({ photos }: any) => (
-  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-    {photos.map((photo: any) => (
-      <View key={photo.id} style={styles.galleryPhotoContainer}>
-        <Image source={{ uri: photo.url }} style={styles.galleryPhoto} />
-        {photo.title && <Text style={styles.galleryPhotoTitle}>{photo.title}</Text>}
+      {/* Droite: Prix, Chevron */}
+      <View style={{ alignItems: 'flex-end', justifyContent: 'flex-start', gap: 10, minWidth: 80 }}>
+        <Ionicons name="chevron-forward" size={20} color={palette.primary} style={{ marginTop: 2 }} />
+        <View style={{ alignItems: 'flex-end', gap: 3 }}>
+          <Text style={{ color: palette.primary, fontSize: 16, fontWeight: '700' }}>
+            {booking.price}€
+          </Text>
+        </View>
       </View>
-    ))}
-  </ScrollView>
-);
+    </TouchableOpacity>
+  );
+}
 
+// Composant pour afficher une carte d'événement
+function EventCard({ event, navigation }: any) {
+  const { educator } = useFetchEducatorById(event.educatorId);
+
+  const dateObj = event.startDate?.toDate?.() || new Date(event.startDate);
+  const dateStr = dateObj.toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
+
+  return (
+    <TouchableOpacity
+      style={styles.eventCard}
+      onPress={() => navigation.navigate('eventBooking', { eventId: event.id })}
+      activeOpacity={0.7}
+    >
+      <View style={{ flex: 1, gap: 10 }}>
+        {/* Badge type */}
+        {event.type && (
+          <View style={styles.eventBadge}>
+            <Text style={styles.eventBadgeText}>{event.type}</Text>
+          </View>
+        )}
+
+        {/* Titre */}
+        <Text style={[styles.courseTitle, { marginBottom: 2 }]}>
+          {event.title}
+        </Text>
+
+        {/* Description */}
+        {event.description && (
+          <Text style={[styles.sub, { fontSize: 13, color: palette.gray }]} numberOfLines={2}>
+            {event.description}
+          </Text>
+        )}
+
+        {/* Infos: Participants, Chiens, Adresse */}
+        <View style={{ gap: 6, marginTop: 4 }}>
+          {event.dogSlots !== undefined && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <MaterialCommunityIcons name="dog" size={14} color={palette.primary} />
+              <Text style={[styles.sub, { fontSize: 12, color: palette.text, fontWeight: '500' }]}>
+                {event.dogSlots} places pour chiens
+              </Text>
+            </View>
+          )}
+          {event.spectatorSlots !== undefined && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="people-outline" size={14} color={palette.primary} />
+              <Text style={[styles.sub, { fontSize: 12, color: palette.text, fontWeight: '500' }]}>
+                {event.spectatorSlots} participants
+              </Text>
+            </View>
+          )}
+          {(event.address || event.location) && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="location-outline" size={14} color={palette.primary} />
+              <Text style={[styles.sub, { fontSize: 12, color: palette.text, fontWeight: '500' }]} numberOfLines={1}>
+                {event.address || event.location}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Éducateur */}
+        {educator && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+            {educator.photoUrl ? (
+              <Image
+                source={{ uri: educator.photoUrl }}
+                style={{ width: 28, height: 28, borderRadius: 14 }}
+              />
+            ) : (
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: palette.primary, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 10 }}>
+                  {educator.firstName.charAt(0)}{educator.lastName.charAt(0)}
+                </Text>
+              </View>
+            )}
+            <Text style={[styles.sub, { fontSize: 12, color: palette.text }]}>
+              {educator.firstName} {educator.lastName}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* Droite: Prix, Date, Chevron */}
+      <View style={{ alignItems: 'flex-end', justifyContent: 'flex-start', gap: 10, minWidth: 80 }}>
+        <Ionicons name="chevron-forward" size={20} color={palette.primary} style={{ marginTop: 2 }} />
+        <View style={{ alignItems: 'flex-end', gap: 3 }}>
+          <Text style={{ color: palette.primary, fontSize: 16, fontWeight: '700' }}>
+            {event.price}€
+          </Text>
+          <Text style={[styles.sub, { fontSize: 11, color: palette.text }]}>
+            {dateStr}
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
 
 const styles = StyleSheet.create({
-    safe: { flex: 1, backgroundColor: colors.background },
-    container: { paddingBottom: 100 },
-    centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
-    heroImage: { width: '100%', height: 250 },
-    backBtn: { position: 'absolute', top: 40, left: 16, backgroundColor: 'rgba(255,255,255,0.8)', padding: 8, borderRadius: 20 },
-    header: { padding: 16, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-    clubName: { fontSize: 24, fontWeight: 'bold', color: colors.text },
-    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 8 },
-    metaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    metaText: { fontSize: 14, fontWeight: '600' },
-    content: { padding: 16, gap: 24 },
-    section: { gap: 16 },
-    sectionTitle: { fontSize: 20, fontWeight: 'bold', color: colors.text },
-    description: { fontSize: 15, color: colors.textMuted, lineHeight: 22 },
-    emptyState: { fontSize: 14, color: colors.textMuted, textAlign: 'center', paddingVertical: 20 },
-    joinButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.primary, paddingVertical: 14, paddingHorizontal: 16, borderRadius: 16, elevation: 2, shadowColor: colors.shadow },
-    joinButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-    joinButtonSubtext: { color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 2 },
-    contactInfoContainer: { gap: 12, marginTop: 12 },
-    contactInfoRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#F9FAFB', borderRadius: 12 },
-    contactInfoLabel: { fontSize: 12, color: colors.textMuted, fontWeight: '500' },
-    contactInfoValue: { fontSize: 13, color: colors.text, fontWeight: '600', marginTop: 2 },
-    bookingCard: { backgroundColor: colors.surface, borderRadius: 16, padding: 14, borderLeftWidth: 4, borderLeftColor: colors.primary, flexDirection: 'row', elevation: 2, shadowColor: colors.shadow },
-    bookingEducator: { fontSize: 12, color: colors.primary, fontWeight: '600', marginTop: 6 },
-    bookingField: { fontSize: 12, color: colors.primary, fontWeight: '600', marginTop: 3 },
-    card: { backgroundColor: colors.surface, borderRadius: 16, padding: 16, elevation: 2, shadowColor: colors.shadow },
-    bookingCard: { backgroundColor: colors.surface, borderRadius: 16, padding: 14, borderLeftWidth: 4, borderLeftColor: colors.primary, elevation: 2, shadowColor: colors.shadow },
-    bookingHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-    bookingTitle: { fontSize: 16, fontWeight: '600', color: colors.text, flex: 1 },
-    bookingPrice: { fontSize: 14, fontWeight: 'bold', color: colors.primary },
-    bookingDescription: { fontSize: 13, color: colors.secondary, marginBottom: 8, fontStyle: 'italic' },
-    bookingMeta: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-    metaBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#E0F2F1', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-    metaBadgeText: { fontSize: 12, color: colors.primary, fontWeight: '500' },
-    eventCard: { backgroundColor: colors.surface, borderRadius: 16, padding: 14, elevation: 2, shadowColor: colors.shadow, flexDirection: 'row' },
-    eventHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-    eventTitle: { fontSize: 16, fontWeight: '600', color: colors.text, flex: 1 },
-    eventPrice: { fontSize: 14, fontWeight: 'bold', color: colors.primary },
-    eventDesc: { fontSize: 13, color: colors.textMuted, lineHeight: 18, marginBottom: 8 },
-    eventLocation: { fontSize: 12, color: colors.primary, fontWeight: '600', marginBottom: 8 },
-    eventMeta: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-    educatorCard: { backgroundColor: colors.surface, borderRadius: 16, padding: 14, flexDirection: 'row', gap: 12, elevation: 2, shadowColor: colors.shadow },
-    educatorPhoto: { width: 70, height: 70, borderRadius: 12 },
-    educatorInfo: { flex: 1, justifyContent: 'space-between' },
-    educatorName: { fontSize: 15, fontWeight: '600', color: colors.text },
-    educatorMeta: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
-    educatorFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
-    educatorRate: { fontSize: 12, fontWeight: 'bold', color: colors.primary },
-    educatorRating: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-    educatorRatingText: { fontSize: 12, color: colors.text, fontWeight: '500' },
-    fieldCard: { backgroundColor: colors.surface, borderRadius: 16, padding: 14, elevation: 2, shadowColor: colors.shadow },
-    fieldHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-    fieldName: { fontSize: 15, fontWeight: '600', color: colors.text, flex: 1 },
-    indoorBadge: { backgroundColor: '#FEE2E2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
-    indoorBadgeText: { fontSize: 11, fontWeight: '600', color: '#DC2626' },
-    outdoorBadge: { backgroundColor: '#DBEAFE', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
-    outdoorBadgeText: { fontSize: 11, fontWeight: '600', color: '#2563EB' },
-    fieldMeta: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
-    fieldMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    fieldMetaText: { fontSize: 12, color: colors.textMuted, fontWeight: '500' },
-    fieldAddress: { fontSize: 12, color: colors.primary, fontWeight: '600', marginTop: 8 },
-    fieldNotes: { fontSize: 12, color: colors.textMuted, marginTop: 8, lineHeight: 16 },
-    chipsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    chip: { backgroundColor: '#E0F2F1', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
-    chipText: { fontSize: 13, color: colors.primary, fontWeight: '500' },
-    statsRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-    statCard: { flex: 1, backgroundColor: colors.surface, borderRadius: 12, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' },
-    statNumber: { fontSize: 24, fontWeight: 'bold', color: colors.primary },
-    statLabel: { fontSize: 12, color: colors.textMuted, marginTop: 4, textAlign: 'center' },
-    galleryPhotoContainer: { marginRight: 8 },
-    galleryPhoto: { width: 150, height: 150, borderRadius: 12, backgroundColor: colors.surface },
-    galleryPhotoTitle: { fontSize: 12, color: colors.text, marginTop: 6, textAlign: 'center', fontWeight: '500' },
-    footer: { padding: 16, borderTopWidth: 1, borderTopColor: '#E5E7EB', backgroundColor: colors.background, flexDirection: 'row', gap: 12 },
-    footerButtonSecondary: { flex: 1, borderWidth: 2, borderColor: colors.primary, paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
-    footerButtonSecondaryText: { color: colors.primary, fontSize: 15, fontWeight: 'bold' },
-    footerButton: { flex: 1, backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
-    footerButtonText: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
+  safe: { flex: 1, backgroundColor: '#F5F7FA' },
+  hero: { height: 220, position: 'relative' },
+  heroImage: { width: '100%', height: '100%' },
+  back: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 8,
+  },
+  heroContent: { position: 'absolute', left: 16, right: 16, bottom: 12 },
+  heroTitle: { color: '#fff', fontSize: 22, fontWeight: '700' },
+  heroMeta: { color: '#E5E7EB', fontSize: 13 },
+  rating: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  ratingText: { color: '#1F2937', fontWeight: '700', fontSize: 12 },
+  section: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
+  sectionRow: { paddingHorizontal: 16, flexDirection: 'row', gap: 10, alignItems: 'center', paddingVertical: 6 },
+  title: { color: palette.text, fontSize: 18, fontWeight: '700' },
+  sub: { color: palette.gray, fontSize: 14 },
+  linkText: { textDecorationLine: 'underline' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    backgroundColor: '#E0F2F1',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  chipText: { color: palette.primary, fontWeight: '700', fontSize: 12 },
+  listItem: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: palette.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
+  listTitle: { color: palette.text, fontWeight: '700', fontSize: 15 },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#E0F2F1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: { color: palette.primary, fontWeight: '700' },
+  scheduleRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
+  scheduleTime: { color: palette.text, fontWeight: '600' },
+  photo: { width: 180, height: 120, borderRadius: 12, backgroundColor: '#E5E7EB' },
+  bottomActions: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 4 },
+  secondary: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: palette.primary,
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  secondaryText: { color: palette.primary, fontWeight: '700' },
+  joinCommunityBtn: {
+    backgroundColor: palette.primary,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  joinCommunityTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  joinCommunitySubtitle: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  primaryBtn: {
+    flex: 1,
+    backgroundColor: palette.primary,
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  primaryBtnText: { color: '#fff', fontWeight: '700' },
+  statsContainer: { flexDirection: 'row', gap: 10, justifyContent: 'space-around' },
+  statBox: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  statValue: { color: palette.primary, fontSize: 18, fontWeight: '700' },
+  statLabel: { color: palette.gray, fontSize: 12, marginTop: 4 },
+  fieldCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: palette.border,
+    marginBottom: 10,
+  },
+  fieldName: {
+    color: palette.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  badge: {
+    backgroundColor: '#FEE4E2',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  badgeText: {
+    color: '#D32F2F',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  educatorCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: palette.border,
+    marginBottom: 10,
+  },
+  educatorPhoto: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: palette.border,
+  },
+  educatorName: {
+    color: palette.text,
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  courseCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: palette.border,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  eventCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: palette.border,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  eventBadge: {
+    backgroundColor: '#FEE4E2',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  eventBadgeText: {
+    color: '#D32F2F',
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+  },
+  courseTitle: {
+    color: palette.text,
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  mainPhoto: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    backgroundColor: palette.border,
+  },
+  logoPhoto: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    backgroundColor: palette.border,
+  },
+  promotionCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  promotionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  promotionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: palette.text,
+    flex: 1,
+  },
+  discountBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  discountBadgeText: {
+    color: '#F59E0B',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  promotionCode: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: palette.text,
+    marginBottom: 4,
+  },
+  promotionDate: {
+    fontSize: 11,
+    color: palette.gray,
+  },
 });

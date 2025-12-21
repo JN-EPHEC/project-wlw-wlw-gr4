@@ -71,37 +71,149 @@ export const useFetchClubs = (): UseFetchClubsResult => {
           }
         }
         
-        const clubsCollection = collection(db, 'club');
-        const q = query(clubsCollection);
-        const snapshot = await getDocs(q);
+        // 1. Récupérer tous les utilisateurs avec role "club"
+        const usersCollection = collection(db, 'users');
+        const usersQuery = query(usersCollection, where('role', '==', 'club'));
+        const usersSnapshot = await getDocs(usersQuery);
         
-        const clubsData: Club[] = snapshot.docs.map(doc => {
-          const data = doc.data() as any;
-          return {
+        const clubUsers: Map<string, any> = new Map();
+        usersSnapshot.docs.forEach(doc => {
+          clubUsers.set(doc.id, {
             id: doc.id,
-            ...data,
-            // Ajouter les champs transformés pour compatibilité UI avec valeurs par défaut
-            image: data.PhotoUrl || data.logoUrl || 'https://via.placeholder.com/300x200?text=Club',
-            title: data.name || 'Club sans nom',
-            subtitle: data.services || data.clubType || 'Services',
-            rating: data.averageRating ?? 0,
-            reviews: data.reviewsCount ?? 0,
-            verified: data.isVerified ?? false,
-            distance: `${data.distanceKm ?? 0} km`,
-            price: data.priceLevel === 1 ? '€' : data.priceLevel === 2 ? '€€' : data.priceLevel === 3 ? '€€€' : '€€',
-            // Valeurs par défaut pour les champs requis par le filtrage
-            distanceKm: data.distanceKm ?? 0,
-            priceLevel: data.priceLevel ?? 2,
-            averageRating: data.averageRating ?? 0,
-            services: data.services ?? '',
-            name: data.name || 'Club sans nom',
-            city: data.city || '',
-            description: data.description || '',
-            isVerified: data.isVerified ?? false,
-          } as Club;
+            ...doc.data()
+          });
         });
         
-        setClubs(clubsData);
+        // 2. Récupérer la collection club existante
+        const clubsCollection = collection(db, 'club');
+        const clubsQuery = query(clubsCollection);
+        const clubsSnapshot = await getDocs(clubsQuery);
+        
+        const clubsFromCollection: Map<string, any> = new Map();
+        clubsSnapshot.docs.forEach(doc => {
+          clubsFromCollection.set(doc.id, {
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+        
+        // 3. Merger les données: pour chaque utilisateur club, chercher les données détaillées
+        const mergedClubs: Club[] = [];
+        
+        // D'abord, ajouter les clubs de la collection club (ils ont des données détaillées)
+        clubsFromCollection.forEach((clubData) => {
+          // Chercher l'ownerUserId : d'abord depuis le champ, sinon utiliser l'ID du document
+          const ownerUserId = clubData.ownerUserId || clubData.id;
+          const userData = clubUsers.get(ownerUserId);
+          
+          console.log('🔍 [useFetchClubs] Processing club:', {
+            clubId: clubData.id,
+            ownerUserId,
+            hasUserData: !!userData,
+            userName: userData?.displayName,
+            clubName: clubData.name,
+            userClubName: userData?.profile?.clubName
+          });
+          
+          const mergedData = {
+            ...userData?.profile, // données du profil utilisateur
+            ...clubData, // données de la collection club (prioritaires)
+          };
+          
+          const club: Club = {
+            id: clubData.id,
+            PhotoUrl: clubData.PhotoUrl || clubData.logoUrl || userData?.profile?.logoUrl,
+            address: clubData.address || userData?.profile?.address || '',
+            averageRating: clubData.averageRating ?? 0,
+            cancellationPolicy: clubData.cancellationPolicy,
+            certifications: clubData.certifications,
+            city: clubData.city || userData?.profile?.city || '',
+            clubType: clubData.clubType || 'public',
+            createdAt: clubData.createdAt,
+            description: clubData.description || userData?.profile?.description || '',
+            educatorId: clubData.educatorIds?.[0],
+            email: clubData.email || userData?.email || '',
+            image: clubData.PhotoUrl || clubData.logoUrl || userData?.profile?.logoUrl || 'https://via.placeholder.com/300x200?text=Club',
+            language: clubData.language,
+            location: clubData.location,
+            logoUrl: clubData.logoUrl || userData?.profile?.logoUrl,
+            maxGroupSize: clubData.maxGroupSize ?? 10,
+            name: clubData.name || userData?.profile?.clubName || userData?.displayName || 'Club',
+            ownerUserId: clubData.ownerUserId || clubData.id,
+            paymentSettings: clubData.paymentSettings,
+            phone: clubData.phone || userData?.profile?.phone || '',
+            reviewsCount: clubData.reviewsCount ?? 0,
+            reviews: clubData.reviewsCount ?? 0,
+            services: clubData.services || userData?.profile?.services?.join(', ') || '',
+            stats: clubData.stats,
+            subtitle: clubData.services || userData?.profile?.services?.join(', ') || 'Services',
+            title: clubData.name || userData?.profile?.clubName || userData?.displayName || 'Club',
+            website: clubData.website || userData?.profile?.website || '',
+            isVerified: clubData.isVerified ?? false,
+            verified: clubData.isVerified ?? false,
+            priceLevel: clubData.priceLevel ?? 2,
+            price: clubData.priceLevel === 1 ? '€' : clubData.priceLevel === 2 ? '€€' : clubData.priceLevel === 3 ? '€€€' : '€€',
+            distanceKm: clubData.distanceKm ?? 0,
+            distance: `${clubData.distanceKm ?? 0} km`,
+            rating: clubData.averageRating ?? 0,
+          };
+          
+          mergedClubs.push(club);
+        });
+        
+        // Ensuite, ajouter les utilisateurs club qui n'ont pas de document club correspondant
+        clubUsers.forEach((userData, userId) => {
+          // Vérifier si ce club user existe déjà dans la collection club
+          const existingClub = Array.from(clubsFromCollection.values()).find(
+            c => c.ownerUserId === userId
+          );
+          
+          if (!existingClub) {
+            // Créer un objet club à partir des données utilisateur
+            const servicesString = userData.profile?.services?.join(', ') || '';
+            const club: Club = {
+              id: userId, // Utiliser l'ID utilisateur comme ID du club
+              PhotoUrl: userData.profile?.logoUrl,
+              address: userData.profile?.address || '',
+              averageRating: 0,
+              cancellationPolicy: undefined,
+              certifications: undefined,
+              city: userData.profile?.city || '',
+              clubType: 'public',
+              createdAt: new Date(),
+              description: userData.profile?.description || '',
+              educatorId: undefined,
+              email: userData.email || '',
+              image: userData.profile?.logoUrl || 'https://via.placeholder.com/300x200?text=Club',
+              language: undefined,
+              location: '',
+              logoUrl: userData.profile?.logoUrl,
+              maxGroupSize: 10,
+              name: userData.profile?.clubName || userData.displayName || 'Club',
+              ownerUserId: userId,
+              paymentSettings: undefined,
+              phone: userData.profile?.phone || '',
+              reviewsCount: 0,
+              reviews: 0,
+              services: servicesString,
+              stats: undefined,
+              subtitle: servicesString,
+              title: userData.profile?.clubName || userData.displayName || 'Club',
+              website: userData.profile?.website || '',
+              isVerified: false,
+              verified: false,
+              priceLevel: 2,
+              price: '€€',
+              distanceKm: 0,
+              distance: '0 km',
+              rating: 0,
+            };
+            
+            mergedClubs.push(club);
+          }
+        });
+        
+        setClubs(mergedClubs);
         setError(null);
       } catch (err) {
         console.error('Erreur lors du chargement des clubs:', err);
