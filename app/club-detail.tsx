@@ -7,12 +7,11 @@ import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firesto
 import { UserStackParamList } from '@/navigation/types';
 import { db } from '@/firebaseConfig';
 import { useFetchClubEducators } from '@/hooks/useFetchClubEducators';
+import { useFetchClubFields } from '@/hooks/useFetchClubFields';
 import { useFetchClubUpcomingBookings } from '@/hooks/useFetchClubUpcomingBookings';
 import { useFetchClubUpcomingEvents } from '@/hooks/useFetchClubUpcomingEvents';
 import { useFetchEducatorById } from '@/hooks/useFetchEducatorById';
 import { useJoinClub } from '@/hooks/useJoinClub';
-import { useClubPromotions } from '@/hooks/useClubPromotions';
-import { useClubTerrains } from '@/hooks/useClubTerrains';
 import { useAuth } from '@/context/AuthContext';
 
 const palette = {
