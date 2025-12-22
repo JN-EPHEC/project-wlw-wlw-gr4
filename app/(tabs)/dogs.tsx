@@ -132,16 +132,12 @@ export default function DogsScreen() {
 
                 <View style={styles.statusRow}>
                   <View style={styles.statusItem}>
-                    <Text style={styles.statusLabel}>Édition</Text>
-                    <Text style={styles.vetDate}>Modifier</Text>
-                  </View>
-                  <View style={styles.statusItem}>
                     <Text style={styles.statusLabel}>Genre</Text>
                     <Text style={styles.vetDate}>{dog.gender || '-'}</Text>
                   </View>
                   <View style={styles.statusItem}>
-                    <Text style={styles.statusLabel}>Infos</Text>
-                    <Text style={[styles.vetDate, { fontSize: 12 }]} numberOfLines={1}>{dog.otherInfo ? 'Oui' : 'Non'}</Text>
+                    <Text style={styles.statusLabel}>Vaccins</Text>
+                    <Text style={[styles.vetDate, { fontSize: 12 }]} numberOfLines={1}>À jour</Text>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -207,8 +203,13 @@ const styles = StyleSheet.create({
   dogBreed: { color: colors.textMuted, fontSize: 15, fontWeight: '600' },
   meta: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
   divider: { height: 1, backgroundColor: '#edf1f5' },
-  statusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  statusItem: { flex: 1, gap: 6 },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
+    gap: 0,
+  },
+  statusItem: { flexShrink: 0, alignItems: 'center', gap: 6 },
   statusLabel: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
   vetDate: { color: colors.text, fontSize: 14, fontWeight: '700' },
   pill: {

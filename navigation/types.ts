@@ -80,7 +80,7 @@ export type RootRouteName = UserRoute | ClubRoute | TeacherRoute;
 
 export type UserStackParamList = {
   home: undefined;
-  clubs: undefined;
+  clubs: { section?: 'favorites' } | undefined;
   community: undefined;
   mydog: undefined;
   djanai: { previousPage?: UserRoute };

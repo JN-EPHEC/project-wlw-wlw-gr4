@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Image,
   SafeAreaView,
@@ -8,10 +8,12 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  LayoutChangeEvent,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
 
 import UserBottomNav from '@/components/UserBottomNav';
 import { UserStackParamList } from '@/navigation/types';
@@ -57,6 +59,9 @@ const homeTrainers: CardBase[] = [];
 
 export default function ClubsScreen() {
   const navigation = useNavigation<ClubsNavigationProp>();
+  const route = useRoute<RouteProp<UserStackParamList, 'clubs'>>();
+  const scrollRef = useRef<ScrollView>(null);
+  const favoritesOffset = useRef(0);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
@@ -129,8 +134,23 @@ export default function ClubsScreen() {
 
   // Récupérer les favoris de tous les types
   const favoriteItems = useMemo(() => {
-    return [...clubs, ...educators, ...events].filter(item => isFavorite(item.id as string));
-  }, [clubs, educators, events, isFavorite]);
+    const typeForFilter = (id: string | number) => favorites.get(id as string);
+
+    return [...clubs, ...educators, ...events].filter(item => {
+      const favType = typeForFilter(item.id);
+      if (!favType) return false;
+      if (filter === 'clubs') return favType === 'club';
+      if (filter === 'trainers') return favType === 'educator';
+      if (filter === 'events') return favType === 'event';
+      return true; // 'all'
+    });
+  }, [clubs, educators, events, favorites, filter]);
+
+  useEffect(() => {
+    if (route.params?.section === 'favorites' && scrollRef.current) {
+      scrollRef.current.scrollTo({ y: favoritesOffset.current, animated: true });
+    }
+  }, [route.params?.section]);
 
   const getNumericId = (id: string | number): number => {
     if (typeof id === 'number') return id;
@@ -233,14 +253,16 @@ export default function ClubsScreen() {
     icon,
     iconColor,
     children,
+    onLayout,
   }: {
     title: string;
     action?: () => void;
     icon?: string;
     iconColor?: string;
     children: React.ReactNode;
+    onLayout?: (event: LayoutChangeEvent) => void;
   }) => (
-    <View style={{ gap: 10 }}>
+    <View style={{ gap: 10 }} onLayout={onLayout}>
       <View style={styles.sectionHeader}>
         <View style={styles.sectionTitleRow}>
           {icon && (
@@ -366,7 +388,11 @@ export default function ClubsScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={{ backgroundColor: palette.primary, paddingTop: 6, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, paddingBottom: 24 }}>
           <View style={styles.hero}>
             <Text style={styles.heading}>Découvrir</Text>
@@ -461,6 +487,12 @@ export default function ClubsScreen() {
                 title={titles.favorites}
                 icon={getSectionIcon('favorites').icon}
                 iconColor={getSectionIcon('favorites').color}
+                onLayout={({ nativeEvent }) => {
+                  favoritesOffset.current = nativeEvent.layout.y;
+                  if (route.params?.section === 'favorites') {
+                    scrollRef.current?.scrollTo({ y: favoritesOffset.current, animated: true });
+                  }
+                }}
               >
                 {loading ? (
                   <Text style={styles.loadingText}>Chargement...</Text>

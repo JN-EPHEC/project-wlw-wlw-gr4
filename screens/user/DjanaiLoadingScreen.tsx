@@ -1,59 +1,19 @@
-import React, { useEffect } from 'react';
-import { SafeAreaView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect } from 'react';
+import { Animated, Easing, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+
 import { useDjanai } from '@/context/DjanaiContext';
 
-export default function DjanaiLoadingScreen() {
-  const navigation = useNavigation();
-  const route = useRoute();
-  const { quizAnswers, setProgram, setIsLoading } = useDjanai();
-  const dogId = (route.params as any)?.dogId;
+const palette = {
+  primary: '#41B6A6',
+  accent: '#41B6A6',
+  white: '#FFFFFF',
+  lightText: 'rgba(255, 255, 255, 0.9)',
+};
 
-  useEffect(() => {
-    const generateProgram = async () => {
-      setIsLoading(true);
-      
-      // Simulation de délai (1-2 secondes)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // TODO: Ici on va appeler l'IA avec quizAnswers
-      // const response = await callAI(quizAnswers);
-      
-      // Pour l'instant, générer un programme mock basé sur les réponses du quiz
-      const mockProgram = generateMockProgram(quizAnswers);
-      
-      setProgram(mockProgram);
-      setIsLoading(false);
-      
-      // Rediriger vers la page du programme
-      (navigation as any).navigate('djanai-program', { dogId });
-    };
-
-    if (quizAnswers) {
-      generateProgram();
-    } else {
-      // Pas de réponses, revenir en arrière
-      navigation.goBack();
-    }
-  }, [quizAnswers, setProgram, setIsLoading, navigation]);
-
-  return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <Text style={styles.title}>DjanAI</Text>
-        <Text style={styles.subtitle}>Créons le profil de votre chien</Text>
-      </View>
-
-      <View style={styles.content}>
-        <ActivityIndicator size="large" color="#41B6A6" />
-        <Text style={styles.loadingText}>Génération de votre programme...</Text>
-        <Text style={styles.loadingSubtext}>Cela peut prendre 1-2 minutes</Text>
-      </View>
-    </SafeAreaView>
-  );
-}
-
-// Fonction utilitaire pour générer un programme mock
+// ... (generateMockProgram function remains the same)
 function generateMockProgram(quizAnswers: any) {
   const ageCategory = quizAnswers?.age || 'Adulte (3-7 ans)';
   const dogName = quizAnswers?.dogName || 'Votre chien';
@@ -171,39 +131,122 @@ function generateMockProgram(quizAnswers: any) {
   };
 }
 
+
+export default function DjanaiLoadingScreen() {
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { quizAnswers, setProgram, setIsLoading } = useDjanai();
+  const dogId = (route.params as any)?.dogId;
+
+  const pulseAnim = new Animated.Value(0);
+
+  useEffect(() => {
+    const circleAnimation = Animated.loop(
+      Animated.timing(pulseAnim, {
+        toValue: 1,
+        duration: 2500,
+        easing: Easing.bezier(0.45, 0, 0.55, 1),
+        useNativeDriver: true,
+      })
+    );
+
+    circleAnimation.start();
+
+    const generateProgram = async () => {
+      setIsLoading(true);
+      // Simulation de délai
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      const mockProgram = generateMockProgram(quizAnswers);
+      setProgram(mockProgram);
+      setIsLoading(false);
+
+      (navigation as any).replace('djanai-program', { dogId });
+    };
+
+    if (quizAnswers) {
+      generateProgram();
+    } else {
+      navigation.goBack();
+    }
+  }, [quizAnswers, setProgram, setIsLoading, navigation, pulseAnim]);
+
+  const animatedStyle = (delay: number) => ({
+    transform: [
+      {
+        scale: pulseAnim.interpolate({
+          inputRange: [0, 0.4, 0.8, 1],
+          outputRange: [0, 1, 1, 0].map(v => v * 3 * (1 - delay)),
+        }),
+      },
+    ],
+    opacity: pulseAnim.interpolate({
+      inputRange: [0, 0.4, 0.8, 1],
+      outputRange: [0, 0.7, 0, 0],
+    }),
+  });
+
+  return (
+    <LinearGradient colors={[palette.accent, palette.primary]} style={styles.safe}>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.iconWrapper}>
+          <Animated.View style={[styles.pulseCircle, animatedStyle(0)]} />
+          <Animated.View style={[styles.pulseCircle, animatedStyle(0.3)]} />
+          <Animated.View style={[styles.pulseCircle, animatedStyle(0.6)]} />
+          <View style={styles.iconContainer}>
+            <MaterialCommunityIcons name="brain" size={64} color={palette.white} />
+          </View>
+        </View>
+        <Text style={styles.loadingText}>DjanAI analyse vos réponses...</Text>
+        <Text style={styles.loadingSubtext}>
+          Création d'un programme sur-mesure pour vous et votre compagnon.
+        </Text>
+      </SafeAreaView>
+    </LinearGradient>
+  );
+}
+
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
   },
-  header: {
-    backgroundColor: '#41B6A6',
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: 'white',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
-  },
-  content: {
+  container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 16,
+    padding: 24,
+  },
+  iconWrapper: {
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 200,
+    height: 200,
+    marginBottom: 32,
+  },
+  pulseCircle: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  iconContainer: {
+    padding: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 999,
   },
   loadingText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: palette.white,
+    textAlign: 'center',
+    marginBottom: 12,
   },
   loadingSubtext: {
-    fontSize: 13,
-    color: '#6B7280',
+    fontSize: 16,
+    color: palette.lightText,
+    textAlign: 'center',
+    lineHeight: 24,
   },
 });
