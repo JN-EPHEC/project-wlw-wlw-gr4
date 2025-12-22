@@ -33,6 +33,68 @@ const palette = {
   border: '#E5E7EB',
 };
 
+const cleanObject = (obj: Record<string, any>) =>
+  Object.fromEntries(
+    Object.entries(obj).filter(([, value]) => value !== undefined && value !== ''),
+  );
+
+const formatBirthDateForInput = (value?: string | number): string => {
+  if (!value) return '';
+  // Keep already formatted dates intact
+  if (typeof value === 'string' && /[\\/.-]/.test(value)) return value;
+
+  const toDate = (input: any): Date | null => {
+    if (typeof input === 'number') {
+      const ms = input < 1e12 ? input * 1000 : input; // seconds -> ms if needed
+      const d = new Date(ms);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+    if (typeof input === 'string' && !Number.isNaN(Number(input))) {
+      const num = Number(input);
+      const ms = num < 1e12 ? num * 1000 : num;
+      const d = new Date(ms);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+    const d = new Date(input);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+
+  const date = toDate(value);
+  if (!date) return String(value);
+  return date.toLocaleDateString('fr-FR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+};
+
+const normalizeBirthDateForSave = (value?: string | number): string | undefined => {
+  if (!value) return undefined;
+  const raw = String(value).trim();
+  if (!raw) return undefined;
+
+  // dd/mm/yyyy or dd-mm-yyyy
+  const parts = raw.match(/^(\d{1,2})[\\/.-](\d{1,2})[\\/.-](\d{2,4})$/);
+  if (parts) {
+    const day = parseInt(parts[1], 10);
+    const month = parseInt(parts[2], 10) - 1;
+    const year = parseInt(parts[3], 10) < 100 ? 2000 + parseInt(parts[3], 10) : parseInt(parts[3], 10);
+    const d = new Date(year, month, day);
+    if (!Number.isNaN(d.getTime())) return String(d.getTime());
+  }
+
+  // numeric seconds or ms
+  if (!Number.isNaN(Number(raw))) {
+    let num = Number(raw);
+    num = num < 1e12 ? num * 1000 : num; // convert seconds to ms if needed
+    const d = new Date(num);
+    if (!Number.isNaN(d.getTime())) return String(d.getTime());
+  }
+
+  // fallback: Date-parsable string
+  const d = new Date(raw);
+  if (!Number.isNaN(d.getTime())) return String(d.getTime());
+
+  // ultimate fallback: keep raw
+  return raw;
+};
+
 export default function EditDogScreen() {
   const navigation = useNavigation();
   const route = useRoute();
@@ -62,7 +124,10 @@ export default function EditDogScreen() {
         
         if (docSnap.exists()) {
           const data = docSnap.data() as Dog;
-          setForm(data);
+          setForm({
+            ...data,
+            birthDate: formatBirthDateForInput(data.birthDate),
+          });
           setPhoto(data.photoUrl || null);
         } else {
           setError('Chien non trouvé');
@@ -147,14 +212,20 @@ export default function EditDogScreen() {
       }
 
       const docRef = doc(db, 'Chien', dogId);
-      await updateDoc(docRef, {
+
+      const birthDate = normalizeBirthDateForSave(form.birthDate);
+      const updatePayload = cleanObject({
         name: form.name,
         breed: form.breed,
-        birthDate: form.birthDate,
+        birthDate,
         gender: form.gender,
         weight: form.weight,
         otherInfo: form.otherInfo,
         ...(photoUrl && { photoUrl }),
+      });
+
+      await updateDoc(docRef, {
+        ...updatePayload,
         updatedAt: Timestamp.now(),
       });
 
@@ -266,7 +337,7 @@ export default function EditDogScreen() {
           <Input
             style={{ flex: 1 }}
             label="Date de naissance"
-            value={form.birthDate || ''}
+            value={formatBirthDateForInput(form.birthDate)}
             onChangeText={(t) => setForm({ ...form, birthDate: t })}
             placeholder="JJ/MM/AAAA"
             editable={!saving && !deleting}

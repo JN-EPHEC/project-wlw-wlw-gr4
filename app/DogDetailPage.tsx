@@ -49,6 +49,7 @@ const palette = {
   gray: '#6B7280',
   lightGray: '#F3F4F6',
   border: '#E5E7EB',
+  lightGreen: '#E6F5F1',
 };
 
 export default function DogDetailPage() {
@@ -220,12 +221,20 @@ export default function DogDetailPage() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header with Dog Profile */}
         <View style={styles.headerGradient}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="chevron-back" size={24} color="white" />
-          </TouchableOpacity>
+          <View style={styles.headerTopRow}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="chevron-back" size={24} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => (navigation as any).navigate('editDog', { dogId: dog.id })}
+            >
+              <Ionicons name="pencil" size={16} color="white" />
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.profileSection}>
             {dog.photoUrl ? (
@@ -475,13 +484,13 @@ export default function DogDetailPage() {
           {/* DjanAI Program */}
           <View>
             <View style={styles.djanaiHeader}>
-              <MaterialCommunityIcons name="lightbulb" size={24} color={palette.accent} />
-              <Text style={styles.djanaiTitle}>DjanAI - Programme Personnalisé</Text>
+              <MaterialCommunityIcons name="brain" size={24} color={palette.accent} />
+              <Text style={styles.djanaiTitle}>Programme d'Entraînement DjanAI</Text>
             </View>
 
             {/* Créer un nouveau programme */}
             <TouchableOpacity
-              style={[styles.card, styles.djanaiCardCreate]}
+              style={[styles.card, styles.djanaiCard, { backgroundColor: '#F3E8FF' }]}
               onPress={() => {
                 (navigation as any).navigate('djanaiResults', { 
                   previousPage: 'dogDetail',
@@ -491,64 +500,43 @@ export default function DogDetailPage() {
               }}
             >
               <View style={styles.djanaiCardContent}>
-                <View style={[styles.djanaiCardIcon, { backgroundColor: palette.primary }]}>
-                  <MaterialCommunityIcons name="lightbulb" size={24} color="white" />
+                <View style={[styles.djanaiCardIcon, { backgroundColor: palette.accent }]}>
+                  <MaterialCommunityIcons name="creation" size={24} color="white" />
                 </View>
                 <View style={styles.djanaiCardText}>
-                  <Text style={styles.djanaiCardTitle}>Créer un programme avec DjanAI</Text>
+                  <Text style={styles.djanaiCardTitle}>Nouveau Programme</Text>
                   <Text style={styles.djanaiCardSubtitle}>
-                    Répondez à quelques questions pour obtenir un programme personnalisé pour {dog.name}
+                    Générez un programme sur-mesure pour {dog.name}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={palette.gray} />
+                <Ionicons name="chevron-forward" size={20} color={palette.accent} />
               </View>
             </TouchableOpacity>
 
             {/* Accéder au programme existant */}
             <TouchableOpacity
-              style={[styles.card, styles.djanaiCardExisting]}
+              style={[styles.card, styles.djanaiCard, { backgroundColor: palette.lightGreen }]}
               onPress={() => {
                 (navigation as any).navigate('djanai-program', { dogId: dog.id });
               }}
             >
               <View style={styles.djanaiCardContent}>
-                <View style={[styles.djanaiCardIcon, { backgroundColor: palette.accent }]}>
-                  <MaterialCommunityIcons name="pulse" size={24} color="white" />
+                <View style={[styles.djanaiCardIcon, { backgroundColor: palette.primary }]}>
+                  <MaterialCommunityIcons name="clipboard-text-search-outline" size={24} color="white" />
                 </View>
                 <View style={styles.djanaiCardText}>
-                  <Text style={styles.djanaiCardTitle}>Voir mon programme</Text>
+                  <Text style={styles.djanaiCardTitle}>Voir le Programme Actuel</Text>
                   <Text style={styles.djanaiCardSubtitle}>
-                    Consultez votre programme d'entraînement personnalisé
+                    Consultez le plan d'entraînement personnalisé
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={palette.gray} />
+                <Ionicons name="chevron-forward" size={20} color={palette.primary} />
               </View>
             </TouchableOpacity>
           </View>
 
           {/* Actions */}
           <Text style={styles.sectionTitle}>Actions</Text>
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => {
-              (navigation as any).navigate('editDog', { dogId: dog.id });
-            }}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: palette.primary }]}>
-              <Ionicons name="create" size={20} color="white" />
-            </View>
-            <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>Éditer le profil</Text>
-              <Text style={styles.actionSubtitle}>
-                Modifier les informations de {dog.name}
-              </Text>
-            </View>
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={palette.gray}
-            />
-          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.actionCard, styles.deleteActionCard]}
@@ -645,13 +633,26 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  editButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   profileSection: {
@@ -689,7 +690,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   dogBreed: {
-    fontSize: 14,
+    fontSize: 15,
     color: 'rgba(255, 255, 255, 0.9)',
     marginBottom: 8,
   },
@@ -699,7 +700,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   stat: {
-    fontSize: 12,
+    fontSize: 14,
     color: 'rgba(255, 255, 255, 0.8)',
   },
   statSeparator: {
@@ -1046,28 +1047,18 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   djanaiTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
     color: palette.text,
   },
-  djanaiCards: {
-    gap: 12,
-    marginBottom: 8,
-  },
-  djanaiCardCreate: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: palette.border,
-  },
-  djanaiCardExisting: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: palette.border,
+  djanaiCard: {
+    borderWidth: 0,
+    marginBottom: 12,
   },
   djanaiCardContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 16,
   },
   djanaiCardIcon: {
     width: 48,
@@ -1075,21 +1066,20 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    flexShrink: 0,
   },
   djanaiCardText: {
     flex: 1,
   },
   djanaiCardTitle: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: 'bold',
     color: palette.text,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   djanaiCardSubtitle: {
-    fontSize: 11,
+    fontSize: 12,
     color: palette.gray,
-    lineHeight: 15,
+    lineHeight: 16,
   },
   certificateCard: {
     backgroundColor: '#fff',

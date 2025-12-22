@@ -14,6 +14,41 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { db } from '@/firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 
+const formatAge = (birthDate?: string | number) => {
+  if (!birthDate) return null;
+  try {
+    let birth: Date;
+    if (typeof birthDate === 'number') {
+      birth = new Date(birthDate);
+    } else if (!Number.isNaN(Number(birthDate))) {
+      birth = new Date(parseInt(birthDate, 10));
+    } else {
+      birth = new Date(birthDate);
+    }
+    if (Number.isNaN(birth.getTime())) return null;
+    const now = new Date();
+    let years = now.getFullYear() - birth.getFullYear();
+    const monthDiff = now.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) {
+      years -= 1;
+    }
+    if (years <= 0) {
+      const months = monthDiff < 0 ? 12 + monthDiff : monthDiff;
+      return `${months} mois`;
+    }
+    return `${years} ans`;
+  } catch {
+    return null;
+  }
+};
+
+const formatPriceLevel = (level?: number) => {
+  if (level === 1) return "\u20ac";
+  if (level === 2) return "\u20ac\u20ac";
+  if (level === 3) return "\u20ac\u20ac\u20ac";
+  return "\u20ac\u20ac";
+};
+
 const palette = {
   primary: '#41B6A6',
   primaryDark: '#359889',
@@ -40,12 +75,39 @@ const sampleDogs = [
 ];
 
 const sampleClubs = [
-  { id: 'club-paris', name: 'Canin Club Paris', icon: '🏆' },
-  { id: 'agility-pro', name: 'Agility Pro', icon: '🏃‍♂️' },
-  { id: 'amis-chiens', name: 'Les Amis des Chiens', icon: '🦴' },
+  {
+    id: "club-paris",
+    name: "Canin Club Paris",
+    image: "https://via.placeholder.com/240x160?text=Club",
+    averageRating: 4.6,
+    reviewsCount: 128,
+    priceLabel: formatPriceLevel(2),
+    isVerified: true,
+    city: "Paris",
+  },
+  {
+    id: "agility-pro",
+    name: "Agility Pro",
+    image: "https://via.placeholder.com/240x160?text=Club",
+    averageRating: 4.3,
+    reviewsCount: 82,
+    priceLabel: formatPriceLevel(3),
+    isVerified: false,
+    city: "Lyon",
+  },
+  {
+    id: "amis-chiens",
+    name: "Les Amis des Chiens",
+    image: "https://via.placeholder.com/240x160?text=Club",
+    averageRating: 4.1,
+    reviewsCount: 54,
+    priceLabel: formatPriceLevel(1),
+    isVerified: false,
+    city: "Marseille",
+  },
 ];
-type AccountNavigationProp = NativeStackNavigationProp<UserStackParamList, 'account'>;
 
+type AccountNavigationProp = NativeStackNavigationProp<UserStackParamList, 'account'>;
 
 export default function AccountScreen() {
   const navigation = useNavigation<AccountNavigationProp>();
@@ -61,11 +123,9 @@ export default function AccountScreen() {
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    // Compter les clubs favoris et charger les données
-    const clubCount = Array.from(favorites.values()).filter(type => type === 'club').length;
+    const clubCount = Array.from(favorites.values()).filter((type) => type === 'club').length;
     setFollowedClubsCount(clubCount);
 
-    // Charger les clubs favoris réels
     const loadClubs = async () => {
       try {
         const clubIds = Array.from(favorites.entries())
@@ -77,14 +137,20 @@ export default function AccountScreen() {
           return;
         }
 
-        const clubsData: any[] = [];
-        for (const clubId of clubIds.slice(0, 3)) { // Limiter à 3 clubs pour la page compte
+                const clubsData: any[] = [];
+        for (const clubId of clubIds) {
           const clubDoc = await getDoc(doc(db, 'club', clubId));
           if (clubDoc.exists()) {
+            const data = clubDoc.data();
             clubsData.push({
               id: clubDoc.id,
-              name: clubDoc.data().name || 'Sans nom',
-              icon: '🏆',
+              name: data.name || 'Sans nom',
+              image: data.PhotoUrl || data.logoUrl || 'https://via.placeholder.com/240x160?text=Club',
+              averageRating: data.averageRating ?? 0,
+              reviewsCount: data.reviewsCount ?? 0,
+              priceLabel: formatPriceLevel(data.priceLevel),
+              isVerified: data.isVerified ?? false,
+              city: data.city,
             });
           }
         }
@@ -99,32 +165,34 @@ export default function AccountScreen() {
   }, [favorites]);
 
   const profileData = useMemo(() => ((profile as any)?.profile ?? {}) as Record<string, any>, [profile]);
-  
-  // Recharger les données du profil quand on revient sur cette page
+
   useFocusEffect(
     React.useCallback(() => {
-      // Refresh profile data when returning to this screen
       if (user?.uid) {
         refreshProfile();
       }
-    }, [user?.uid, refreshProfile])
+    }, [user?.uid, refreshProfile]),
   );
+
   const displayName = useMemo(() => {
     const nameFromProfile = `${profileData.firstName ?? ''} ${profileData.lastName ?? ''}`.trim();
     return nameFromProfile || user?.displayName || user?.email || 'Utilisateur Smart Dogs';
   }, [profileData.firstName, profileData.lastName, user?.displayName, user?.email]);
 
   const initials = useMemo(
-    () => displayName.split(' ').filter(Boolean).map((p) => p[0]).join('').slice(0, 2).toUpperCase(),
+    () =>
+      displayName
+        .split(' ')
+        .filter(Boolean)
+        .map((p) => p[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase(),
     [displayName],
   );
 
   const location = useMemo(
-    () =>
-      profileData.city ||
-      profileData.location ||
-      profileData.address ||
-      "Braine-l'Alleud, Belgique",
+    () => profileData.city || profileData.location || profileData.address || "Braine-l'Alleud, Belgique",
     [profileData.city, profileData.location, profileData.address],
   );
 
@@ -140,19 +208,32 @@ export default function AccountScreen() {
     return sampleClubs;
   }, [profileData.followedClubs, profile]);
 
-  const bookingsCount =
-    typeof profileData.bookingsCount === 'number'
-      ? profileData.bookingsCount
-      : (profile as any)?.bookingsCount;
+  const displayDogs = useMemo(() => {
+    if (dogsData && dogsData.length > 0) return dogsData;
+    return dogs;
+  }, [dogsData, dogs]);
+
+  const displayClubs = useMemo(() => {
+    if (realClubs && realClubs.length > 0) return realClubs;
+    return clubs;
+  }, [realClubs, clubs]);
+
+  const handleOpenDog = (dog: any, idx: number) => {
+    const dogId = dog?.id ?? (dog as any)?._id;
+    if (dogId) {
+      navigation.navigate('dogDetail', { dogId: String(dogId) });
+      return;
+    }
+    navigation.navigate('mydog');
+  };
 
   const stats = [
     { label: 'Réservations', value: bookings.length, icon: 'calendar-outline' as const },
-    { label: 'Chiens', value: dogsData?.length ?? 0, icon: 'paw-outline' as const },
+    { label: 'Chiens', value: displayDogs.length, icon: 'paw-outline' as const },
     { label: 'Clubs suivis', value: followedClubsCount, icon: 'heart-outline' as const },
   ];
 
   useEffect(() => {
-    // Charger la photo depuis Firestore si disponible, sinon utiliser celle d'Auth
     if (profileData.photoUrl) {
       setProfilePhotoUrl(profileData.photoUrl);
     } else if (user?.photoURL) {
@@ -164,8 +245,6 @@ export default function AccountScreen() {
 
   const menuItems = [
     { id: 'bookings', icon: 'calendar-outline' as const, label: 'Mes réservations', badge: bookings.length ? String(bookings.length) : null, onPress: () => navigation.navigate('bookings') },
-    { id: 'dogs', icon: 'paw-outline' as const, label: 'Mes chiens', badge: null, onPress: () => navigation.navigate('dogs') },
-    { id: 'clubs', icon: 'heart-outline' as const, label: 'Clubs suivis', badge: null, onPress: () => navigation.navigate('followedClubs') },
     { id: 'notifications', icon: 'notifications-outline' as const, label: 'Notifications', badge: null, onPress: () => navigation.navigate('notifications', { previousTarget: 'account' }) },
     { id: 'ratingInvitation', icon: 'star-outline' as const, label: 'Invitations avis', badge: null, onPress: () => navigation.navigate('ratingsInvitationsList') },
     { id: 'settings', icon: 'settings-outline' as const, label: 'Paramètres', badge: null, onPress: () => navigation.navigate('settings') },
@@ -280,48 +359,129 @@ export default function AccountScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Mes chiens</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('dogs')}>
+            <TouchableOpacity onPress={() => navigation.navigate('mydog')}>
               <Text style={styles.sectionLink}>Voir tout</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.cardGrid}>
-            {dogsData && dogsData.slice(0, 2).map((dog, idx) => (
-              <View key={dog.id ?? idx} style={styles.dogCard}>
-                <Image source={{ uri: dog.photoUrl || 'https://via.placeholder.com/120' }} style={styles.dogImage} />
-                <View style={styles.dogBody}>
-                  <Text style={styles.dogName}>{dog.name}</Text>
-                  <Text style={styles.dogBreed}>{dog.breed}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.carouselContent}
+            snapToAlignment="start"
+            decelerationRate="fast"
+          >
+            {displayDogs && displayDogs.length > 0 ? (
+              displayDogs.map((dog, idx) => {
+                const ageLabel = formatAge((dog as any)?.birthDate);
+                return (
+                  <TouchableOpacity
+                    key={dog.id ?? idx}
+                    style={styles.cardShell}
+                    activeOpacity={0.9}
+                    onPress={() => handleOpenDog(dog, idx)}
+                  >
+                    <View style={styles.dogCard}>
+                      <Image
+                        source={{ uri: (dog as any).photoUrl || 'https://via.placeholder.com/260x180?text=Dog' }}
+                        style={styles.dogImage}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.cardContent}>
+                        <View style={styles.cardHeaderRow}>
+                          <Text style={styles.dogName} numberOfLines={1}>{dog.name || 'Sans nom'}</Text>
+                          <View style={styles.tagChip}>
+                            <Ionicons name="ribbon-outline" size={14} color={palette.primary} />
+                            <Text style={styles.tagText} numberOfLines={1}>{(dog as any).breed || 'Race inconnue'}</Text>
+                          </View>
+                        </View>
+                        <View style={styles.dogMetaRow}>
+                          <View style={styles.dogMetaItem}>
+                            <Ionicons name="calendar-outline" size={16} color={palette.gray} />
+                            <Text style={styles.dogMetaText}>{ageLabel || '-'}</Text>
+                          </View>
+                          <View style={styles.dogMetaItem}>
+                            <Ionicons name="scale-outline" size={16} color={palette.gray} />
+                            <Text style={styles.dogMetaText}>{(dog as any).weight ? `${(dog as any).weight} kg` : '- kg'}</Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            ) : (
+              <Text style={styles.emptyClubs}>Aucun chien enregistré</Text>
+            )}
+          </ScrollView>
         </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Clubs suivis</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('followedClubs')}>
+            <TouchableOpacity onPress={() => navigation.navigate('clubs', { section: 'favorites' })}>
               <Text style={styles.sectionLink}>Voir tout</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.clubsRow}>
-            {realClubs && realClubs.length > 0 ? (
-              realClubs.map((club, idx) => (
-                <TouchableOpacity
-                  key={club.id ?? idx}
-                  style={styles.clubCard}
-                  onPress={() => navigation.navigate('clubDetail', { clubId: club.id })}
-                >
-                  <Text style={styles.clubIcon}>{club.icon ?? '🏆'}</Text>
-                  <Text style={styles.clubName}>{club.name}</Text>
-                </TouchableOpacity>
-              ))
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.carouselContent}
+            snapToAlignment="start"
+            decelerationRate="fast"
+          >
+            {displayClubs && displayClubs.length > 0 ? (
+              displayClubs.map((club, idx) => {
+                const ratingValue =
+                  typeof club.averageRating === 'number' ? club.averageRating.toFixed(1) : '0.0';
+                return (
+                  <TouchableOpacity
+                    key={club.id ?? idx}
+                    style={styles.cardShell}
+                    onPress={() => navigation.navigate('clubDetail', { clubId: club.id })}
+                  >
+                    <View style={styles.clubCard}>
+                      <Image
+                        source={{ uri: club.image || 'https://via.placeholder.com/240x160?text=Club' }}
+                        style={styles.clubImage}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.cardContent}>
+                        <View style={styles.clubHeader}>
+                          <Text style={styles.clubName} numberOfLines={1}>
+                            {club.name}
+                          </Text>
+                          {club.isVerified ? (
+                            <View style={styles.verifiedPill}>
+                              <Ionicons name="checkmark-circle" size={14} color="#16A34A" />
+                              <Text style={styles.verifiedText}>Vérifié</Text>
+                            </View>
+                          ) : null}
+                        </View>
+                        <Text style={styles.clubCity} numberOfLines={1}>
+                          {club.city || 'Ville inconnue'}
+                        </Text>
+                        <View style={styles.clubMetaRow}>
+                          <View style={styles.inlineMeta}>
+                            <Ionicons name="star" size={14} color="#F59E0B" />
+                            <Text style={styles.metaText}>
+                              {ratingValue} ({club.reviewsCount ?? 0})
+                            </Text>
+                          </View>
+                          <View style={styles.inlineMeta}>
+                            <Ionicons name="cash-outline" size={14} color={palette.gray} />
+                            <Text style={styles.metaText}>{club.priceLabel || '€€'}</Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
             ) : (
               <Text style={styles.emptyClubs}>Aucun club suivi</Text>
             )}
-          </View>
+          </ScrollView>
         </View>
-
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <TouchableOpacity
@@ -335,27 +495,15 @@ export default function AccountScreen() {
       </ScrollView>
       <UserBottomNav current="account" />
 
-      {/* Logout Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={isLogoutModalVisible}
-        onRequestClose={() => setLogoutModalVisible(false)}
-      >
+      <Modal animationType="fade" transparent visible={isLogoutModalVisible} onRequestClose={() => setLogoutModalVisible(false)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalView}>
             <Text style={styles.modalText}>Vous êtes sur le point de vous déconnecter</Text>
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setLogoutModalVisible(false)}
-              >
+              <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={() => setLogoutModalVisible(false)}>
                 <Text style={styles.cancelButtonText}>Annuler</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.confirmButton]}
-                onPress={handleLogout}
-              >
+              <TouchableOpacity style={[styles.modalButton, styles.confirmButton]} onPress={handleLogout}>
                 <Text style={styles.confirmButtonText}>Se déconnecter</Text>
               </TouchableOpacity>
             </View>
@@ -485,42 +633,84 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionTitle: { color: palette.text, fontSize: 16, fontWeight: '700' },
   sectionLink: { color: palette.primary, fontWeight: '700', fontSize: 13 },
-  cardGrid: { flexDirection: 'row', gap: 12 },
+  carouselContent: { paddingRight: 12, gap: 12 },
+  cardShell: { width: 240 },
+  cardContent: { padding: 10, gap: 10 },
+  cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  tagChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EAF7F4',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  tagText: { color: palette.primary, fontWeight: '700', fontSize: 11, maxWidth: 90 },
   dogCard: {
     flex: 1,
     backgroundColor: '#fff',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.06,
     shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 3,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
-  dogImage: { width: '100%', height: 120, backgroundColor: '#E5E7EB' },
-  dogBody: { padding: 12, gap: 4 },
-  dogName: { color: palette.text, fontSize: 15, fontWeight: '700' },
+  dogImage: {
+    width: '100%',
+    height: 150,
+    backgroundColor: '#E5E7EB',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    alignSelf: 'center',
+  },
+  dogBody: { flex: 1, gap: 6 },
+  dogName: { color: palette.text, fontSize: 16, fontWeight: '700', flex: 1 },
   dogBreed: { color: palette.gray, fontSize: 12 },
-  clubsRow: { flexDirection: 'row', gap: 12 },
+  dogMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
+  dogMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dogMetaText: { color: palette.gray, fontSize: 12, fontWeight: '700' },
+  clubsRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
   clubCard: {
     flex: 1,
     backgroundColor: '#fff',
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    padding: 12,
-    alignItems: 'center',
-    gap: 6,
     shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
-  clubIcon: { fontSize: 20 },
-  clubName: { color: palette.text, fontSize: 12, textAlign: 'center' },
+  clubImage: {
+    width: '100%',
+    height: 150,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    backgroundColor: '#E5E7EB',
+    alignSelf: 'center',
+  },
+  clubBody: { flex: 1, gap: 6 },
+  clubHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  clubName: { color: palette.text, fontSize: 15, fontWeight: '700', flex: 1 },
+  clubCity: { color: palette.gray, fontSize: 12 },
+  verifiedPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#E0F2F1',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  verifiedText: { color: '#0F766E', fontWeight: '700', fontSize: 11 },
+  clubMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  inlineMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaText: { color: palette.gray, fontSize: 12, fontWeight: '600' },
   emptyClubs: { color: palette.gray, fontSize: 13, textAlign: 'center' },
   error: { color: '#DC2626', fontSize: 13, textAlign: 'center', marginBottom: 8 },
   logoutButton: {
@@ -569,12 +759,6 @@ const styles = StyleSheet.create({
     elevation: 5,
     width: '90%',
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#1F2937',
-  },
   modalText: {
     marginBottom: 25,
     textAlign: 'center',
@@ -613,22 +797,15 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     fontWeight: 'bold',
   },
-  deleteCancelButton: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-  },
-  deleteCancelButtonText: {
-    color: '#1F2937',
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  deleteConfirmButton: {
-    backgroundColor: '#DC2626',
-  },
-  deleteConfirmButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
 });
+
+
+
+
+
+
+
+
+
+
+

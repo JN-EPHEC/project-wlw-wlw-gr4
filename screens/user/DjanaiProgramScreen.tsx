@@ -22,8 +22,7 @@ export default function DjanaiProgramScreen({ navigation, route }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>('programme');
 
   const handleBack = () => {
-    // Naviguer directement vers la liste des chiens
-    (navigation as any).navigate('dogs');
+    (navigation as any).navigate('home');
   };
 
   if (!program) {
@@ -175,7 +174,7 @@ function ProgrammeTab({ programme }: any) {
           <View style={styles.exercisesList}>
             {session.exercises.map((ex: any, idx: number) => (
               <View key={ex.id} style={styles.exerciseItem}>
-                <View style={styles.exerciseNumber}>{String(idx + 1)}</View>
+                <View style={styles.exerciseNumber}><Text style={styles.exerciseNumberText}>{String(idx + 1)}</Text></View>
                 <View style={styles.exerciseInfo}>
                   <Text style={styles.exerciseName}>{ex.name}</Text>
                   <View style={styles.exerciseMeta}>
@@ -435,6 +434,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 2,
+  },
+  exerciseNumberText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   exerciseInfo: {
     flex: 1,

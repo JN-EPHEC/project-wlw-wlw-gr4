@@ -166,9 +166,6 @@ export default function HomeScreen() {
             </View>
             <TouchableOpacity style={styles.notif} onPress={() => navigation.navigate('notifications', { previousTarget: 'home' })}>
               <Ionicons name="notifications-outline" size={22} color="#fff" />
-              <View style={styles.notifBadge}>
-                <Text style={styles.notifBadgeText}>3</Text>
-              </View>
             </TouchableOpacity>
           </View>
 
@@ -255,52 +252,7 @@ export default function HomeScreen() {
             </ScrollView>
           )}
 
-          {/* Événements */}
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleRow}>
-              <Ionicons name="calendar-outline" size={18} color={palette.primary} />
-              <Text style={styles.sectionTitle}>Événements à venir</Text>
-            </View>
-            <Text style={styles.link}>Calendrier</Text>
-          </View>
-          {eventsLoading ? (
-            <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-              <ActivityIndicator size="large" color={palette.primary} />
-            </View>
-          ) : displayedEvents.length === 0 ? (
-            <View style={{ paddingVertical: 30, alignItems: 'center' }}>
-              <Ionicons name="calendar-outline" size={40} color={palette.gray} />
-              <Text style={{ color: palette.gray, fontSize: 14, marginTop: 12, fontWeight: '600' }}>Aucun événement prévu</Text>
-              <Text style={{ color: palette.gray, fontSize: 12, marginTop: 4 }}>Les événements à venir s'afficheront ici</Text>
-            </View>
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-              {displayedEvents.map((event) => (
-                <TouchableOpacity key={event.id} style={[styles.eventCard, { width: width * 0.6 }]}>
-                  <Image source={{ uri: event.image }} style={styles.eventImage} />
-                  <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: 16 }]} />
-                  <View style={styles.eventBadge}>
-                    <Text style={styles.eventBadgeText}>
-                      {event.date} · {event.time}
-                    </Text>
-                  </View>
-                  <View style={styles.eventContent}>
-                    <Text style={styles.eventTitle}>{event.title}</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Ionicons name="location-outline" size={14} color="#E5E7EB" />
-                      <Text style={styles.eventSub}>{event.location}</Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Ionicons name="people-outline" size={14} color="#E5E7EB" />
-                      <Text style={styles.eventSub}>{event.participants} participants</Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
-
-          {/* Prochaines séances */}
+          {/* Mes prochaines séances */}
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
               <Ionicons name="calendar-outline" size={18} color="#E9B782" />
@@ -357,21 +309,65 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {/* Exercices du jour */}
+          {/* Événements */}
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleRow}>
+              <Ionicons name="calendar-outline" size={18} color={palette.primary} />
+              <Text style={styles.sectionTitle}>Événements à venir</Text>
+            </View>
+            <Text style={styles.link}>Calendrier</Text>
+          </View>
+          {eventsLoading ? (
+            <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={palette.primary} />
+            </View>
+          ) : displayedEvents.length === 0 ? (
+            <View style={{ paddingVertical: 30, alignItems: 'center' }}>
+              <Ionicons name="calendar-outline" size={40} color={palette.gray} />
+              <Text style={{ color: palette.gray, fontSize: 14, marginTop: 12, fontWeight: '600' }}>Aucun événement prévu</Text>
+              <Text style={{ color: palette.gray, fontSize: 12, marginTop: 4 }}>Les événements à venir s'afficheront ici</Text>
+            </View>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+              {displayedEvents.map((event) => (
+                <TouchableOpacity key={event.id} style={[styles.eventCard, { width: width * 0.6 }]}>
+                  <Image source={{ uri: event.image }} style={styles.eventImage} />
+                  <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: 16 }]} />
+                  <View style={styles.eventBadge}>
+                    <Text style={styles.eventBadgeText}>
+                      {event.date} · {event.time}
+                    </Text>
+                  </View>
+                  <View style={styles.eventContent}>
+                    <Text style={styles.eventTitle}>{event.title}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="location-outline" size={14} color="#E5E7EB" />
+                      <Text style={styles.eventSub}>{event.location}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="people-outline" size={14} color="#E5E7EB" />
+                      <Text style={styles.eventSub}>{event.participants} participants</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
               <MaterialCommunityIcons name="brain" size={18} color="#7C3AED" />
-              <Text style={styles.sectionTitle}>Exercices du jour</Text>
+              <Text style={styles.sectionTitle}>Votre Assistant DjanAI</Text>
             </View>
             <View style={styles.badgeGradient}>
               <MaterialCommunityIcons name="star" size={14} color="#fff" />
-              <Text style={styles.badgeGradientText}>DjanAI</Text>
+              <Text style={styles.badgeGradientText}>Nouveau</Text>
             </View>
           </View>
 
           <View style={[styles.aiIntro, cardShadow()]}>
             <View style={styles.aiIcon}>
-              <MaterialCommunityIcons name="star" size={22} color="#fff" />
+              <MaterialCommunityIcons name="brain" size={22} color="#fff" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.aiTitle}>Programme personnalisé</Text>
@@ -382,7 +378,7 @@ export default function HomeScreen() {
                 style={styles.chipPrimary}
                 onPress={() => navigation.navigate('djanai', { previousPage: 'home' })}
               >
-                <MaterialCommunityIcons name="star" size={14} color="#fff" />
+                <MaterialCommunityIcons name="arrow-right" size={14} color="#fff" />
                 <Text style={styles.chipPrimaryText}>Commencer</Text>
               </TouchableOpacity>
             </View>
@@ -418,7 +414,7 @@ export default function HomeScreen() {
 
           <View style={styles.chatCard}>
             <View style={styles.chatIcon}>
-              <MaterialCommunityIcons name="brain" size={22} color="#fff" />
+              <MaterialCommunityIcons name="robot-outline" size={22} color="#fff" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.chatTitle}>Besoin de conseils ?</Text>
