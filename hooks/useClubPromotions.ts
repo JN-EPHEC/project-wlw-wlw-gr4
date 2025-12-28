@@ -23,17 +23,20 @@ export const useClubPromotions = (clubId: string | null) => {
 
   const fetchPromotions = async () => {
     if (!clubId) {
+      console.log('useClubPromotions: clubId is null, skipping fetch');
       setPromotions([]);
       setLoading(false);
       return;
     }
 
     try {
+      console.log('useClubPromotions: fetching promotions for clubId:', clubId);
       setLoading(true);
       setError(null);
       const promotionsCollection = collection(db, 'promotions');
       const q = query(promotionsCollection, where('clubId', '==', clubId));
       const snapshot = await getDocs(q);
+      console.log('useClubPromotions: found', snapshot.docs.length, 'promotions');
       
       const data = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -87,9 +90,12 @@ export const useClubPromotions = (clubId: string | null) => {
 
   const deletePromotion = async (promotionId: string) => {
     try {
+      console.log('useClubPromotions.deletePromotion: starting deletion for id:', promotionId);
       const promotionRef = doc(db, 'promotions', promotionId);
       await deleteDoc(promotionRef);
+      console.log('useClubPromotions.deletePromotion: deletion completed, calling fetchPromotions');
       await fetchPromotions();
+      console.log('useClubPromotions.deletePromotion: finished');
     } catch (err) {
       console.error('Erreur lors de la suppression de la promotion:', err);
       throw err;

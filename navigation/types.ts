@@ -57,6 +57,10 @@ export type ClubRoute =
   | 'clubLeaderboard'
   | 'clubDetail'
   | 'clubReviews'
+  | 'createPromotion'
+  | 'editPromotion'
+  | 'createField'
+  | 'editField'
   | 'notifications';
 
 export type TeacherRoute =
@@ -123,7 +127,10 @@ export type ClubStackParamList = {
   clubHome: undefined;
   clubProfile: undefined;
   editClubProfile: undefined;
+  createPromotion: undefined;
   editPromotion: { promotionId?: string };
+  createField: undefined;
+  editField: { fieldId?: string };
   promotionDetail: { promotionId: string };
   editGallery: undefined;
   editTerrains: { terrainId?: string };

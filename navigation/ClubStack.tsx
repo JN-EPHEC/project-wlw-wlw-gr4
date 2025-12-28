@@ -20,8 +20,11 @@ import ClubTeacherRequestsScreen from '@/app/club-teacher-requests';
 import ClubTeachersPaymentScreen from '@/app/club-teachers-payment';
 import ClubTeachersPricingScreen from '@/app/club-teachers-pricing';
 import ClubTeachersScreen from '@/app/club-teachers';
+import CreatePromotionScreen from '@/app/create-promotion';
+import CreateFieldScreen from '@/app/create-field';
 import EditClubProfileScreen from '@/screens/club/EditClubProfileScreen';
 import EditPromotionScreen from '@/screens/club/EditPromotionScreen';
+import EditFieldScreen from '@/screens/club/EditFieldScreen';
 import PromotionDetailScreen from '@/screens/club/PromotionDetailScreen';
 import EditGalleryScreen from '@/screens/club/EditGalleryScreen';
 import EditTerrainScreen from '@/screens/club/EditTerrainScreen';
@@ -36,7 +39,10 @@ export default function ClubStack() {
       <Stack.Screen name="clubHome" component={ClubHomeScreen} />
       <Stack.Screen name="clubProfile" component={ClubProfileScreen} />
       <Stack.Screen name="editClubProfile" component={EditClubProfileScreen} />
+      <Stack.Screen name="createPromotion" component={CreatePromotionScreen} />
       <Stack.Screen name="editPromotion" component={EditPromotionScreen} />
+      <Stack.Screen name="createField" component={CreateFieldScreen} />
+      <Stack.Screen name="editField" component={EditFieldScreen} />
       <Stack.Screen name="promotionDetail" component={PromotionDetailScreen} />
       <Stack.Screen name="editGallery" component={EditGalleryScreen} />
       <Stack.Screen name="editTerrains" component={EditTerrainScreen} />

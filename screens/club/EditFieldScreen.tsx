@@ -15,12 +15,11 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '@/context/AuthContext';
 import { ClubStackParamList } from '@/navigation/types';
-import { useClubPromotions, Promotion } from '@/hooks/useClubPromotions';
+import { useClubFields, Field } from '@/hooks/useClubFields';
 
-type Props = NativeStackScreenProps<ClubStackParamList, 'editPromotion'>;
+type Props = NativeStackScreenProps<ClubStackParamList, 'editField'>;
 
 const palette = {
   primary: '#E9B782',
@@ -30,90 +29,59 @@ const palette = {
   border: '#E5E7EB',
   success: '#10B981',
   danger: '#EF4444',
-  green: '#16A34A',
 };
 
-export default function EditPromotionScreen({ navigation, route }: Props) {
+const SURFACE_TYPES = ['gazon', 'béton', 'stabilisé', 'synthétique', 'terre'];
+const TRAINING_TYPES = ['agility', 'obéissance', 'pistage', 'protection', 'ring'];
+
+export default function EditFieldScreen({ navigation, route }: Props) {
   const { user, profile } = useAuth();
-  const promotionId = route.params?.promotionId;
+  const fieldId = route.params?.fieldId;
   const clubId = (profile as any)?.uid || user?.uid;
-  const { promotions, updatePromotion, addPromotion, deletePromotion, refetch } = useClubPromotions(clubId || null);
-  
+  const { fields, updateField, deleteField, refetch } = useClubFields(clubId || null);
+
   useEffect(() => {
-    console.log('EditPromotionScreen mounted/updated:');
+    console.log('EditFieldScreen mounted/updated:');
     console.log('  user?.uid:', user?.uid);
     console.log('  profile:', profile);
     console.log('  clubId:', clubId);
-    console.log('  promotionId:', promotionId);
-    console.log('  promotions count:', promotions.length);
-  }, [user, profile, clubId, promotionId, promotions]);
-  
-  const [loading, setLoading] = useState(!!promotionId);
+    console.log('  fieldId:', fieldId);
+    console.log('  fields count:', fields.length);
+  }, [user, profile, clubId, fieldId, fields]);
+
+  const [loading, setLoading] = useState(!!fieldId);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [code, setCode] = useState('');
-  const [discountPercentage, setDiscountPercentage] = useState('');
-  const [validFrom, setValidFrom] = useState(new Date());
-  const [validUntil, setValidUntil] = useState(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
-  const [isActive, setIsActive] = useState(true);
-  const [showFromDatePicker, setShowFromDatePicker] = useState(false);
-  const [showUntilDatePicker, setShowUntilDatePicker] = useState(false);
+  const [name, setName] = useState('');
+  const [address, setAddress] = useState('');
+  const [notes, setNotes] = useState('');
+  const [surfaceType, setSurfaceType] = useState('gazon');
+  const [trainingType, setTrainingType] = useState('agility');
+  const [isIndoor, setIsIndoor] = useState(false);
+  const [showSurfaceModal, setShowSurfaceModal] = useState(false);
+  const [showTrainingModal, setShowTrainingModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Charger les données de la promotion si en mode édition
+  // Charger les données du terrain si en mode édition
   useEffect(() => {
-    if (promotionId) {
-      const promotion = promotions.find(p => p.id === promotionId);
-      if (promotion) {
-        setTitle(promotion.title);
-        setDescription(promotion.description);
-        setCode(promotion.code);
-        setDiscountPercentage(promotion.discountPercentage.toString());
-        setValidFrom(promotion.validFrom?.toDate?.() || new Date(promotion.validFrom));
-        setValidUntil(promotion.validUntil?.toDate?.() || new Date(promotion.validUntil));
-        setIsActive(promotion.isActive);
+    if (fieldId) {
+      const field = fields.find(f => f.id === fieldId);
+      if (field) {
+        setName(field.name);
+        setAddress(field.address);
+        setNotes(field.notes);
+        setSurfaceType(field.surfaceType);
+        setTrainingType(field.trainingType);
+        setIsIndoor(field.isIndoor);
         setLoading(false);
       }
     }
-  }, [promotionId, promotions]);
-
-  const handleFromDateChange = (event: any, selectedDate: Date | undefined) => {
-    if (Platform.OS === 'android') {
-      setShowFromDatePicker(false);
-    }
-    if (selectedDate) {
-      console.log('Setting validFrom to:', selectedDate);
-      setValidFrom(new Date(selectedDate));
-    }
-    if (Platform.OS === 'ios') {
-      setShowFromDatePicker(false);
-    }
-  };
-
-  const handleUntilDateChange = (event: any, selectedDate: Date | undefined) => {
-    if (Platform.OS === 'android') {
-      setShowUntilDatePicker(false);
-    }
-    if (selectedDate) {
-      console.log('Setting validUntil to:', selectedDate);
-      setValidUntil(new Date(selectedDate));
-    }
-    if (Platform.OS === 'ios') {
-      setShowUntilDatePicker(false);
-    }
-  };
+  }, [fieldId, fields]);
 
   const handleSave = async () => {
-    if (!title.trim() || !code.trim() || !discountPercentage) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs requis');
-      return;
-    }
-
-    if (parseInt(discountPercentage) < 0 || parseInt(discountPercentage) > 100) {
-      Alert.alert('Erreur', 'La réduction doit être entre 0% et 100%');
+    if (!name.trim() || !address.trim()) {
+      Alert.alert('Erreur', 'Veuillez remplir au moins le nom et l\'adresse');
       return;
     }
 
@@ -121,60 +89,65 @@ export default function EditPromotionScreen({ navigation, route }: Props) {
     setError(null);
 
     try {
-      const promotionData = {
-        title: title.trim(),
-        description: description.trim(),
-        code: code.trim().toUpperCase(),
-        discountPercentage: parseInt(discountPercentage),
-        validFrom,
-        validUntil,
-        isActive,
-      };
-
-      if (promotionId) {
-        await updatePromotion(promotionId, promotionData);
-        refetch();
-        navigation.replace('clubProfile' as any);
-      } else {
-        await addPromotion(promotionData as any);
-        refetch();
-        navigation.replace('clubProfile' as any);
+      if (fieldId) {
+        // Mode édition
+        await updateField(fieldId, {
+          name: name.trim(),
+          address: address.trim(),
+          notes: notes.trim(),
+          surfaceType,
+          trainingType,
+          isIndoor,
+        });
       }
+
+      Alert.alert('Succès', 'Terrain mis à jour avec succès', [
+        {
+          text: 'OK',
+          onPress: () => {
+            navigation.goBack();
+          },
+        },
+      ]);
     } catch (err) {
       console.error('Erreur lors de la sauvegarde:', err);
       setError('Erreur lors de la sauvegarde');
-      Alert.alert('Erreur', 'Impossible de sauvegarder la promotion');
+      Alert.alert('Erreur', 'Impossible de sauvegarder le terrain');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    console.log('handleDelete called, promotionId:', promotionId);
-    if (!promotionId) {
-      console.log('No promotionId, returning');
+    console.log('handleDelete called, fieldId:', fieldId);
+    if (!fieldId) {
+      console.log('No fieldId, returning');
       return;
     }
-    
+
     console.log('Showing delete confirmation modal');
     setShowDeleteConfirm(true);
   };
 
   const confirmDelete = async () => {
     console.log('confirmDelete called');
+    if (!fieldId) {
+      console.error('No fieldId for deletion');
+      return;
+    }
     setShowDeleteConfirm(false);
     setDeleting(true);
-    
+
     try {
-      console.log('Calling deletePromotion with id:', promotionId);
-      await deletePromotion(promotionId);
-      console.log('deletePromotion completed successfully');
-      
+      console.log('Calling deleteField with id:', fieldId);
+      await deleteField(fieldId);
+      console.log('deleteField completed successfully');
+
       console.log('Calling refetch...');
       await refetch();
       console.log('refetch completed successfully');
-      
-      Alert.alert('Succès', 'Promotion supprimée avec succès', [
+
+      Alert.alert('Succès', 'Terrain supprimé avec succès', [
         {
           text: 'OK',
           onPress: () => {
@@ -184,7 +157,7 @@ export default function EditPromotionScreen({ navigation, route }: Props) {
       ]);
     } catch (err) {
       console.error('Erreur lors de la suppression:', err);
-      Alert.alert('Erreur', 'Impossible de supprimer la promotion');
+      Alert.alert('Erreur', 'Impossible de supprimer le terrain');
       setDeleting(false);
     }
   };
@@ -211,7 +184,7 @@ export default function EditPromotionScreen({ navigation, route }: Props) {
             <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
               <Ionicons name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>{promotionId ? 'Modifier' : 'Créer'} une promotion</Text>
+            <Text style={styles.headerTitle}>Modifier le terrain</Text>
             <View style={{ width: 24 }} />
           </View>
 
@@ -224,158 +197,83 @@ export default function EditPromotionScreen({ navigation, route }: Props) {
             )}
 
             <View style={{ gap: 16 }}>
-              {/* Titre */}
+              {/* Nom */}
               <View>
-                <Text style={styles.label}>Titre de la promotion *</Text>
+                <Text style={styles.label}>Nom du terrain *</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Ex: -20% sur les forfaits mensuels"
-                  value={title}
-                  onChangeText={setTitle}
+                  placeholder="Ex: Terrain principal"
+                  value={name}
+                  onChangeText={setName}
                   placeholderTextColor={palette.gray}
                 />
               </View>
 
-              {/* Description */}
+              {/* Adresse */}
               <View>
-                <Text style={styles.label}>Description</Text>
+                <Text style={styles.label}>Adresse *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex: 12 rue des Chiens, 7500 Belgique"
+                  value={address}
+                  onChangeText={setAddress}
+                  placeholderTextColor={palette.gray}
+                />
+              </View>
+
+              {/* Type de surface */}
+              <View>
+                <Text style={styles.label}>Type de surface</Text>
+                <TouchableOpacity
+                  style={styles.selectButton}
+                  onPress={() => setShowSurfaceModal(true)}
+                >
+                  <Text style={styles.selectButtonText}>{surfaceType}</Text>
+                  <Ionicons name="chevron-down" size={20} color={palette.gray} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Type d'entraînement */}
+              <View>
+                <Text style={styles.label}>Type d'entraînement</Text>
+                <TouchableOpacity
+                  style={styles.selectButton}
+                  onPress={() => setShowTrainingModal(true)}
+                >
+                  <Text style={styles.selectButtonText}>{trainingType}</Text>
+                  <Ionicons name="chevron-down" size={20} color={palette.gray} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Intérieur/Extérieur */}
+              <View style={styles.toggleRow}>
+                <Text style={styles.label}>Terrain intérieur</Text>
+                <TouchableOpacity
+                  style={[styles.toggleButton, isIndoor && styles.toggleButtonActive]}
+                  onPress={() => setIsIndoor(!isIndoor)}
+                >
+                  <View style={[styles.toggleDot, isIndoor && styles.toggleDotActive]} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Notes */}
+              <View>
+                <Text style={styles.label}>Notes</Text>
                 <TextInput
                   style={[styles.input, styles.textArea]}
-                  placeholder="Détails supplémentaires sur la promotion..."
-                  value={description}
-                  onChangeText={setDescription}
+                  placeholder="Éclairage, clôture, parking, etc."
+                  value={notes}
+                  onChangeText={setNotes}
                   placeholderTextColor={palette.gray}
                   multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
+                  numberOfLines={4}
                 />
-              </View>
-
-              {/* Code promo */}
-              <View>
-                <Text style={styles.label}>Code promo *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ex: OCT2025"
-                  value={code}
-                  onChangeText={(text) => setCode(text.toUpperCase())}
-                  placeholderTextColor={palette.gray}
-                />
-              </View>
-
-              {/* Réduction */}
-              <View>
-                <Text style={styles.label}>Réduction (%) *</Text>
-                <View style={styles.discountInput}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Ex: 20"
-                    value={discountPercentage}
-                    onChangeText={setDiscountPercentage}
-                    placeholderTextColor={palette.gray}
-                    keyboardType="numeric"
-                  />
-                  <Text style={styles.percentSign}>%</Text>
-                </View>
-              </View>
-
-              {/* Date de début */}
-              <View>
-                <Text style={styles.label}>Date de début</Text>
-                <TouchableOpacity
-                  style={styles.dateButton}
-                  onPress={() => setShowFromDatePicker(true)}
-                >
-                  <Ionicons name="calendar" size={20} color={palette.primary} />
-                  <Text style={styles.dateButtonText}>
-                    {validFrom.toLocaleDateString('fr-FR')}
-                  </Text>
-                </TouchableOpacity>
-                <Modal
-                  visible={showFromDatePicker}
-                  transparent
-                  animationType="slide"
-                  onRequestClose={() => setShowFromDatePicker(false)}
-                >
-                  <View style={styles.datePickerContainer}>
-                    <View style={styles.datePickerContent}>
-                      <View style={styles.datePickerHeader}>
-                        <TouchableOpacity onPress={() => setShowFromDatePicker(false)}>
-                          <Text style={styles.datePickerButtonText}>Annuler</Text>
-                        </TouchableOpacity>
-                        <Text style={styles.datePickerTitle}>Date de début</Text>
-                        <TouchableOpacity onPress={() => setShowFromDatePicker(false)}>
-                          <Text style={[styles.datePickerButtonText, { color: palette.primary }]}>OK</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <DateTimePicker
-                        value={validFrom}
-                        mode="date"
-                        display="spinner"
-                        onChange={handleFromDateChange}
-                        textColor={palette.text}
-                      />
-                    </View>
-                  </View>
-                </Modal>
-              </View>
-
-              {/* Date de fin */}
-              <View>
-                <Text style={styles.label}>Date de fin *</Text>
-                <TouchableOpacity
-                  style={styles.dateButton}
-                  onPress={() => setShowUntilDatePicker(true)}
-                >
-                  <Ionicons name="calendar" size={20} color={palette.primary} />
-                  <Text style={styles.dateButtonText}>
-                    {validUntil.toLocaleDateString('fr-FR')}
-                  </Text>
-                </TouchableOpacity>
-                <Modal
-                  visible={showUntilDatePicker}
-                  transparent
-                  animationType="slide"
-                  onRequestClose={() => setShowUntilDatePicker(false)}
-                >
-                  <View style={styles.datePickerContainer}>
-                    <View style={styles.datePickerContent}>
-                      <View style={styles.datePickerHeader}>
-                        <TouchableOpacity onPress={() => setShowUntilDatePicker(false)}>
-                          <Text style={styles.datePickerButtonText}>Annuler</Text>
-                        </TouchableOpacity>
-                        <Text style={styles.datePickerTitle}>Date de fin</Text>
-                        <TouchableOpacity onPress={() => setShowUntilDatePicker(false)}>
-                          <Text style={[styles.datePickerButtonText, { color: palette.primary }]}>OK</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <DateTimePicker
-                        value={validUntil}
-                        mode="date"
-                        display="spinner"
-                        onChange={handleUntilDateChange}
-                        textColor={palette.text}
-                      />
-                    </View>
-                  </View>
-                </Modal>
-              </View>
-
-              {/* Activer/Désactiver */}
-              <View style={styles.toggleRow}>
-                <Text style={styles.label}>Promotion active</Text>
-                <TouchableOpacity
-                  style={[styles.toggleButton, isActive && styles.toggleButtonActive]}
-                  onPress={() => setIsActive(!isActive)}
-                >
-                  <View style={[styles.toggleDot, isActive && styles.toggleDotActive]} />
-                </TouchableOpacity>
               </View>
             </View>
 
             {/* Boutons d'action */}
             <View style={styles.actions}>
-              {promotionId && (
+              {fieldId && (
                 <TouchableOpacity
                   style={styles.deleteBtn}
                   onPress={handleDelete}
@@ -423,9 +321,9 @@ export default function EditPromotionScreen({ navigation, route }: Props) {
       >
         <View style={styles.confirmModalOverlay}>
           <View style={styles.confirmModalContent}>
-            <Text style={styles.confirmModalTitle}>Supprimer cette promotion ?</Text>
+            <Text style={styles.confirmModalTitle}>Supprimer ce terrain ?</Text>
             <Text style={styles.confirmModalMessage}>
-              Cette action est irréversible. La promotion sera définitivement supprimée de la base de données.
+              Cette action est irréversible. Le terrain sera définitivement supprimé de la base de données.
             </Text>
             <View style={styles.confirmModalButtons}>
               <TouchableOpacity
@@ -445,6 +343,100 @@ export default function EditPromotionScreen({ navigation, route }: Props) {
                   <Text style={styles.confirmModalDeleteText}>Supprimer</Text>
                 )}
               </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Type de surface */}
+      <Modal
+        visible={showSurfaceModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSurfaceModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setShowSurfaceModal(false)}>
+                <Text style={styles.modalHeaderText}>Fermer</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Type de surface</Text>
+              <View style={{ width: 60 }} />
+            </View>
+            <View style={styles.modalOptions}>
+              {SURFACE_TYPES.map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  style={[
+                    styles.modalOption,
+                    surfaceType === type && styles.modalOptionSelected,
+                  ]}
+                  onPress={() => {
+                    setSurfaceType(type);
+                    setShowSurfaceModal(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.modalOptionText,
+                      surfaceType === type && styles.modalOptionTextSelected,
+                    ]}
+                  >
+                    {type}
+                  </Text>
+                  {surfaceType === type && (
+                    <Ionicons name="checkmark" size={24} color={palette.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Type d'entraînement */}
+      <Modal
+        visible={showTrainingModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowTrainingModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setShowTrainingModal(false)}>
+                <Text style={styles.modalHeaderText}>Fermer</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Type d'entraînement</Text>
+              <View style={{ width: 60 }} />
+            </View>
+            <View style={styles.modalOptions}>
+              {TRAINING_TYPES.map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  style={[
+                    styles.modalOption,
+                    trainingType === type && styles.modalOptionSelected,
+                  ]}
+                  onPress={() => {
+                    setTrainingType(type);
+                    setShowTrainingModal(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.modalOptionText,
+                      trainingType === type && styles.modalOptionTextSelected,
+                    ]}
+                  >
+                    {type}
+                  </Text>
+                  {trainingType === type && (
+                    <Ionicons name="checkmark" size={24} color={palette.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
         </View>
@@ -499,8 +491,8 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: palette.danger,
-    flex: 1,
     fontSize: 14,
+    flex: 1,
   },
   label: {
     fontSize: 14,
@@ -523,19 +515,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     minHeight: 80,
   },
-  discountInput: {
-    position: 'relative',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  percentSign: {
-    position: 'absolute',
-    right: 12,
-    fontSize: 16,
-    fontWeight: '600',
-    color: palette.gray,
-  },
-  dateButton: {
+  selectButton: {
     borderWidth: 1,
     borderColor: palette.border,
     borderRadius: 8,
@@ -543,10 +523,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'space-between',
     backgroundColor: '#fff',
   },
-  dateButtonText: {
+  selectButtonText: {
     fontSize: 14,
     color: palette.text,
   },
@@ -574,36 +554,6 @@ const styles = StyleSheet.create({
   },
   toggleDotActive: {
     alignSelf: 'flex-end',
-  },
-  datePickerContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    justifyContent: 'flex-end',
-  },
-  datePickerContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-  },
-  datePickerHeader: {
-    backgroundColor: '#fff',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-  },
-  datePickerTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: palette.text,
-  },
-  datePickerButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: palette.gray,
   },
   actions: {
     flexDirection: 'row',
@@ -707,5 +657,64 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#fff',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    flex: 1,
+    backgroundColor: '#fff',
+    marginTop: 100,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.border,
+  },
+  modalHeaderText: {
+    fontSize: 16,
+    color: palette.primary,
+    fontWeight: '600',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: palette.text,
+  },
+  modalOptions: {
+    padding: 16,
+    gap: 12,
+  },
+  modalOption: {
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+  },
+  modalOptionSelected: {
+    backgroundColor: '#FFF5E6',
+    borderColor: palette.primary,
+  },
+  modalOptionText: {
+    fontSize: 14,
+    color: palette.text,
+    flex: 1,
+    textTransform: 'capitalize',
+  },
+  modalOptionTextSelected: {
+    fontWeight: '600',
+    color: palette.primary,
   },
 });
