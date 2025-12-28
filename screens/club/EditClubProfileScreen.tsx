@@ -149,7 +149,9 @@ export default function EditClubProfileScreen({ navigation }: Props) {
       // Mise à jour des données du club dans Firestore
       const clubRef = doc(db, 'users', user.uid);
       console.log('📤 Sauvegarde services:', services);
-      await updateDoc(clubRef, {
+      console.log('📤 Services array is empty?', services.length === 0);
+      
+      const updateData: any = {
         'profile.clubName': clubName.trim(),
         'profile.legalName': legalName.trim(),
         'profile.siret': siret.trim(),
@@ -159,11 +161,15 @@ export default function EditClubProfileScreen({ navigation }: Props) {
         'profile.postalCode': postalCode.trim(),
         'profile.website': website.trim(),
         'profile.description': description.trim(),
-        'profile.services': services,
-        'profile.openingHours': openingHours,
+        'profile.services': services && services.length > 0 ? services : [],
+        'profile.openingHours': openingHours && openingHours.length > 0 ? openingHours : [],
         'profile.logoUrl': newLogoUrl,
-      });
+        'profile.updatedAt': new Date(),
+      };
+      
+      await updateDoc(clubRef, updateData);
       console.log('✅ Profil sauvegardé avec services:', services);
+      console.log('✅ Services tableau complet:', JSON.stringify(services));
 
       setSuccess(true);
       Alert.alert('Succès', 'Profil du club mis à jour avec succès');

@@ -16,13 +16,14 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
-import { getDoc, doc } from 'firebase/firestore';
+import { getDoc, doc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 
 import ClubBottomNav from '@/components/ClubBottomNav';
 import { formatFirebaseAuthError, useAuth } from '@/context/AuthContext';
 import { resetToHome } from '@/navigation/navigationRef';
 import { ClubStackParamList } from '@/navigation/types';
 import { useClubData } from '@/hooks/useClubData';
+import { useClubFields, Field } from '@/hooks/useClubFields';
 import { db } from '@/firebaseConfig';
 
 const palette = {
@@ -51,12 +52,27 @@ interface Stats {
   completedSessions: number;
   averageRating: number;
   satisfactionRate: number;
+  reviewCount: number;
 }
 
 interface BankInfo {
   connected: boolean;
   bankName?: string;
   maskedIban?: string;
+}
+
+interface Promotion {
+  id: string;
+  clubId: string;
+  title: string;
+  code: string;
+  description: string;
+  discountPercentage: number;
+  isActive: boolean;
+  validFrom: Timestamp;
+  validUntil: Timestamp;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
 export default function ClubProfileScreen({ navigation }: Props) {
@@ -73,17 +89,24 @@ export default function ClubProfileScreen({ navigation }: Props) {
   });
   const [bankInfo, setBankInfo] = useState<BankInfo>({ connected: false });
   const [stats, setStats] = useState<Stats>({
-    activeMembers: 127,
-    completedSessions: 456,
-    averageRating: 4.8,
-    satisfactionRate: 98,
+    activeMembers: 0,
+    completedSessions: 0,
+    averageRating: 0,
+    satisfactionRate: 0,
+    reviewCount: 0,
   });
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [loadingPromotions, setLoadingPromotions] = useState(false);
+  const [fields, setFields] = useState<Field[]>([]);
+  const [loadingFields, setLoadingFields] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
   const [forceRefresh, setForceRefresh] = useState(0);
 
   // Récupère les données du club depuis le profile (Firebase)
   const clubProfile = (profile as any)?.profile || {};
+  const clubId = (profile as any)?.clubId || user?.uid;
+  const { fields: clubFields } = useClubFields(clubId || null);
   const clubName = clubProfile?.clubName || 'Mon Club';
   const legalName = clubProfile?.legalName || '';
   const siret = clubProfile?.siret || '';
@@ -94,6 +117,7 @@ export default function ClubProfileScreen({ navigation }: Props) {
   const website = clubProfile?.website || '';
   const logoUrl = clubProfile?.logoUrl || null;
   const services = (clubProfile?.services as string[]) || [];
+  const openingHours = (clubProfile?.openingHours as Array<{ day: string; open: string; close: string }>) || [];
 
   // Recharger les données du club quand on revient sur cette page
   useFocusEffect(
@@ -101,16 +125,115 @@ export default function ClubProfileScreen({ navigation }: Props) {
       const loadFreshData = async () => {
         try {
           if (refreshProfile) {
+            // Attendre un petit délai pour s'assurer que Firestore a mis à jour
+            await new Promise(resolve => setTimeout(resolve, 300));
             await refreshProfile();
           }
-          setForceRefresh(prev => prev + 1);
         } catch (err) {
           console.error('Erreur lors du rafraîchissement:', err);
         }
       };
       loadFreshData();
-    }, [refreshProfile, user?.uid])
+      // Charger les promotions et les stats
+      loadPromotions();
+      loadStats();
+    }, [user?.uid])
   );
+
+  // Synchroniser les terrains depuis le hook
+  useEffect(() => {
+    setFields(clubFields);
+  }, [clubFields]);
+  const loadPromotions = async () => {
+    try {
+      setLoadingPromotions(true);
+      const clubId = (profile as any)?.uid || user?.uid;
+      if (!clubId) {
+        console.error('clubId non trouvé');
+        setPromotions([]);
+        return;
+      }
+
+      const q = query(
+        collection(db, 'promotions'),
+        where('clubId', '==', clubId)
+      );
+      const snapshot = await getDocs(q);
+      const promotionsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      } as Promotion));
+      
+      // Trier par date de création (plus récentes en premier)
+      promotionsData.sort((a, b) => {
+        const dateA = a.createdAt instanceof Timestamp ? a.createdAt.toDate() : new Date(0);
+        const dateB = b.createdAt instanceof Timestamp ? b.createdAt.toDate() : new Date(0);
+        return dateB.getTime() - dateA.getTime();
+      });
+
+      setPromotions(promotionsData);
+    } catch (err) {
+      console.error('Erreur lors du chargement des promotions:', err);
+      setPromotions([]);
+    } finally {
+      setLoadingPromotions(false);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const cId = clubId;
+      if (!cId) {
+        console.error('clubId non trouvé pour les stats');
+        return;
+      }
+
+      // 1. Charger les stats depuis la collection 'club'
+      const clubRef = doc(db, 'club', cId);
+      const clubSnapshot = await getDoc(clubRef);
+      
+      let activeMembers = 0;
+      let completedSessions = 0;
+      let averageRating = 0;
+      let satisfactionRate = 0;
+      let reviewCount = 0;
+
+      if (clubSnapshot.exists()) {
+        const clubData = clubSnapshot.data();
+        activeMembers = clubData?.stats?.totalMembers || 0;
+        completedSessions = clubData?.stats?.totalBookings || 0;
+      }
+
+      // 2. Charger les reviews et calculer la moyenne et le taux de satisfaction
+      const reviewsQuery = query(
+        collection(db, 'reviews'),
+        where('clubId', '==', cId)
+      );
+      const reviewsSnapshot = await getDocs(reviewsQuery);
+      reviewCount = reviewsSnapshot.size; // Nombre total d'avis
+      
+      if (reviewsSnapshot.size > 0) {
+        const ratings = reviewsSnapshot.docs.map(doc => doc.data().rating);
+        
+        // Calculer la moyenne des ratings
+        averageRating = ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
+        
+        // Calculer le pourcentage de satisfaction (ratings > 2.5)
+        const satisfiedCount = ratings.filter(rating => rating > 2.5).length;
+        satisfactionRate = (satisfiedCount / ratings.length) * 100;
+      }
+
+      setStats({
+        activeMembers,
+        completedSessions,
+        averageRating: Math.round(averageRating * 10) / 10, // Arrondir à 1 décimale
+        satisfactionRate: Math.round(satisfactionRate),
+        reviewCount,
+      });
+    } catch (err) {
+      console.error('Erreur lors du chargement des stats:', err);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -165,7 +288,7 @@ export default function ClubProfileScreen({ navigation }: Props) {
               onPress={() => navigation.navigate('clubReviews')}
             >
               <Text style={styles.heroRating}>
-                <Ionicons name="star" size={14} color="#FBBF24" /> 4.8 (156 avis)
+                <Ionicons name="star" size={14} color="#FBBF24" /> {stats.averageRating.toFixed(1)} ({stats.reviewCount} avis)
               </Text>
               <Ionicons name="chevron-forward" size={16} color={palette.primaryDark} />
             </TouchableOpacity>
@@ -193,7 +316,16 @@ export default function ClubProfileScreen({ navigation }: Props) {
         <View style={styles.content}>
           {/* Informations générales */}
           <View>
-            <Text style={styles.sectionTitle}>Informations générales</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={styles.sectionTitle}>Informations générales</Text>
+              <TouchableOpacity 
+                style={styles.editButton}
+                onPress={() => navigation.navigate('editClubProfile')}
+              >
+                <Ionicons name="pencil" size={16} color="#fff" />
+                <Text style={styles.editButtonText}>Modifier</Text>
+              </TouchableOpacity>
+            </View>
             <View style={styles.infoCard}>
               <Text style={styles.infoLabel}>Nom du club</Text>
               <Text style={styles.infoValue}>{clubName}</Text>
@@ -249,10 +381,23 @@ export default function ClubProfileScreen({ navigation }: Props) {
                   <Text style={[styles.infoValue, { color: '#2563EB' }]}>{website}</Text>
                 </View>
               )}
-              <View style={styles.infLine}>
-                <MaterialCommunityIcons name="clock-outline" size={20} color={palette.primary} />
-                <Text style={styles.infoValue}>Lun-Sam: 9h-19h, Dim: 9h-13h</Text>
-              </View>
+              {openingHours && openingHours.length > 0 ? (
+                <View style={styles.infLine}>
+                  <MaterialCommunityIcons name="clock-outline" size={20} color={palette.primary} />
+                  <View style={{ flex: 1 }}>
+                    {openingHours.map((hours, idx) => (
+                      <Text key={idx} style={styles.infoValue}>
+                        {hours.day}: {hours.open}-{hours.close}
+                      </Text>
+                    ))}
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.infLine}>
+                  <MaterialCommunityIcons name="clock-outline" size={20} color={palette.primary} />
+                  <Text style={styles.infoValue}>Horaires non définies</Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -299,39 +444,86 @@ export default function ClubProfileScreen({ navigation }: Props) {
           <View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <Text style={styles.sectionTitle}>Promotions</Text>
-              <TouchableOpacity style={styles.createButton}>
+              <TouchableOpacity 
+                style={styles.createButton}
+                onPress={() => navigation.navigate('createPromotion')}
+              >
                 <Ionicons name="add" size={18} color="#fff" />
                 <Text style={styles.createButtonText}>Créer</Text>
               </TouchableOpacity>
             </View>
-            <View style={{ gap: 12 }}>
-              <View style={styles.promotionCard}>
-                <View style={styles.promotionHeader}>
-                  <Text style={styles.promotionTitle}>-20% sur les forfaits mensuels</Text>
-                  <View style={styles.promotionBadge}>
-                    <Text style={styles.promotionBadgeText}>Active</Text>
-                  </View>
-                </View>
-                <Text style={styles.promotionCode}>OCT2025 -20%</Text>
-                <Text style={styles.promotionDate}>Valide jusqu'au 31 Oct 2025</Text>
+            
+            {loadingPromotions ? (
+              <ActivityIndicator color={palette.primary} size="large" style={{ marginVertical: 20 }} />
+            ) : promotions.length === 0 ? (
+              <View style={styles.emptyState}>
+                <MaterialCommunityIcons name="tag-off" size={48} color={palette.gray} />
+                <Text style={styles.emptyStateTitle}>Aucune promotion</Text>
+                <Text style={styles.emptyStateText}>
+                  Créez une promotion pour attirer plus de clients et augmenter vos réservations !
+                </Text>
+                <TouchableOpacity 
+                  style={styles.emptyStateButton}
+                  onPress={() => navigation.navigate('createPromotion')}
+                >
+                  <Ionicons name="add-circle" size={18} color={palette.primary} />
+                  <Text style={styles.emptyStateButtonText}>Créer une promotion</Text>
+                </TouchableOpacity>
               </View>
-              <View style={styles.promotionCard}>
-                <View style={styles.promotionHeader}>
-                  <Text style={styles.promotionTitle}>Première séance gratuite</Text>
-                  <View style={styles.promotionBadge}>
-                    <Text style={styles.promotionBadgeText}>Active</Text>
-                  </View>
-                </View>
-                <Text style={styles.promotionCode}>FIRST -100%</Text>
-                <Text style={styles.promotionDate}>Valide jusqu'au 31 Déc 2025</Text>
+            ) : (
+              <View style={{ gap: 12 }}>
+                {promotions.map((promo) => {
+                  const validFrom = promo.validFrom instanceof Timestamp ? promo.validFrom.toDate() : new Date(promo.validFrom);
+                  const validUntil = promo.validUntil instanceof Timestamp ? promo.validUntil.toDate() : new Date(promo.validUntil);
+                  const isExpired = validUntil < new Date();
+                  
+                  return (
+                    <TouchableOpacity 
+                      key={promo.id} 
+                      style={styles.promotionCard}
+                      onPress={() => navigation.navigate('editPromotion', { promotionId: promo.id })}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.promotionHeader}>
+                        <Text style={styles.promotionTitle}>{promo.title}</Text>
+                        <View style={[
+                          styles.promotionBadge,
+                          isExpired && styles.promotionBadgeInactive
+                        ]}>
+                          <Text style={styles.promotionBadgeText}>
+                            {isExpired ? 'Expirée' : 'Active'}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.promotionCode}>
+                        {promo.code} -{promo.discountPercentage}%
+                      </Text>
+                      <Text style={styles.promotionDate}>
+                        Valide jusqu'au {validUntil.toLocaleDateString('fr-FR', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </Text>
+                      {promo.description && (
+                        <Text style={styles.promotionDescription} numberOfLines={2}>
+                          {promo.description}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
-            </View>
-            <View style={styles.infoBox}>
-              <Ionicons name="information-circle" size={16} color="#6366F1" />
-              <Text style={styles.infoBoxText}>
-                Conseils: avec promotions actives reçoivent 60% de réservations en plus !
-              </Text>
-            </View>
+            )}
+            
+            {promotions.length > 0 && (
+              <View style={styles.infoBox}>
+                <Ionicons name="information-circle" size={16} color="#6366F1" />
+                <Text style={styles.infoBoxText}>
+                  Conseil: les clubs avec promotions actives reçoivent 60% de réservations en plus !
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Compte bancaire */}
@@ -454,44 +646,42 @@ export default function ClubProfileScreen({ navigation }: Props) {
           <View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <Text style={styles.sectionTitle}>Terrains</Text>
-              <TouchableOpacity style={styles.createButton}>
+              <TouchableOpacity 
+                style={styles.createButton}
+                onPress={() => navigation.navigate('createField')}
+              >
                 <Ionicons name="add" size={18} color="#fff" />
                 <Text style={styles.createButtonText}>Ajouter</Text>
               </TouchableOpacity>
             </View>
-            <View style={{ gap: 12 }}>
-              <View style={styles.terrainItem}>
-                <View style={styles.terrainIcon}>
-                  <Ionicons name="location" size={24} color={palette.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.terrainName}>Terrain principal</Text>
-                  <Text style={styles.terrainAddress}>123 Rue de la République, 75015 Paris</Text>
-                  <View style={styles.terrainBadge}>
-                    <Text style={styles.terrainBadgeText}>Agility</Text>
-                  </View>
-                </View>
-                <TouchableOpacity>
-                  <Ionicons name="trash-outline" size={20} color={palette.red} />
-                </TouchableOpacity>
+            {loadingFields ? (
+              <ActivityIndicator color={palette.primary} />
+            ) : fields.length === 0 ? (
+              <Text style={{ color: palette.gray, fontSize: 14, textAlign: 'center', marginVertical: 16 }}>Aucun terrain enregistré</Text>
+            ) : (
+              <View style={{ gap: 12 }}>
+                {fields.map((field) => (
+                  <TouchableOpacity 
+                    key={field.id}
+                    style={styles.terrainItem}
+                    onPress={() => navigation.navigate('editField', { fieldId: field.id })}
+                  >
+                    <View style={styles.terrainIcon}>
+                      <Ionicons name={field.isIndoor ? 'home' : 'location'} size={24} color={palette.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.terrainName}>{field.name}</Text>
+                      <Text style={styles.terrainAddress}>{field.address}</Text>
+                      <View style={styles.terrainBadge}>
+                        <Text style={styles.terrainBadgeText}>
+                          {field.isIndoor ? 'Intérieur' : 'Extérieur'}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
               </View>
-
-              <View style={styles.terrainItem}>
-                <View style={styles.terrainIcon}>
-                  <Ionicons name="location" size={24} color={palette.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.terrainName}>Terrain de dressage</Text>
-                  <Text style={styles.terrainAddress}>45 Avenue du Parc, 75015 Paris</Text>
-                  <View style={styles.terrainBadge}>
-                    <Text style={styles.terrainBadgeText}>Education</Text>
-                  </View>
-                </View>
-                <TouchableOpacity>
-                  <Ionicons name="trash-outline" size={20} color={palette.red} />
-                </TouchableOpacity>
-              </View>
-            </View>
+            )}
           </View>
 
           {/* Gestion des professeurs */}
@@ -899,6 +1089,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: palette.primaryDark,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  editButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
   promotionCard: {
     backgroundColor: palette.surface,
     borderRadius: 12,
@@ -938,6 +1142,54 @@ const styles = StyleSheet.create({
   promotionDate: {
     fontSize: 11,
     color: palette.gray,
+  },
+  promotionDescription: {
+    fontSize: 12,
+    color: palette.gray,
+    marginTop: 8,
+    lineHeight: 16,
+  },
+  promotionBadgeInactive: {
+    backgroundColor: '#FEE2E2',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 16,
+    backgroundColor: palette.lightGray,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: palette.border,
+    gap: 12,
+  },
+  emptyStateTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: palette.text,
+  },
+  emptyStateText: {
+    fontSize: 13,
+    color: palette.gray,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  emptyStateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: palette.surface,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: palette.primary,
+    marginTop: 8,
+  },
+  emptyStateButtonText: {
+    color: palette.primary,
+    fontSize: 13,
+    fontWeight: '600',
   },
   infoBox: {
     flexDirection: 'row',
