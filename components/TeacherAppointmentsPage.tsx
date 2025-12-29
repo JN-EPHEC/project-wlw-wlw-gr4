@@ -14,6 +14,7 @@ import {
 import { Timestamp } from 'firebase/firestore';
 
 import TeacherBottomNav from '@/components/TeacherBottomNav';
+import { useAuth } from '@/context/AuthContext';
 import { TeacherStackParamList } from '@/navigation/types';
 import { useFetchEducatorBookings } from '@/hooks/useFetchEducatorBookings';
 import { BookingDisplay } from '@/types/Booking';

@@ -110,14 +110,20 @@ export const useUnreadNotificationCount = (userId: string | null) => {
       return;
     }
 
+    const unreadQuery = query(
+      collection(db, 'notifications', userId, 'items'),
+      where('isRead', '==', false),
+    );
+
     const unsubscribe = onSnapshot(
-      query(
-        collection(db, 'notifications', userId, 'items'),
-        where('isRead', '==', false)
-      ),
+      unreadQuery,
       (snapshot) => {
         setCount(snapshot.size);
-      }
+      },
+      (err) => {
+        console.error('Erreur lors du comptage des notifications non lues:', err);
+        setCount(0);
+      },
     );
 
     return () => unsubscribe();
