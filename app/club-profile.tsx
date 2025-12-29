@@ -12,11 +12,13 @@ import {
   Image,
   Dimensions,
   Pressable,
+  Alert,
+  TextInput,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
-import { getDoc, doc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { getDoc, doc, collection, query, where, getDocs, Timestamp, updateDoc } from 'firebase/firestore';
 
 import ClubBottomNav from '@/components/ClubBottomNav';
 import { formatFirebaseAuthError, useAuth } from '@/context/AuthContext';
@@ -24,7 +26,9 @@ import { resetToHome } from '@/navigation/navigationRef';
 import { ClubStackParamList } from '@/navigation/types';
 import { useClubData } from '@/hooks/useClubData';
 import { useClubFields, Field } from '@/hooks/useClubFields';
+import { useClubGallery } from '@/hooks/useClubGallery';
 import { db } from '@/firebaseConfig';
+import * as ImagePicker from 'expo-image-picker';
 
 const palette = {
   primary: '#E9B782',
@@ -102,11 +106,20 @@ export default function ClubProfileScreen({ navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
   const [forceRefresh, setForceRefresh] = useState(0);
+  const [isGroupSizeModalVisible, setGroupSizeModalVisible] = useState(false);
+  const [isUpdatingGroupSize, setIsUpdatingGroupSize] = useState(false);
+  const [selectedGroupSize, setSelectedGroupSize] = useState<string | null>(null);
+  const [localMaxGroupSize, setLocalMaxGroupSize] = useState<string | null>(null);
+  const [isPhotoModalVisible, setPhotoModalVisible] = useState(false);
+  const [photoDescription, setPhotoDescription] = useState('');
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [clubCreatedAt, setClubCreatedAt] = useState<Timestamp | null>(null);
 
   // Récupère les données du club depuis le profile (Firebase)
   const clubProfile = (profile as any)?.profile || {};
   const clubId = (profile as any)?.clubId || user?.uid;
   const { fields: clubFields } = useClubFields(clubId || null);
+  const { images: galleryPhotos, loading: galleryLoading, addImage, updateImage, deleteImage, totalPhotos, canAddMorePhotos } = useClubGallery(clubId || null);
   const clubName = clubProfile?.clubName || 'Mon Club';
   const legalName = clubProfile?.legalName || '';
   const siret = clubProfile?.siret || '';
@@ -118,6 +131,31 @@ export default function ClubProfileScreen({ navigation }: Props) {
   const logoUrl = clubProfile?.logoUrl || null;
   const services = (clubProfile?.services as string[]) || [];
   const openingHours = (clubProfile?.openingHours as Array<{ day: string; open: string; close: string }>) || [];
+  const maxGroupSize = clubProfile?.maxGroupSize || '10';
+
+  // Formater la date de création du club
+  const formatCreatedAtDate = (): string => {
+    if (!clubCreatedAt) return '';
+
+    let date: Date;
+    if (clubCreatedAt instanceof Timestamp) {
+      date = clubCreatedAt.toDate();
+    } else {
+      return '';
+    }
+
+    const months = [
+      'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+    ];
+
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+
+    return `${month} ${year}`;
+  };
+
+  const createdAtDisplay = formatCreatedAtDate();
 
   // Recharger les données du club quand on revient sur cette page
   useFocusEffect(
@@ -137,13 +175,55 @@ export default function ClubProfileScreen({ navigation }: Props) {
       // Charger les promotions et les stats
       loadPromotions();
       loadStats();
+      // Charger la taille max des groupes depuis Firestore
+      loadMaxGroupSize();
     }, [user?.uid])
   );
+
+  // Charger maxGroupSize depuis Firestore
+  const loadMaxGroupSize = async () => {
+    if (!clubId) return;
+
+    try {
+      const clubRef = doc(db, 'club', clubId);
+      const clubDoc = await getDoc(clubRef);
+      
+      if (clubDoc.exists()) {
+        const maxSize = clubDoc.data()?.maxGroupSize || '10';
+        setLocalMaxGroupSize(maxSize);
+      }
+    } catch (err) {
+      console.error('Erreur lors du chargement de maxGroupSize:', err);
+    }
+  };
 
   // Synchroniser les terrains depuis le hook
   useEffect(() => {
     setFields(clubFields);
   }, [clubFields]);
+
+  // Charger la date de création du club
+  useEffect(() => {
+    const loadClubCreationDate = async () => {
+      if (!clubId) return;
+
+      try {
+        const clubRef = doc(db, 'club', clubId);
+        const clubDoc = await getDoc(clubRef);
+        
+        if (clubDoc.exists()) {
+          const createdAt = clubDoc.data()?.createdAt;
+          if (createdAt) {
+            setClubCreatedAt(createdAt);
+          }
+        }
+      } catch (err) {
+        console.error('Erreur lors du chargement de la date de création du club:', err);
+      }
+    };
+
+    loadClubCreationDate();
+  }, [clubId]);
   const loadPromotions = async () => {
     try {
       setLoadingPromotions(true);
@@ -251,6 +331,106 @@ export default function ClubProfileScreen({ navigation }: Props) {
     }
   };
 
+  const handleUpdateGroupSize = async (newSize: string) => {
+    if (!clubId) {
+      console.error('clubId is missing', { clubId, userId: user?.uid });
+      setError('Erreur: ID du club manquant');
+      return;
+    }
+
+    try {
+      setIsUpdatingGroupSize(true);
+      setSelectedGroupSize(newSize);
+
+      const clubDocRef = doc(db, 'club', clubId);
+      console.log('🔄 Updating club:', clubId, 'with maxGroupSize:', newSize);
+      
+      const updateResult = await updateDoc(clubDocRef, {
+        maxGroupSize: newSize,
+      });
+
+      console.log('✅ Update to Firebase successful');
+      
+      // Mettre à jour l'état local IMMÉDIATEMENT pour l'UI
+      setLocalMaxGroupSize(newSize);
+      
+      // Fermer le modal
+      setGroupSizeModalVisible(false);
+      setSelectedGroupSize(null);
+      
+      // Rafraîchir les données du profil depuis Firebase
+      if (refreshProfile) {
+        console.log('🔄 Refreshing profile...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await refreshProfile();
+        console.log('✅ Profile refreshed');
+      }
+    } catch (err) {
+      console.error('❌ Erreur lors de la mise à jour de la taille des groupes:', err);
+      setError('Erreur lors de la mise à jour: ' + (err as any).message);
+      setSelectedGroupSize(null);
+    } finally {
+      setIsUpdatingGroupSize(false);
+    }
+  };
+
+  const pickPhotoForGallery = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setIsUploadingPhoto(true);
+        
+        try {
+          await addImage(asset.uri, photoDescription);
+          setPhotoModalVisible(false);
+          setPhotoDescription('');
+        } catch (err) {
+          Alert.alert('Erreur', err instanceof Error ? err.message : 'Erreur lors de l\'ajout de la photo');
+        } finally {
+          setIsUploadingPhoto(false);
+        }
+      }
+    } catch (err) {
+      Alert.alert('Erreur', 'Impossible de sélectionner une image');
+    }
+  };
+
+  const handleDeleteGalleryPhoto = async (photoId: string, storagePath: string) => {
+    Alert.alert(
+      'Supprimer la photo',
+      'Êtes-vous sûr de vouloir supprimer cette photo ?',
+      [
+        { text: 'Annuler', onPress: () => {}, style: 'cancel' },
+        {
+          text: 'Supprimer',
+          onPress: async () => {
+            try {
+              await deleteImage(photoId, storagePath);
+            } catch (err) {
+              Alert.alert('Erreur', 'Erreur lors de la suppression de la photo');
+            }
+          },
+          style: 'destructive',
+        },
+      ]
+    );
+  };
+
+  const handleSetCover = async (photoId: string) => {
+    try {
+      await updateImage(photoId, { isCover: true });
+    } catch (err) {
+      Alert.alert('Erreur', 'Erreur lors de la mise à jour');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView
@@ -292,7 +472,7 @@ export default function ClubProfileScreen({ navigation }: Props) {
               </Text>
               <Ionicons name="chevron-forward" size={16} color={palette.primaryDark} />
             </TouchableOpacity>
-            <Text style={styles.heroMember}>Membre depuis Janvier 2020</Text>
+            <Text style={styles.heroMember}>Membre depuis {createdAtDisplay || 'Date inconnue'}</Text>
           </View>
         </View>
 
@@ -618,28 +798,66 @@ export default function ClubProfileScreen({ navigation }: Props) {
           <View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <Text style={styles.sectionTitle}>Galerie photos</Text>
-              <TouchableOpacity style={styles.addPhotoButton}>
-                <MaterialCommunityIcons name="plus" size={20} color={palette.primary} />
+              <TouchableOpacity 
+                style={[styles.addPhotoButton, !canAddMorePhotos && { opacity: 0.5 }]}
+                onPress={() => setPhotoModalVisible(true)}
+                disabled={!canAddMorePhotos}
+              >
+                <MaterialCommunityIcons name="plus" size={20} color="#fff" />
                 <Text style={styles.addPhotoText}>Ajouter</Text>
               </TouchableOpacity>
             </View>
-            <View style={{ gap: 12 }}>
-              <View style={styles.photosPreview}>
-                <View style={styles.photoThumbnail}>
-                  <Text style={styles.photoPlaceholder}>📷</Text>
-                  <Text style={styles.photoLabel}>Terrain d'agility</Text>
-                </View>
-                <View style={styles.photoThumbnail}>
-                  <Text style={styles.photoPlaceholder}>🐕</Text>
-                  <Text style={styles.photoLabel}>Séance de grou</Text>
-                </View>
-                <View style={styles.photoThumbnail}>
-                  <Text style={styles.photoPlaceholder}>🏠</Text>
-                  <Text style={styles.photoLabel}>Nos installations</Text>
-                </View>
+            
+            {galleryLoading ? (
+              <ActivityIndicator color={palette.primary} size="large" style={{ marginVertical: 20 }} />
+            ) : galleryPhotos.length === 0 ? (
+              <View style={styles.emptyGalleryState}>
+                <MaterialCommunityIcons name="image-off" size={48} color={palette.gray} />
+                <Text style={styles.emptyStateTitle}>Aucune photo</Text>
+                <Text style={styles.emptyStateText}>Ajoutez des photos de votre club pour attirer plus de clients !</Text>
+                <TouchableOpacity 
+                  style={styles.emptyStateButton}
+                  onPress={() => setPhotoModalVisible(true)}
+                >
+                  <Ionicons name="add-circle" size={18} color={palette.primary} />
+                  <Text style={styles.emptyStateButtonText}>Ajouter une photo</Text>
+                </TouchableOpacity>
               </View>
-              <Text style={styles.photoInfo}>3/10 photos - Les photos de qualité augmentent vos réservations de 40%</Text>
-            </View>
+            ) : (
+              <View style={{ gap: 12 }}>
+                <View style={styles.photosPreview}>
+                  {galleryPhotos.map((photo, index) => (
+                    <View key={photo.id} style={styles.photoThumbnailContainer}>
+                      <Image 
+                        source={{ uri: photo.photoUrl }} 
+                        style={styles.photoThumbnailImage}
+                      />
+                      {photo.isCover && (
+                        <View style={styles.coverBadge}>
+                          <Text style={styles.coverBadgeText}>Couverture</Text>
+                        </View>
+                      )}
+                      <TouchableOpacity 
+                        style={styles.photoDeleteButton}
+                        onPress={() => photo.id && handleDeleteGalleryPhoto(photo.id, photo.storagePath)}
+                      >
+                        <Ionicons name="close-circle" size={24} color="#DC2626" />
+                      </TouchableOpacity>
+                      <View style={styles.photoActions}>
+                        <TouchableOpacity 
+                          style={[styles.photoActionBtn, photo.isCover && styles.photoActionBtnActive]}
+                          onPress={() => photo.id && handleSetCover(photo.id)}
+                        >
+                          <Ionicons name={photo.isCover ? 'star' : 'star-outline'} size={16} color="#fff" />
+                          <Text style={styles.photoActionBtnText}>Couverture</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+                <Text style={styles.photoInfo}>{totalPhotos}/10 photos - Les photos de qualité augmentent vos réservations de 40%</Text>
+              </View>
+            )}
           </View>
 
           {/* Terrains */}
@@ -778,10 +996,18 @@ export default function ClubProfileScreen({ navigation }: Props) {
               </View>
 
               <View style={[styles.settingRow, { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: palette.border }]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>Taille max des groupes</Text>
-                </View>
-                <Text style={styles.settingValue}>10 participants</Text>
+                <TouchableOpacity 
+                  style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                  onPress={() => setGroupSizeModalVisible(true)}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.settingLabel}>Taille max des groupes</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={styles.settingValue}>{localMaxGroupSize || maxGroupSize} participants</Text>
+                    <Ionicons name="chevron-forward" size={16} color={palette.primary} />
+                  </View>
+                </TouchableOpacity>
               </View>
 
               <View style={styles.settingRow}>
@@ -868,6 +1094,210 @@ export default function ClubProfileScreen({ navigation }: Props) {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Group Size Selection Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isGroupSizeModalVisible}
+        onRequestClose={() => {
+          if (!isUpdatingGroupSize) {
+            setGroupSizeModalVisible(false);
+            setSelectedGroupSize(null);
+          }
+        }}
+      >
+        <Pressable 
+          style={styles.modalBackdrop}
+          onPress={() => {
+            if (!isUpdatingGroupSize) {
+              setGroupSizeModalVisible(false);
+              setSelectedGroupSize(null);
+            }
+          }}
+        >
+          <Pressable 
+            style={[styles.modalView, { width: '90%', maxWidth: 400 }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, width: '100%' }}>
+              <Text style={styles.modalTitle}>Taille max des groupes</Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  if (!isUpdatingGroupSize) {
+                    setGroupSizeModalVisible(false);
+                    setSelectedGroupSize(null);
+                  }
+                }}
+                disabled={isUpdatingGroupSize}
+              >
+                <Ionicons name="close" size={24} color={palette.text} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.modalDescription, { width: '100%' }]}>
+              Sélectionnez le nombre maximum de participants pour les cours en groupe.
+            </Text>
+
+            <View style={{ gap: 12, marginVertical: 20, width: '100%' }}>
+              {['4', '5', '6', '8', '10', '12', '15', '20'].map((size) => (
+                <TouchableOpacity
+                  key={size}
+                  style={[
+                    styles.groupSizeOption,
+                    (selectedGroupSize || localMaxGroupSize) === size && styles.groupSizeOptionSelected,
+                  ]}
+                  onPress={() => setSelectedGroupSize(size)}
+                  disabled={isUpdatingGroupSize}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                    <View
+                      style={[
+                        styles.groupSizeRadio,
+                        (selectedGroupSize || localMaxGroupSize) === size && styles.groupSizeRadioSelected,
+                      ]}
+                    >
+                      {(selectedGroupSize || localMaxGroupSize) === size && (
+                        <Ionicons name="checkmark" size={16} color="#fff" />
+                      )}
+                    </View>
+                    <View>
+                      <Text style={styles.groupSizeLabel}>{size} participants</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={{ width: '100%', gap: 10 }}>
+              <TouchableOpacity
+                style={[
+                  styles.groupSizeConfirmButton,
+                  isUpdatingGroupSize && { opacity: 0.6 }
+                ]}
+                onPress={() => {
+                  if (selectedGroupSize && selectedGroupSize !== localMaxGroupSize) {
+                    handleUpdateGroupSize(selectedGroupSize);
+                  } else if (selectedGroupSize === localMaxGroupSize) {
+                    setGroupSizeModalVisible(false);
+                    setSelectedGroupSize(null);
+                  }
+                }}
+                disabled={isUpdatingGroupSize || !selectedGroupSize}
+              >
+                {isUpdatingGroupSize ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.groupSizeConfirmButtonText}>Confirmer</Text>
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.groupSizeCloseButton}
+                onPress={() => {
+                  setGroupSizeModalVisible(false);
+                  setSelectedGroupSize(null);
+                }}
+                disabled={isUpdatingGroupSize}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.groupSizeCloseButtonText}>Annuler</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Photo Upload Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isPhotoModalVisible}
+        onRequestClose={() => {
+          if (!isUploadingPhoto) {
+            setPhotoModalVisible(false);
+            setPhotoDescription('');
+          }
+        }}
+      >
+        <Pressable 
+          style={styles.modalBackdrop}
+          onPress={() => {
+            if (!isUploadingPhoto) {
+              setPhotoModalVisible(false);
+              setPhotoDescription('');
+            }
+          }}
+        >
+          <Pressable 
+            style={[styles.modalView, { width: '90%', maxWidth: 400 }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, width: '100%' }}>
+              <Text style={styles.modalTitle}>Ajouter une photo</Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  if (!isUploadingPhoto) {
+                    setPhotoModalVisible(false);
+                    setPhotoDescription('');
+                  }
+                }}
+                disabled={isUploadingPhoto}
+              >
+                <Ionicons name="close" size={24} color={palette.text} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.modalDescription, { width: '100%', marginBottom: 12 }]}>
+              Ajoutez une belle photo pour mettre en avant votre club !
+            </Text>
+
+            <View style={{ width: '100%', marginBottom: 16 }}>
+              <Text style={[styles.modalDescription, { fontSize: 12, color: palette.gray, marginBottom: 8 }]}>
+                Description (optionnelle)
+              </Text>
+              <TextInput
+                style={styles.photoDescriptionInput}
+                placeholder="Terrain d'agility, Séance de groupe..."
+                value={photoDescription}
+                onChangeText={setPhotoDescription}
+                placeholderTextColor={palette.gray}
+                editable={!isUploadingPhoto}
+                maxLength={50}
+              />
+              <Text style={styles.charCounter}>{photoDescription.length}/50</Text>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.photoPickerButton, isUploadingPhoto && { opacity: 0.6 }]}
+              onPress={pickPhotoForGallery}
+              disabled={isUploadingPhoto}
+            >
+              {isUploadingPhoto ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="image-outline" size={20} color="#fff" />
+                  <Text style={styles.photoPickerButtonText}>Sélectionner une photo</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.groupSizeCloseButton}
+              onPress={() => {
+                setPhotoModalVisible(false);
+                setPhotoDescription('');
+              }}
+              disabled={isUploadingPhoto}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.groupSizeCloseButtonText}>Annuler</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );
@@ -1278,19 +1708,26 @@ const styles = StyleSheet.create({
   addPhotoButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: palette.orangeLight,
+    backgroundColor: palette.primary,
+    shadowColor: palette.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
   addPhotoText: {
-    color: palette.primary,
+    color: '#fff',
     fontSize: 12,
     fontWeight: '600',
   },
   photosPreview: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
   photoThumbnail: {
@@ -1520,6 +1957,179 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  // Group Size Selection Styles
+  groupSizeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: palette.border,
+    backgroundColor: palette.surface,
+  },
+  groupSizeOptionSelected: {
+    borderColor: palette.primary,
+    backgroundColor: palette.orangeLight,
+  },
+  groupSizeRadio: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: palette.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  groupSizeRadioSelected: {
+    borderColor: palette.primary,
+    backgroundColor: palette.primary,
+  },
+  groupSizeLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: palette.text,
+  },
+  groupSizeCloseButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: palette.lightGray,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  groupSizeCloseButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: palette.text,
+  },
+  groupSizeConfirmButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 10,
+    backgroundColor: palette.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  groupSizeConfirmButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: palette.text,
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: palette.gray,
+    lineHeight: 20,
+  },
+  // Gallery Styles
+  emptyGalleryState: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    backgroundColor: palette.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: palette.border,
+    paddingHorizontal: 20,
+  },
+  photoThumbnailContainer: {
+    position: 'relative',
+    width: '32%',
+    aspectRatio: 1,
+  },
+  photoThumbnailImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 10,
+    backgroundColor: palette.lightGray,
+  },
+  coverBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: palette.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  coverBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  photoDeleteButton: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+  },
+  photoActions: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+  },
+  photoActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  photoActionBtnActive: {
+    backgroundColor: palette.primary,
+  },
+  photoActionBtnText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  photoDescriptionInput: {
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: palette.text,
+    minHeight: 40,
+  },
+  charCounter: {
+    fontSize: 11,
+    color: palette.gray,
+    marginTop: 4,
+    textAlign: 'right',
+  },
+  photoPickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 10,
+    backgroundColor: palette.primary,
+    marginBottom: 10,
+    minHeight: 48,
+  },
+  photoPickerButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
   },
 });
 
