@@ -1,21 +1,33 @@
 import { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
-import { ref, uploadBytes, deleteObject, getDownloadURL } from 'firebase/storage';
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  Timestamp,
+} from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '@/firebaseConfig';
 
-export interface GalleryImage {
-  id: string;
-  url: string;
-  uploadedAt: any;
-  order: number;
+export interface ClubGalleryPhoto {
+  id?: string;
+  clubId: string;
+  photoUrl: string;
+  storagePath: string;
+  description?: string;
+  isCover?: boolean;
+  uploadedAt?: Timestamp;
+  order?: number;
 }
 
 const MAX_PHOTOS = 10;
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const ALLOWED_FORMATS = ['image/jpeg', 'image/png', 'image/heic', 'image/webp'];
 
 export const useClubGallery = (clubId: string | null) => {
-  const [images, setImages] = useState<GalleryImage[]>([]);
+  const [images, setImages] = useState<ClubGalleryPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,17 +42,28 @@ export const useClubGallery = (clubId: string | null) => {
       setLoading(true);
       setError(null);
 
-      const clubRef = doc(db, 'club', clubId);
-      const clubDoc = await getDoc(clubRef);
+      const galleryCollection = collection(db, 'clubGallery');
+      const q = query(
+        galleryCollection,
+        where('clubId', '==', clubId)
+      );
+      const snapshot = await getDocs(q);
 
-      if (clubDoc.exists()) {
-        const galleryData = clubDoc.data()?.galleryImages || [];
-        // Trier par order
-        const sortedImages = galleryData.sort((a: any, b: any) => a.order - b.order);
-        setImages(sortedImages);
-      } else {
-        setImages([]);
-      }
+      const photosData: ClubGalleryPhoto[] = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as Omit<ClubGalleryPhoto, 'id'>),
+      }));
+
+      // Trier côté client : cover d'abord, puis par uploadedAt
+      const sortedPhotos = photosData.sort((a, b) => {
+        if (a.isCover) return -1;
+        if (b.isCover) return 1;
+        const dateA = a.uploadedAt instanceof Timestamp ? a.uploadedAt.toDate() : new Date(0);
+        const dateB = b.uploadedAt instanceof Timestamp ? b.uploadedAt.toDate() : new Date(0);
+        return dateB.getTime() - dateA.getTime();
+      });
+
+      setImages(sortedPhotos);
     } catch (err) {
       console.error('Erreur lors du fetch de la galerie:', err);
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
@@ -53,118 +76,156 @@ export const useClubGallery = (clubId: string | null) => {
     fetchGallery();
   }, [clubId]);
 
-  const uploadImage = async (imageUri: string): Promise<string> => {
+  const uploadImage = async (imageUri: string): Promise<{ photoUrl: string; storagePath: string }> => {
     if (!clubId) throw new Error('clubId manquant');
 
     try {
-      // Récupérer le fichier
       const response = await fetch(imageUri);
       const blob = await response.blob();
 
-      // Vérifier la taille
-      if (blob.size > MAX_FILE_SIZE) {
-        throw new Error('La photo doit faire moins de 10MB');
-      }
-
-      // Vérifier le format
-      if (!ALLOWED_FORMATS.includes(blob.type)) {
-        throw new Error('Format non supporté. Utilisez JPEG, PNG, HEIC ou WebP');
-      }
-
-      // Uploader vers Firebase Storage avec une structure plus simple
       const timestamp = Date.now();
-      const filename = `${clubId}_${timestamp}`;
-      // Simplifier le path pour éviter les problèmes de permissions
-      const storageRef = ref(storage, `galleries/${clubId}/${filename}`);
+      const random = Math.random().toString(36).slice(2);
+      const storagePath = `clubs/${clubId}/gallery/${timestamp}_${random}.jpg`;
 
+      const storageRef = ref(storage, storagePath);
       await uploadBytes(storageRef, blob);
       const downloadUrl = await getDownloadURL(storageRef);
 
-      return downloadUrl;
+      return { photoUrl: downloadUrl, storagePath };
     } catch (err) {
       console.error('Erreur lors de l\'upload:', err);
       throw err;
     }
   };
 
-  const addImage = async (imageUri: string) => {
+  const addImage = async (imageUri: string, description?: string) => {
+    if (!clubId) throw new Error('clubId manquant');
+
     try {
-      const downloadUrl = await uploadImage(imageUri);
+      // Vérifier le nombre de photos existantes
+      const q = query(collection(db, 'clubGallery'), where('clubId', '==', clubId));
+      const snapshot = await getDocs(q);
+      if (snapshot.size >= MAX_PHOTOS) {
+        throw new Error('Maximum 10 photos par galerie');
+      }
+
+      const { photoUrl, storagePath } = await uploadImage(imageUri);
 
       // Ajouter à Firestore
-      const clubRef = doc(db, 'club', clubId!);
-      const newImage: GalleryImage = {
-        id: `${Date.now()}`,
-        url: downloadUrl,
-        uploadedAt: new Date(),
-        order: images.length,
+      const docData = {
+        clubId,
+        photoUrl,
+        storagePath,
+        description: description || '',
+        isCover: false,
+        uploadedAt: Timestamp.now(),
+        order: snapshot.size,
       };
 
-      await updateDoc(clubRef, {
-        galleryImages: arrayUnion(newImage),
-      });
+      const docRef = await addDoc(collection(db, 'clubGallery'), docData);
 
-      await fetchGallery();
+      const newPhoto: ClubGalleryPhoto = {
+        id: docRef.id,
+        ...docData,
+      };
+
+      setImages((prev) => {
+        const updated = [...prev, newPhoto];
+        return updated.sort((a, b) => {
+          if (a.isCover) return -1;
+          if (b.isCover) return 1;
+          const dateA = a.uploadedAt instanceof Timestamp ? a.uploadedAt.toDate() : new Date(0);
+          const dateB = b.uploadedAt instanceof Timestamp ? b.uploadedAt.toDate() : new Date(0);
+          return dateB.getTime() - dateA.getTime();
+        });
+      });
     } catch (err) {
       console.error('Erreur lors de l\'ajout de l\'image:', err);
       throw err;
     }
   };
 
-  const deleteImage = async (imageId: string, imageUrl: string) => {
+  const updateImage = async (photoId: string, updateData: Partial<ClubGalleryPhoto>) => {
+    if (!clubId) throw new Error('clubId manquant');
+
+    try {
+      // Si on marque cette photo comme cover, dé-marquer les autres
+      if (updateData.isCover) {
+        const q = query(
+          collection(db, 'clubGallery'),
+          where('clubId', '==', clubId),
+          where('isCover', '==', true)
+        );
+        const snapshot = await getDocs(q);
+        for (const doc of snapshot.docs) {
+          if (doc.id !== photoId) {
+            await updateDoc(doc.ref, { isCover: false });
+          }
+        }
+      }
+
+      const photoRef = doc(db, 'clubGallery', photoId);
+      await updateDoc(photoRef, updateData);
+
+      setImages((prev) =>
+        prev
+          .map((photo) =>
+            photo.id === photoId
+              ? {
+                  ...photo,
+                  ...updateData,
+                }
+              : updateData.isCover && photo.id !== photoId
+              ? { ...photo, isCover: false }
+              : photo
+          )
+          .sort((a, b) => {
+            if (a.isCover) return -1;
+            if (b.isCover) return 1;
+            const dateA = a.uploadedAt instanceof Timestamp ? a.uploadedAt.toDate() : new Date(0);
+            const dateB = b.uploadedAt instanceof Timestamp ? b.uploadedAt.toDate() : new Date(0);
+            return dateB.getTime() - dateA.getTime();
+          })
+      );
+    } catch (err) {
+      console.error('Erreur lors de la mise à jour:', err);
+      throw err;
+    }
+  };
+
+  const deleteImage = async (photoId: string, storagePath: string) => {
     try {
       // Supprimer de Storage
       try {
-        const fileRef = ref(storage, imageUrl);
+        const fileRef = ref(storage, storagePath);
         await deleteObject(fileRef);
       } catch (storageErr) {
         console.warn('Erreur lors de la suppression du fichier Storage:', storageErr);
-        // Continuer même si la suppression storage échoue
       }
 
       // Supprimer de Firestore
-      const clubRef = doc(db, 'club', clubId!);
-      const imageToRemove = images.find(img => img.id === imageId);
+      await deleteDoc(doc(db, 'clubGallery', photoId));
 
-      if (imageToRemove) {
-        await updateDoc(clubRef, {
-          galleryImages: arrayRemove(imageToRemove),
-        });
-      }
-
-      await fetchGallery();
+      setImages((prev) => prev.filter((photo) => photo.id !== photoId));
     } catch (err) {
       console.error('Erreur lors de la suppression de l\'image:', err);
       throw err;
     }
   };
 
-  const reorderImages = async (reorderedImages: GalleryImage[]) => {
+  const reorderImages = async (reorderedImages: ClubGalleryPhoto[]) => {
     try {
-      // Mettre à jour l'ordre
-      const updatedImages = reorderedImages.map((img, index) => ({
-        ...img,
-        order: index,
-      }));
-
-      // Supprimer tous les anciens et ajouter les nouveaux
-      const clubRef = doc(db, 'club', clubId!);
-
-      // Supprimer tous
-      for (const img of images) {
-        await updateDoc(clubRef, {
-          galleryImages: arrayRemove(img),
-        });
+      // Mettre à jour Firestore avec le nouvel ordre
+      for (let i = 0; i < reorderedImages.length; i++) {
+        const photo = reorderedImages[i];
+        if (photo.id) {
+          await updateDoc(doc(db, 'clubGallery', photo.id), {
+            order: i,
+          });
+        }
       }
 
-      // Ajouter les nouveaux avec le nouvel ordre
-      for (const img of updatedImages) {
-        await updateDoc(clubRef, {
-          galleryImages: arrayUnion(img),
-        });
-      }
-
-      await fetchGallery();
+      setImages(reorderedImages);
     } catch (err) {
       console.error('Erreur lors du réordonner:', err);
       throw err;
@@ -176,6 +237,7 @@ export const useClubGallery = (clubId: string | null) => {
     loading,
     error,
     addImage,
+    updateImage,
     deleteImage,
     reorderImages,
     refetch: fetchGallery,
@@ -184,3 +246,4 @@ export const useClubGallery = (clubId: string | null) => {
     totalPhotos: images.length,
   };
 };
+
