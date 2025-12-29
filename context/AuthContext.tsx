@@ -198,8 +198,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ? await uploadFileToStorage(data.profilePhoto, `users/${credential.user.uid}/profile`)
         : undefined;
       const documentUrls = await uploadMany(data.documents, `users/${credential.user.uid}/documents`);
+      const educatorId = credential.user.uid;
       await setDoc(doc(db, 'users', credential.user.uid), {
         role: 'educator',
+        educatorId,
         email,
         displayName,
         profile: {
@@ -218,7 +220,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           newsletterOptIn: !!data.newsletterOptIn,
           acceptTerms: !!data.acceptTerms,
           roleLabel: 'educator',
+          educatorId,
         },
+      });
+      await setDoc(doc(db, 'educators', educatorId), {
+        firstName: data.firstName.trim(),
+        lastName: data.lastName.trim(),
+        email,
+        phone: data.phone?.trim() ?? '',
+        city: data.city?.trim() ?? '',
+        postalCode: data.postalCode?.trim() ?? '',
+        specialties: data.specialties,
+        experience: data.experience?.trim() ?? '',
+        certifications: data.certifications?.trim() ?? '',
+        presentation: data.bio?.trim() ?? '',
+        website: data.website?.trim() ?? '',
+        documents: documentUrls,
+        photoUrl: photoUrl ?? null,
+        hourlyRate: 0,
+        experienceYears: 0,
+        availabilityKm: 5,
+        averageRating: 0,
+        reviewsCount: 0,
+        isActive: true,
+        createdAt: new Date(),
       });
       await loadProfile(credential.user.uid);
     } finally {
@@ -241,11 +266,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ? await uploadFileToStorage(data.logo, `users/${credential.user.uid}/logo`)
         : undefined;
       const documentUrls = await uploadMany(data.documents, `users/${credential.user.uid}/documents`);
+      const clubId = credential.user.uid;
       await setDoc(doc(db, 'users', credential.user.uid), {
         role: 'club',
         email,
         displayName,
-        clubId: credential.user.uid,
+        clubId,
         profile: {
           clubName: data.clubName.trim(),
           legalName: data.legalName?.trim() ?? '',
@@ -263,6 +289,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           acceptTerms: !!data.acceptTerms,
           roleLabel: 'club',
         },
+      });
+      await setDoc(doc(db, 'club', clubId), {
+        ownerUserId: clubId,
+        name: data.clubName.trim(),
+        legalName: data.legalName?.trim() ?? '',
+        siret: data.siret.trim(),
+        description: data.description?.trim() ?? '',
+        services: data.services.join(', '),
+        servicesList: data.services,
+        phone: data.phone.trim(),
+        email,
+        address: data.address?.trim() ?? '',
+        city: data.city?.trim() ?? '',
+        postalCode: data.postalCode?.trim() ?? '',
+        website: data.website?.trim() ?? '',
+        logoUrl: logoUrl ?? null,
+        documents: documentUrls,
+        clubType: 'public',
+        maxGroupSize: 10,
+        averageRating: 0,
+        reviewsCount: 0,
+        isVerified: false,
+        priceLevel: 2,
+        distanceKm: 0,
+        createdAt: new Date(),
       });
       await loadProfile(credential.user.uid);
     } finally {

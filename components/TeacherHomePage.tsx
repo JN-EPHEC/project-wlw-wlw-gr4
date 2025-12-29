@@ -5,6 +5,8 @@ import React, { useMemo } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import TeacherBottomNav from '@/components/TeacherBottomNav';
+import { useAuth } from '@/context/AuthContext';
+import { useUnreadNotificationCount } from '@/hooks/useNotifications';
 import { TeacherStackParamList } from '@/navigation/types';
 
 const palette = {
@@ -38,6 +40,9 @@ const shortcuts = [
 export default function TeacherHomePage() {
   const navigation = useNavigation<NativeStackNavigationProp<TeacherStackParamList>>();
   const initials = useMemo(() => 'SM', []);
+  const { user } = useAuth();
+  const userId = (user as any)?.uid || '';
+  const unreadCount = useUnreadNotificationCount(userId);
 
   const handleNavigate = (page: keyof TeacherStackParamList) => {
     // cast to any to satisfy react-navigation overloads when using a variable screen name
@@ -80,9 +85,13 @@ export default function TeacherHomePage() {
             onPress={() => navigation.navigate('notifications', { previousTarget: 'teacher-home' })}
           >
             <Ionicons name="notifications-outline" size={20} color={palette.primaryDark} />
-            <View style={styles.notifBadge}>
-              <Text style={styles.notifBadgeText}>4</Text>
-            </View>
+            {unreadCount > 0 ? (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Text>
+              </View>
+            ) : null}
           </TouchableOpacity>
         </View>
 
