@@ -2,13 +2,16 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useMemo } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useMemo, useState, useEffect } from 'react';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { Timestamp } from 'firebase/firestore';
 
 import TeacherBottomNav from '@/components/TeacherBottomNav';
 import { useAuth } from '@/context/AuthContext';
 import { useUnreadNotificationCount } from '@/hooks/useNotifications';
+import { useEnrichedEducatorBookings } from '@/hooks/useEnrichedEducatorBookings';
 import { TeacherStackParamList } from '@/navigation/types';
+import { BookingDisplay } from '@/types/Booking';
 
 const palette = {
   primary: '#2F9C8D',
@@ -44,9 +47,60 @@ const shortcuts = [
 export default function TeacherHomePage() {
   const navigation = useNavigation<NativeStackNavigationProp<TeacherStackParamList>>();
   const initials = useMemo(() => 'SM', []);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const userId = (user as any)?.uid || '';
   const unreadCount = useUnreadNotificationCount(userId);
+
+  // Get educator ID from profile
+  const educatorProfile = (profile as any)?.profile || {};
+  const educatorId = educatorProfile?.educatorId || (profile as any)?.educatorId || '';
+  
+  // Fetch bookings from Firebase
+  const { bookings, loading } = useEnrichedEducatorBookings(educatorId);
+
+  // Calculate next appointment (first one not started, regardless of date)
+  const nextAppointment = useMemo(() => {
+    const now = new Date();
+    const upcoming = bookings.filter((booking) => {
+      const sessionDate = booking.sessionDate instanceof Timestamp
+        ? booking.sessionDate.toDate()
+        : new Date(booking.sessionDate);
+      return sessionDate >= now && ['pending', 'confirmed', 'completed'].includes(booking.status);
+    });
+    return upcoming.length > 0 ? upcoming[0] : null;
+  }, [bookings]);
+
+  // Calculate today's appointments
+  const todayAppointments = useMemo(() => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    
+    return bookings.filter((booking) => {
+      const sessionDate = booking.sessionDate instanceof Timestamp
+        ? booking.sessionDate.toDate()
+        : new Date(booking.sessionDate);
+      return sessionDate >= todayStart && sessionDate < todayEnd && ['pending', 'confirmed', 'completed'].includes(booking.status);
+    }).sort((a, b) => {
+      const dateA = a.sessionDate instanceof Timestamp ? a.sessionDate.toDate() : new Date(a.sessionDate);
+      const dateB = b.sessionDate instanceof Timestamp ? b.sessionDate.toDate() : new Date(b.sessionDate);
+      return dateA.getTime() - dateB.getTime();
+    });
+  }, [bookings]);
+
+  const formatTime = (date: any): string => {
+    const d = date instanceof Timestamp ? date.toDate() : new Date(date);
+    return d.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getBookingType = (booking: BookingDisplay): 'Solo' | 'Groupe' | 'Domicile' => {
+    if (booking.type === 'home-based') return 'Domicile';
+    if (booking.isGroupCourse) return 'Groupe';
+    return 'Solo';
+  };
 
   const handleNavigate = (page: keyof TeacherStackParamList) => {
     navigation.navigate(page as any);
@@ -118,12 +172,23 @@ export default function TeacherHomePage() {
               </View>
               <Text style={styles.focusLabel}>Prochain RDV</Text>
             </View>
-            <Text style={styles.focusTitle}>Coaching chiot - Nova</Text>
-            <Text style={styles.focusMeta}>09:00 - Parc Monceau</Text>
-            <TouchableOpacity style={styles.focusButton} onPress={() => handleNavigate('teacher-appointments')}>
-              <Text style={styles.focusButtonText}>Voir les détails</Text>
-              <Ionicons name="arrow-forward" size={16} color={palette.surface} />
-            </TouchableOpacity>
+            {loading ? (
+              <ActivityIndicator size="small" color={palette.primary} />
+            ) : nextAppointment ? (
+              <>
+                <Text style={styles.focusTitle}>{nextAppointment.title} - {nextAppointment.participantInfo?.[0]?.dog || 'N/A'}</Text>
+                <Text style={styles.focusMeta}>{formatTime(nextAppointment.sessionDate)} - {nextAppointment.fieldName}</Text>
+                <TouchableOpacity 
+                  style={styles.focusButton} 
+                  onPress={() => navigation.navigate('teacher-appointment-detail', { bookingId: nextAppointment.id })}
+                >
+                  <Text style={styles.focusButtonText}>Voir les détails</Text>
+                  <Ionicons name="arrow-forward" size={16} color={palette.surface} />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <Text style={[styles.focusTitle, { color: palette.textSecondary }]}>Aucun rendez-vous prévu</Text>
+            )}
           </View>
 
           <View style={styles.section}>
@@ -133,27 +198,44 @@ export default function TeacherHomePage() {
                 <Text style={styles.seeAll}>Voir tout</Text>
               </TouchableOpacity>
             </View>
-            <View style={styles.agenda}>
-              {nextSessions.map((session) => {
-                const badgeStyle = typeBadgeStyle(session.type);
-                return (
-                  <View key={session.id} style={styles.sessionCard}>
-                    <View style={styles.sessionTimeContainer}>
-                      <Text style={styles.sessionTime}>{session.time}</Text>
-                    </View>
-                    <View style={styles.sessionDetails}>
-                      <View style={styles.sessionHeader}>
-                        <Text style={styles.sessionTitle}>{session.title}</Text>
-                        <View style={[styles.badgeBase, badgeStyle.container]}>
-                          <Text style={[styles.badgeText, badgeStyle.text]}>{session.type}</Text>
-                        </View>
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={palette.primary} />
+              </View>
+            ) : todayAppointments.length === 0 ? (
+              <Text style={[styles.sessionMeta, { textAlign: 'center', paddingVertical: 20 }]}>
+                Aucun rendez-vous aujourd'hui
+              </Text>
+            ) : (
+              <View style={styles.agenda}>
+                {todayAppointments.map((session) => {
+                  const bookingType = getBookingType(session);
+                  const badgeStyle = typeBadgeStyle(bookingType);
+                  return (
+                    <TouchableOpacity 
+                      key={session.id} 
+                      style={styles.sessionCard}
+                      onPress={() => navigation.navigate('teacher-appointment-detail', { bookingId: session.id })}
+                    >
+                      <View style={styles.sessionTimeContainer}>
+                        <Text style={styles.sessionTime}>{formatTime(session.sessionDate)}</Text>
                       </View>
-                      <Text style={styles.sessionMeta}>{session.dog} @ {session.location}</Text>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
+                      <View style={styles.sessionDetails}>
+                        <View style={styles.sessionHeader}>
+                          <Text style={styles.sessionTitle}>{session.title}</Text>
+                          <View style={[styles.badgeBase, badgeStyle.container]}>
+                            <Text style={[styles.badgeText, badgeStyle.text]}>{bookingType}</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.sessionMeta}>
+                          {session.participantInfo?.[0]?.dog || 'N/A'} @ {session.fieldName}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
           </View>
 
           <View style={styles.section}>
@@ -529,6 +611,11 @@ const styles = StyleSheet.create({
     color: '#C2410C',
     fontSize: 15,
     fontWeight: '700',
+  },
+  loadingContainer: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

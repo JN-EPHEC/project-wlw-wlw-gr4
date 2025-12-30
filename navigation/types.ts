@@ -71,6 +71,7 @@ export type TeacherRoute =
   | 'teacher-channel-chat'
   | 'teacher-club-members'
   | 'teacher-account'
+  | 'teacher-edit-profile'
   | 'teacher-clubs'
   | 'teacher-training'
   | 'notifications'
@@ -157,11 +158,13 @@ export type ClubStackParamList = {
 export type TeacherStackParamList = {
   'teacher-home': undefined;
   'teacher-appointments': undefined;
+  'teacher-appointment-detail': { bookingId: string };
   'teacher-community': { page?: TeacherRoute; clubId?: number | null } | undefined;
   'teacher-club-community': { clubId?: number | null; channelId?: string | null } | undefined;
   'teacher-channel-chat': { channelId: string; clubId: number | null };
   'teacher-club-members': { clubId: number | null };
   'teacher-account': undefined;
+  'teacher-edit-profile': undefined;
   'teacher-clubs': undefined;
   'teacher-training': undefined;
   notifications: { previousTarget?: RootRouteName } | undefined;

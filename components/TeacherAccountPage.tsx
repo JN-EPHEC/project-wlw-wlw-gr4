@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View, Modal } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View, Modal, Image } from 'react-native';
 
 import TeacherBottomNav from '@/components/TeacherBottomNav';
 import { formatFirebaseAuthError, useAuth } from '@/context/AuthContext';
@@ -32,12 +32,20 @@ const verifications = [
 
 export default function TeacherAccountPage() {
   const navigation = useNavigation<NativeStackNavigationProp<TeacherStackParamList>>();
-  const { logout, deleteAccount, actionLoading } = useAuth();
+  const { logout, deleteAccount, actionLoading, user, profile } = useAuth();
   const [available, setAvailable] = useState(true);
   const [homeTravel, setHomeTravel] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
   const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
+
+  // Extract profile data
+  const userProfile = (profile as any)?.profile || {};
+  const firstName = userProfile?.firstName || '';
+  const lastName = userProfile?.lastName || '';
+  const fullName = `${firstName} ${lastName}`.trim() || 'Éducateur';
+  const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'ED';
+  const photoUrl = userProfile?.photoUrl || '';
 
   const handleLogout = async () => {
     setError(null);
@@ -78,7 +86,7 @@ export default function TeacherAccountPage() {
               <Text style={styles.title}>Compte</Text>
               <Text style={styles.subtitle}>Profil enseignant et préférences</Text>
             </View>
-            <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('teacher-home')}>
+            <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('teacher-edit-profile')}>
               <Ionicons name="create-outline" size={18} color={palette.surface} />
             </TouchableOpacity>
           </View>
@@ -87,10 +95,14 @@ export default function TeacherAccountPage() {
         <View style={styles.profileCard}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>SM</Text>
+              {photoUrl ? (
+                <Image source={{ uri: photoUrl }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.avatarText}>{initials}</Text>
+              )}
             </View>
             <View>
-              <Text style={styles.profileName}>Sophie Martin</Text>
+              <Text style={styles.profileName}>{fullName}</Text>
               <Text style={styles.profileRole}>Educateur canin</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <MaterialCommunityIcons name="star" size={14} color="#F59E0B" />
@@ -323,6 +335,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#E0F2F1',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
   },
   avatarText: { color: palette.primaryDark, fontSize: 18, fontWeight: '700' },
   profileName: { fontSize: 18, fontWeight: '700', color: palette.text },

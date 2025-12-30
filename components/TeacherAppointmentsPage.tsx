@@ -1,8 +1,4 @@
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -12,12 +8,18 @@ import {
   View,
   ActivityIndicator,
 } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Timestamp } from 'firebase/firestore';
 
 import TeacherBottomNav from '@/components/TeacherBottomNav';
+import BookingDetailModal from '@/components/BookingDetailModal';
+import AddCourseModal from '@/components/AddCourseModal';
 import { useAuth } from '@/context/AuthContext';
 import { TeacherStackParamList } from '@/navigation/types';
-import { useFetchEducatorBookings } from '@/hooks/useFetchEducatorBookings';
+import { useEnrichedEducatorBookings } from '@/hooks/useEnrichedEducatorBookings';
 import { BookingDisplay } from '@/types/Booking';
 
 const palette = {
@@ -33,28 +35,29 @@ const palette = {
   warning: '#F59E0B',
 };
 
-type TabKey = 'today' | 'week';
+type TabKey = 'today' | 'upcoming' | 'past';
 
 const tabs: Array<{ key: TabKey; label: string }> = [
   { key: 'today', label: "Aujourd'hui" },
-  { key: 'week', label: 'Cette semaine' },
+  { key: 'upcoming', label: 'À venir' },
+  { key: 'past', label: 'Rendez-vous passés' },
 ];
 
 export default function TeacherAppointmentsPage() {
   const navigation = useNavigation<NativeStackNavigationProp<TeacherStackParamList>>();
   const [activeTab, setActiveTab] = useState<TabKey>('today');
+  const [selectedBooking, setSelectedBooking] = useState<BookingDisplay | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [addCourseModalVisible, setAddCourseModalVisible] = useState(false);
   
   const { profile } = useAuth();
   const educatorProfile = (profile as any)?.profile || {};
   const educatorId = educatorProfile?.educatorId || (profile as any)?.educatorId || '';
-  const { bookings, loading, error } = useFetchEducatorBookings(educatorId);
+  const { bookings, loading, error } = useEnrichedEducatorBookings(educatorId);
 
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-
-  const weekEnd = new Date(todayEnd);
-  weekEnd.setDate(weekEnd.getDate() + 6);
 
   const todayBookings = useMemo(() => {
     return bookings.filter((booking) => {
@@ -65,21 +68,35 @@ export default function TeacherAppointmentsPage() {
     });
   }, [bookings]);
 
-  const weekBookings = useMemo(() => {
+  const upcomingBookings = useMemo(() => {
     return bookings.filter((booking) => {
       const sessionDate = booking.sessionDate instanceof Timestamp
         ? booking.sessionDate.toDate()
         : new Date(booking.sessionDate);
-      return sessionDate >= todayEnd && sessionDate < weekEnd;
+      return sessionDate >= todayEnd;
+    });
+  }, [bookings]);
+
+  const pastBookings = useMemo(() => {
+    return bookings.filter((booking) => {
+      const sessionDate = booking.sessionDate instanceof Timestamp
+        ? booking.sessionDate.toDate()
+        : new Date(booking.sessionDate);
+      return sessionDate < todayStart;
+    }).sort((a, b) => {
+      const dateA = a.sessionDate instanceof Timestamp ? a.sessionDate.toDate() : new Date(a.sessionDate);
+      const dateB = b.sessionDate instanceof Timestamp ? b.sessionDate.toDate() : new Date(b.sessionDate);
+      return dateB.getTime() - dateA.getTime(); // Most recent first
     });
   }, [bookings]);
 
   const counts = useMemo(
     () => ({
       today: todayBookings.length,
-      week: weekBookings.length,
+      upcoming: upcomingBookings.length,
+      past: pastBookings.length,
     }),
-    [todayBookings, weekBookings],
+    [todayBookings, upcomingBookings, pastBookings],
   );
 
   const statusBadge = (status: string) => {
@@ -104,16 +121,24 @@ export default function TeacherAppointmentsPage() {
   const renderBooking = (booking: BookingDisplay) => {
     const { label, color, icon } = statusBadge(booking.status);
     return (
-      <TouchableOpacity key={booking.id} style={styles.card} onPress={() => navigation.navigate('teacher-appointments')}>
+      <TouchableOpacity 
+        key={booking.id} 
+        style={styles.card} 
+        onPress={() => {
+          setSelectedBooking(booking);
+          setModalVisible(true);
+        }}
+      >
         <View style={styles.cardTimeContainer}>
           <Text style={styles.cardTime}>{formatTime(booking.sessionDate)}</Text>
+          <Text style={styles.cardDuration}>{booking.duration}m</Text>
         </View>
         <View style={styles.cardDetails}>
           <Text style={styles.cardTitle}>{booking.title}</Text>
           <Text style={styles.cardSubtitle}>{booking.trainingType}</Text>
           <View style={styles.cardMetaRow}>
             <Ionicons name="location-outline" size={14} color={palette.textSecondary} />
-            <Text style={styles.cardMetaText}>{booking.location || 'N/A'}</Text>
+            <Text style={styles.cardMetaText}>{booking.fieldName || 'N/A'}</Text>
           </View>
            <View style={styles.cardMetaRow}>
             <Ionicons name={icon} size={14} color={color} />
@@ -138,7 +163,10 @@ export default function TeacherAppointmentsPage() {
             <Ionicons name="arrow-back" size={22} color={palette.surface} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Mon Planning</Text>
-          <TouchableOpacity style={styles.addButton}>
+          <TouchableOpacity 
+            style={styles.addButton}
+            onPress={() => setAddCourseModalVisible(true)}
+          >
             <Ionicons name="add" size={22} color={palette.surface} />
           </TouchableOpacity>
         </View>
@@ -153,8 +181,8 @@ export default function TeacherAppointmentsPage() {
             <Text style={styles.summaryLabel}>RDV Aujourd'hui</Text>
           </View>
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryValue}>{counts.week}</Text>
-            <Text style={styles.summaryLabel}>Cette semaine</Text>
+            <Text style={styles.summaryValue}>{counts.upcoming}</Text>
+            <Text style={styles.summaryLabel}>À venir</Text>
           </View>
         </View>
 
@@ -191,17 +219,52 @@ export default function TeacherAppointmentsPage() {
               ) : (
                 todayBookings.map((booking) => renderBooking(booking))
               )
-            ) : weekBookings.length === 0 ? (
-              <View style={styles.centered}>
-                <Text style={styles.emptyText}>Aucun rendez-vous prévu cette semaine.</Text>
-              </View>
+            ) : activeTab === 'upcoming' ? (
+              upcomingBookings.length === 0 ? (
+                <View style={styles.centered}>
+                  <Text style={styles.emptyText}>Aucun rendez-vous à venir.</Text>
+                </View>
+              ) : (
+                upcomingBookings.map((booking) => renderBooking(booking))
+              )
             ) : (
-              weekBookings.map((booking) => renderBooking(booking))
+              pastBookings.length === 0 ? (
+                <View style={styles.centered}>
+                  <Text style={styles.emptyText}>Aucun rendez-vous passé.</Text>
+                </View>
+              ) : (
+                pastBookings.map((booking) => renderBooking(booking))
+              )
             )}
           </View>
         )}
       </ScrollView>
       <TeacherBottomNav current="teacher-appointments" />
+      
+      <BookingDetailModal
+        visible={modalVisible}
+        booking={selectedBooking}
+        onClose={() => {
+          setModalVisible(false);
+          setSelectedBooking(null);
+        }}
+        onDelete={() => {
+          // Refresh the list when a booking is deleted
+          setModalVisible(false);
+          setSelectedBooking(null);
+        }}
+        onModify={(booking) => {
+          // TODO: Implement booking modification
+          console.log('Modify booking:', booking);
+        }}
+      />
+
+      <AddCourseModal
+        visible={addCourseModalVisible}
+        onClose={() => setAddCourseModalVisible(false)}
+        educatorId={educatorId}
+        clubId={educatorProfile?.clubId}
+      />
     </SafeAreaView>
   );
 }
@@ -349,6 +412,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: palette.primaryDark,
+  },
+  cardDuration: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: palette.textSecondary,
+    marginTop: 2,
   },
   cardDetails: {
     flex: 1,
