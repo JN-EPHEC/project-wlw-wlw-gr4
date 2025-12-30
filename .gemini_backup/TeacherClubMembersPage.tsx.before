@@ -1,5 +1,4 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -10,16 +9,12 @@ import TeacherBottomNav from '@/components/TeacherBottomNav';
 import { TeacherStackParamList } from '@/navigation/types';
 
 const palette = {
-  primary: '#E39A5C',
-  primaryDark: '#D48242',
-  accent: '#2F9C8D',
+  primary: '#F28B6F',
+  accent: '#41B6A6',
   text: '#1F2937',
   gray: '#6B7280',
-  border: '#E6E2DD',
+  border: '#E5E7EB',
   surface: '#FFFFFF',
-  background: '#F7F4F0',
-  success: '#16A34A',
-  warning: '#F59E0B',
 };
 
 const members = [
@@ -64,33 +59,26 @@ export default function TeacherClubMembersPage() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={{ paddingBottom: 140 }} showsVerticalScrollIndicator={false}>
-        <LinearGradient
-          colors={[palette.primary, palette.primaryDark]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.hero}
-        >
-          <View style={styles.header}>
-            <View style={styles.headerRow}>
-              <TouchableOpacity
-                style={styles.backBtn}
-                onPress={() => navigation.navigate('teacher-club-community', { clubId })}
-              >
-                <Ionicons name="arrow-back" size={18} color={palette.surface} />
-              </TouchableOpacity>
-              <View>
-                <Text style={styles.title}>Membres du club</Text>
-                <Text style={styles.subtitle}>Coordonnees clients et suivi</Text>
-              </View>
-            </View>
+        <View style={styles.header}>
+          <View style={styles.headerRow}>
             <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => navigation.navigate('teacher-channel-chat', { channelId: 'members', clubId })}
+              style={styles.backBtn}
+              onPress={() => navigation.navigate('teacher-club-community', { clubId })}
             >
-              <Ionicons name="chatbubble-ellipses-outline" size={18} color={palette.surface} />
+              <Ionicons name="arrow-back" size={18} color={palette.primary} />
             </TouchableOpacity>
+            <View>
+              <Text style={styles.title}>Membres du club</Text>
+              <Text style={styles.subtitle}>Coordonnees clients et suivi</Text>
+            </View>
           </View>
-        </LinearGradient>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => navigation.navigate('teacher-channel-chat', { channelId: 'members', clubId })}
+          >
+            <Ionicons name="chatbubble-ellipses-outline" size={18} color={palette.primary} />
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.filters}>
           {filters.map((f) => {
@@ -160,19 +148,10 @@ export default function TeacherClubMembersPage() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: palette.background },
-  hero: {
-    paddingTop: 6,
-    paddingBottom: 18,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    overflow: 'hidden',
-    marginBottom: 6,
-  },
+  safe: { flex: 1, backgroundColor: '#F5F7FA' },
   header: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 6,
+    paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -182,70 +161,43 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
+    backgroundColor: '#FFF3EC',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { fontSize: 20, fontWeight: '700', color: palette.surface },
-  subtitle: { color: 'rgba(255, 255, 255, 0.85)', fontSize: 13 },
+  title: { fontSize: 20, fontWeight: '700', color: palette.text },
+  subtitle: { color: palette.gray, fontSize: 13 },
   addButton: {
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
+    backgroundColor: '#FFF3EC',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  filters: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginHorizontal: 16,
-    marginTop: -12,
-    backgroundColor: palette.surface,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: palette.border,
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 10,
-    elevation: 3,
-  },
+  filters: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 10 },
   filterChip: {
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 999,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: palette.border,
-    backgroundColor: '#FAFAF9',
+    backgroundColor: '#fff',
   },
   filterChipActive: {
-    backgroundColor: palette.primary,
-    borderColor: palette.primaryDark,
+    backgroundColor: '#FFF3EC',
+    borderColor: palette.primary,
   },
   filterText: { color: palette.gray, fontWeight: '700' },
-  filterTextActive: { color: palette.surface },
+  filterTextActive: { color: palette.primary },
   card: {
-    backgroundColor: palette.surface,
-    borderRadius: 18,
-    padding: 14,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 12,
     borderWidth: 1,
     borderColor: palette.border,
     flexDirection: 'row',
     gap: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.primary,
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 10,
-    elevation: 3,
   },
   cardTitle: { color: palette.text, fontSize: 15, fontWeight: '700' },
   cardMeta: { color: palette.gray, fontSize: 13 },
@@ -254,43 +206,35 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 999,
+    borderRadius: 10,
   },
   badgeText: { fontSize: 12, fontWeight: '700' },
   secondary: {
     borderWidth: 1,
     borderColor: palette.border,
-    borderRadius: 999,
+    borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 12,
     alignItems: 'center',
-    backgroundColor: '#FAFAF9',
   },
-  secondaryText: { color: palette.text, fontWeight: '700', fontSize: 13 },
+  secondaryText: { color: palette.text, fontWeight: '700' },
   primaryBtn: {
     backgroundColor: palette.primary,
-    borderRadius: 999,
+    borderRadius: 12,
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 12,
   },
-  primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  primaryBtnText: { color: '#fff', fontWeight: '700' },
   summaryCard: {
     marginTop: 16,
     marginHorizontal: 16,
-    backgroundColor: palette.surface,
-    borderRadius: 18,
-    padding: 14,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 12,
     borderWidth: 1,
     borderColor: palette.border,
     gap: 6,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.accent,
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 10,
-    elevation: 3,
   },
   summaryTitle: { color: palette.text, fontSize: 15, fontWeight: '700' },
 });

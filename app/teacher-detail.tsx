@@ -2,14 +2,19 @@ import React, { useMemo } from 'react';
 import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { RootStackParamList } from '@/navigation/types';
 
 const palette = {
-  primary: '#41B6A6',
+  primary: '#35A89C',
+  primaryDark: '#2B8A7F',
+  accent: '#E39A5C',
   text: '#1F2937',
   gray: '#6B7280',
-  border: '#E5E7EB',
+  border: '#E6E2DD',
+  surface: '#FFFFFF',
+  background: '#F7F4F0',
 };
 
 const teacherMocks: Record<string, any> = {
@@ -63,7 +68,10 @@ export default function TeacherDetailScreen({ navigation, route }: Props) {
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
           <Image source={{ uri: teacher.profileImage }} style={styles.heroImage} />
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
+          <LinearGradient
+            colors={['rgba(0,0,0,0.45)', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.6)']}
+            style={StyleSheet.absoluteFill}
+          />
           <TouchableOpacity style={styles.back} onPress={() => handleBack()}>
             <Ionicons name="arrow-back" size={20} color="#1F2937" />
           </TouchableOpacity>
@@ -74,7 +82,7 @@ export default function TeacherDetailScreen({ navigation, route }: Props) {
             </View>
             <Text style={styles.heroMeta}>{teacher.specialty}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <MaterialCommunityIcons name="star" size={14} color="#E9B782" />
+              <MaterialCommunityIcons name="star" size={14} color={palette.accent} />
               <Text style={styles.heroMeta}>{teacher.rating} ({teacher.reviews})</Text>
               <Ionicons name="time-outline" size={14} color="#fff" />
               <Text style={styles.heroMeta}>{teacher.experience}</Text>
@@ -111,7 +119,7 @@ export default function TeacherDetailScreen({ navigation, route }: Props) {
         <View style={styles.section}>
           <Text style={styles.title}>Points forts</Text>
           <View style={styles.card}>
-            <MaterialCommunityIcons name="trophy-outline" size={20} color="#E9B782" />
+            <MaterialCommunityIcons name="trophy-outline" size={20} color={palette.accent} />
             <Text style={styles.sub}>{teacher.excellence}</Text>
           </View>
         </View>
@@ -139,58 +147,81 @@ export default function TeacherDetailScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F5F7FA' },
-  hero: { height: 220, position: 'relative' },
+  safe: { flex: 1, backgroundColor: palette.background },
+  hero: {
+    height: 240,
+    position: 'relative',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    overflow: 'hidden',
+  },
   heroImage: { width: '100%', height: '100%' },
   back: {
     position: 'absolute',
     top: 12,
     left: 12,
-    backgroundColor: '#fff',
-    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 999,
     padding: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
   },
-  heroContent: { position: 'absolute', left: 16, right: 16, bottom: 12, gap: 6 },
+  heroContent: { position: 'absolute', left: 16, right: 16, bottom: 14, gap: 6 },
   heroTitle: { color: '#fff', fontSize: 22, fontWeight: '700' },
-  heroMeta: { color: '#E5E7EB', fontSize: 13 },
-  section: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
-  title: { color: palette.text, fontSize: 18, fontWeight: '700' },
+  heroMeta: { color: 'rgba(255, 255, 255, 0.85)', fontSize: 13 },
+  section: {
+    marginTop: 12,
+    marginHorizontal: 16,
+    padding: 14,
+    borderRadius: 18,
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderColor: palette.border,
+    gap: 8,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  title: { color: palette.text, fontSize: 17, fontWeight: '700' },
   sub: { color: palette.gray, fontSize: 14 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
-    backgroundColor: '#E0F2F1',
-    borderRadius: 12,
+    backgroundColor: '#F0FBF9',
+    borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  chipText: { color: palette.primary, fontWeight: '700', fontSize: 12 },
+  chipText: { color: palette.primaryDark, fontWeight: '700', fontSize: 12 },
   listRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
+    backgroundColor: '#FFF9F3',
+    borderRadius: 16,
     padding: 12,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: '#F4D9C2',
     flexDirection: 'row',
     gap: 8,
   },
-  photo: { width: 200, height: 130, borderRadius: 12, backgroundColor: '#E5E7EB' },
-  bottomActions: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 4 },
+  photo: { width: 200, height: 130, borderRadius: 14, backgroundColor: '#E5E7EB' },
+  bottomActions: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24 },
   secondary: {
     flex: 1,
     borderWidth: 1,
     borderColor: palette.primary,
-    borderRadius: 14,
+    borderRadius: 999,
     paddingVertical: 12,
     alignItems: 'center',
+    backgroundColor: '#FAFAF9',
   },
-  secondaryText: { color: palette.primary, fontWeight: '700' },
+  secondaryText: { color: palette.primaryDark, fontWeight: '700', fontSize: 13 },
   primaryBtn: {
     flex: 1,
     backgroundColor: palette.primary,
-    borderRadius: 14,
+    borderRadius: 999,
     paddingVertical: 12,
     alignItems: 'center',
   },
-  primaryBtnText: { color: '#fff', fontWeight: '700' },
+  primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 });
