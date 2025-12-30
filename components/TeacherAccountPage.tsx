@@ -1,4 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
@@ -9,12 +10,17 @@ import { formatFirebaseAuthError, useAuth } from '@/context/AuthContext';
 import { TeacherStackParamList } from '@/navigation/types';
 
 const palette = {
-  primary: '#F28B6F',
-  accent: '#41B6A6',
+  primary: '#35A89C',
+  primaryDark: '#2B8A7F',
+  accent: '#E39A5C',
   text: '#1F2937',
   gray: '#6B7280',
-  border: '#E5E7EB',
+  border: '#E6E2DD',
   surface: '#FFFFFF',
+  background: '#F7F4F0',
+  success: '#16A34A',
+  warning: '#F59E0B',
+  danger: '#DC2626',
 };
 
 const skills = ['Education positive', 'Agility', 'Reactivite', 'Travail chiot'];
@@ -61,15 +67,22 @@ export default function TeacherAccountPage() {
         contentContainerStyle={{ paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>Compte</Text>
-            <Text style={styles.subtitle}>Profil enseignant et préférences</Text>
+        <LinearGradient
+          colors={[palette.primary, palette.primaryDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.title}>Compte</Text>
+              <Text style={styles.subtitle}>Profil enseignant et préférences</Text>
+            </View>
+            <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('teacher-home')}>
+              <Ionicons name="create-outline" size={18} color={palette.surface} />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('teacher-home')}>
-            <Ionicons name="create-outline" size={18} color={palette.primary} />
-          </TouchableOpacity>
-        </View>
+        </LinearGradient>
 
         <View style={styles.profileCard}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -100,14 +113,14 @@ export default function TeacherAccountPage() {
               <Text style={styles.toggleTitle}>Disponible</Text>
               <Text style={styles.toggleMeta}>Afficher votre profil dans les recherches</Text>
             </View>
-            <Switch value={available} onValueChange={setAvailable} trackColor={{ true: '#FAD5C1' }} thumbColor="#F28B6F" />
+            <Switch value={available} onValueChange={setAvailable} trackColor={{ true: '#BFE9E1' }} thumbColor={palette.primary} />
           </View>
           <View style={styles.toggleRow}>
             <View>
               <Text style={styles.toggleTitle}>Deplacements à domicile</Text>
               <Text style={styles.toggleMeta}>Zone: 8 km autour de Paris 15</Text>
             </View>
-            <Switch value={homeTravel} onValueChange={setHomeTravel} trackColor={{ true: '#FAD5C1' }} thumbColor="#F28B6F" />
+            <Switch value={homeTravel} onValueChange={setHomeTravel} trackColor={{ true: '#BFE9E1' }} thumbColor={palette.primary} />
           </View>
         </View>
 
@@ -179,7 +192,7 @@ export default function TeacherAccountPage() {
               onPress={() => setLogoutModalVisible(true)}
               disabled={actionLoading}
             >
-              <Ionicons name="log-out-outline" size={18} color="#DC2626" />
+              <Ionicons name="log-out-outline" size={18} color={palette.danger} />
               <Text style={styles.dangerButtonText}>
                 {actionLoading ? 'Déconnexion...' : 'Se déconnecter'}
               </Text>
@@ -189,7 +202,7 @@ export default function TeacherAccountPage() {
               onPress={() => setDeleteModalVisible(true)}
               disabled={actionLoading}
             >
-              <Ionicons name="trash-outline" size={18} color="#DC2626" />
+              <Ionicons name="trash-outline" size={18} color={palette.danger} />
               <Text style={styles.dangerButtonText}>
                 {actionLoading ? 'Suppression...' : 'Supprimer mon compte'}
               </Text>
@@ -259,63 +272,85 @@ export default function TeacherAccountPage() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F5F7FA' },
+  safe: { flex: 1, backgroundColor: palette.background },
+  hero: {
+    paddingTop: 6,
+    paddingBottom: 26,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
   header: {
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingTop: 12,
+    paddingBottom: 6,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  title: { fontSize: 20, fontWeight: '700', color: palette.text },
-  subtitle: { color: palette.gray, fontSize: 13 },
+  title: { fontSize: 20, fontWeight: '700', color: palette.surface },
+  subtitle: { color: 'rgba(255, 255, 255, 0.85)', fontSize: 13 },
   editBtn: {
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: '#FFF3EC',
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   profileCard: {
-    backgroundColor: '#fff',
+    backgroundColor: palette.surface,
     marginHorizontal: 16,
+    marginTop: -28,
     padding: 14,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: palette.border,
     gap: 12,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 12,
+    elevation: 3,
   },
   avatar: {
     width: 56,
     height: 56,
     borderRadius: 18,
-    backgroundColor: '#FFF3EC',
+    backgroundColor: '#E0F2F1',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { color: palette.primary, fontSize: 18, fontWeight: '700' },
+  avatarText: { color: palette.primaryDark, fontSize: 18, fontWeight: '700' },
   profileName: { fontSize: 18, fontWeight: '700', color: palette.text },
   profileRole: { color: palette.gray, fontSize: 13 },
   profileMeta: { color: palette.gray, fontSize: 12 },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tag: {
-    backgroundColor: '#E0F2F1',
+    backgroundColor: '#F0FBF9',
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: 999,
   },
-  tagText: { color: palette.accent, fontWeight: '700', fontSize: 12 },
+  tagText: { color: palette.primaryDark, fontWeight: '700', fontSize: 12 },
   toggles: { paddingHorizontal: 16, paddingVertical: 12, gap: 12 },
   toggleRow: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 12,
+    backgroundColor: palette.surface,
+    borderRadius: 18,
+    padding: 14,
     borderWidth: 1,
     borderColor: palette.border,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 2,
   },
   toggleTitle: { fontSize: 15, fontWeight: '700', color: palette.text },
   toggleMeta: { color: palette.gray, fontSize: 13 },
@@ -326,68 +361,78 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: palette.text },
-  link: { color: palette.primary, fontWeight: '700' },
+  link: { color: palette.primaryDark, fontWeight: '700' },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#fff',
+    backgroundColor: palette.surface,
     padding: 12,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: palette.border,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 2,
   },
   rowTitle: { color: palette.text, fontWeight: '700', fontSize: 14 },
   rowMeta: { color: palette.gray, fontSize: 12 },
   payoutCard: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 12,
+    backgroundColor: '#FFF9F3',
+    borderRadius: 18,
+    padding: 14,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: '#F4D9C2',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 2,
   },
   payoutLabel: { color: palette.gray, fontSize: 13 },
-  payoutValue: { color: palette.text, fontSize: 20, fontWeight: '700' },
+  payoutValue: { color: palette.primaryDark, fontSize: 20, fontWeight: '700' },
   primaryBtn: {
     backgroundColor: palette.primary,
-    borderRadius: 12,
+    borderRadius: 999,
     alignItems: 'center',
     paddingVertical: 12,
   },
-  primaryBtnText: { color: '#fff', fontWeight: '700' },
-  error: { color: '#DC2626', fontSize: 13, textAlign: 'center', marginBottom: 8 },
+  primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  error: { color: palette.danger, fontSize: 13, textAlign: 'center', marginBottom: 8 },
   dangerButton: {
     borderWidth: 1.5,
-    borderColor: '#DC2626',
-    borderRadius: 16,
+    borderColor: palette.danger,
+    borderRadius: 999,
     paddingVertical: 14,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#fff',
+    backgroundColor: palette.surface,
   },
-  dangerButtonText: { color: '#DC2626', fontWeight: '700' },
+  dangerButtonText: { color: palette.danger, fontWeight: '700' },
   disabled: { opacity: 0.6 },
   modalBackdrop: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
   },
   modalView: {
     margin: 20,
-    backgroundColor: 'white',
-    borderRadius: 20,
+    backgroundColor: palette.surface,
+    borderRadius: 18,
     padding: 24,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
     elevation: 5,
     width: '90%',
   },
@@ -404,7 +449,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   modalButton: {
-    borderRadius: 12,
+    borderRadius: 999,
     paddingVertical: 12,
     paddingHorizontal: 20,
     elevation: 2,
@@ -414,23 +459,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoutCancelButton: {
-    backgroundColor: '#DC2626',
+    backgroundColor: palette.danger,
   },
   logoutCancelButtonText: {
     color: 'white',
     fontWeight: 'bold',
   },
   logoutConfirmButton: {
-    backgroundColor: 'white',
+    backgroundColor: palette.surface,
     borderWidth: 1,
-    borderColor: '#DC2626',
+    borderColor: palette.danger,
   },
   logoutConfirmButtonText: {
-    color: '#DC2626',
+    color: palette.danger,
     fontWeight: 'bold',
   },
   deleteCancelButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: palette.surface,
     borderWidth: 1,
     borderColor: '#D1D5DB',
   },
@@ -440,7 +485,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   deleteConfirmButton: {
-    backgroundColor: '#DC2626',
+    backgroundColor: palette.danger,
   },
   deleteConfirmButtonText: {
     color: 'white',
@@ -448,4 +493,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
 

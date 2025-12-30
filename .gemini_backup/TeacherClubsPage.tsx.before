@@ -1,5 +1,4 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React from 'react';
@@ -10,16 +9,12 @@ import { TeacherStackParamList } from '@/navigation/types';
 import { router } from 'expo-router';
 
 const palette = {
-  primary: '#E39A5C',
-  primaryDark: '#D48242',
-  accent: '#2F9C8D',
+  primary: '#F28B6F',
+  accent: '#41B6A6',
   text: '#1F2937',
   gray: '#6B7280',
-  border: '#E6E2DD',
+  border: '#E5E7EB',
   surface: '#FFFFFF',
-  background: '#F7F4F0',
-  success: '#16A34A',
-  warning: '#F59E0B',
 };
 
 const clubs = [
@@ -62,33 +57,26 @@ export default function TeacherClubsPage() {
         contentContainerStyle={{ paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
       >
-        <LinearGradient
-          colors={[palette.primary, palette.primaryDark]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.hero}
-        >
-          <View style={styles.header}>
-            <View style={styles.headerRow}>
-              <TouchableOpacity
-                style={styles.backBtn}
-                onPress={() => navigation.navigate('teacher-home')}
-              >
-                <Ionicons name="arrow-back" size={18} color={palette.surface} />
-              </TouchableOpacity>
-              <View>
-                <Text style={styles.title}>Clubs</Text>
-                <Text style={styles.subtitle}>Vos partenaires et invitations</Text>
-              </View>
-            </View>
+        <View style={styles.header}>
+          <View style={styles.headerRow}>
             <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => navigation.navigate('teacher-community')}
+              style={styles.backBtn}
+              onPress={() => navigation.navigate('teacher-home')}
             >
-              <Ionicons name="chatbubble-ellipses-outline" size={18} color={palette.surface} />
+              <Ionicons name="arrow-back" size={18} color={palette.primary} />
             </TouchableOpacity>
+            <View>
+              <Text style={styles.title}>Clubs</Text>
+              <Text style={styles.subtitle}>Vos partenaires et invitations</Text>
+            </View>
           </View>
-        </LinearGradient>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => navigation.navigate('teacher-community')}
+          >
+            <Ionicons name="chatbubble-ellipses-outline" size={18} color={palette.primary} />
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.inviteCard}>
           <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
@@ -106,21 +94,21 @@ export default function TeacherClubsPage() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.listBlock}>
+        <View style={{ paddingHorizontal: 16, gap: 12 }}>
           {invites.map((inv) => (
             <View key={inv.id} style={styles.card}>
-              <View style={{ flex: 1, gap: 4 }}>
-                <Text style={styles.cardTitle}>{inv.club}</Text>
-                <Text style={styles.cardMeta}>{inv.city}</Text>
-                <Text style={styles.cardMeta}>{inv.detail}</Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.primaryBtn, styles.primaryBtnCompact]}
-                onPress={() => navigation.navigate('teacher-clubs')}
-              >
-                <Text style={styles.primaryBtnText}>Voir</Text>
-              </TouchableOpacity>
-            </View>
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={styles.cardTitle}>{inv.club}</Text>
+            <Text style={styles.cardMeta}>{inv.city}</Text>
+            <Text style={styles.cardMeta}>{inv.detail}</Text>
+          </View>
+            <TouchableOpacity
+            style={[styles.primaryBtn, { paddingHorizontal: 14, paddingVertical: 10 }]}
+            onPress={() => navigation.navigate('teacher-clubs')}
+            >
+            <Text style={styles.primaryBtnText}>Voir</Text>
+            </TouchableOpacity>
+        </View>
           ))}
         </View>
 
@@ -131,37 +119,25 @@ export default function TeacherClubsPage() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.listBlock}>
+        <View style={{ paddingHorizontal: 16, gap: 12 }}>
           {clubs.map((club) => (
             <View key={club.id} style={styles.clubCard}>
-              <View style={styles.clubHeader}>
-                <View style={styles.clubTitleRow}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <View style={{ flex: 1, gap: 6 }}>
                   <Text style={styles.cardTitle}>{club.name}</Text>
-                  <View
-                    style={[
-                      styles.badge,
-                      club.status === 'Actif' ? styles.badgeActive : styles.badgePending,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.badgeText,
-                        club.status === 'Actif' ? styles.badgeTextActive : styles.badgeTextPending,
-                      ]}
-                    >
-                      {club.status}
-                    </Text>
+                  <Text style={styles.cardMeta}>{club.role}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name="time-outline" size={14} color={palette.gray} />
+                    <Text style={styles.cardMeta}>Prochain: {club.nextSlot}</Text>
+                  </View>
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{club.status}</Text>
                   </View>
                 </View>
                 <View style={styles.payout}>
                   <Text style={styles.payoutLabel}>Solde</Text>
                   <Text style={styles.payoutValue}>{club.payout}</Text>
                 </View>
-              </View>
-              <Text style={styles.cardMeta}>{club.role}</Text>
-              <View style={styles.metaRow}>
-                <Ionicons name="time-outline" size={14} color={palette.gray} />
-                <Text style={styles.cardMeta}>Prochain: {club.nextSlot}</Text>
               </View>
               <View style={styles.actionsRow}>
                 <TouchableOpacity
@@ -187,19 +163,10 @@ export default function TeacherClubsPage() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: palette.background },
-  hero: {
-    paddingTop: 6,
-    paddingBottom: 22,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    overflow: 'hidden',
-    marginBottom: 10,
-  },
+  safe: { flex: 1, backgroundColor: '#F5F7FA' },
   header: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 6,
+    paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -209,137 +176,95 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
+    backgroundColor: '#FFF3EC',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { fontSize: 20, fontWeight: '700', color: palette.surface },
-  subtitle: { color: 'rgba(255, 255, 255, 0.85)', fontSize: 13 },
+  title: { fontSize: 20, fontWeight: '700', color: palette.text },
+  subtitle: { color: palette.gray, fontSize: 13 },
   addButton: {
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
+    backgroundColor: '#FFF3EC',
     alignItems: 'center',
     justifyContent: 'center',
   },
   inviteCard: {
-    backgroundColor: palette.surface,
+    backgroundColor: '#fff',
     marginHorizontal: 16,
     marginBottom: 14,
-    marginTop: -16,
     padding: 14,
-    borderRadius: 18,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.primary,
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: palette.border,
   },
   inviteTitle: { fontSize: 15, fontWeight: '700', color: palette.text },
   inviteMeta: { color: palette.gray, fontSize: 13 },
-  listBlock: { paddingHorizontal: 16, gap: 12 },
   card: {
     backgroundColor: palette.surface,
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 14,
+    padding: 12,
     borderWidth: 1,
     borderColor: palette.border,
     flexDirection: 'row',
     gap: 12,
     alignItems: 'center',
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.04,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
-    elevation: 2,
   },
-  cardTitle: { color: palette.text, fontSize: 16, fontWeight: '700' },
+  cardTitle: { color: palette.text, fontSize: 15, fontWeight: '700' },
   cardMeta: { color: palette.gray, fontSize: 13 },
   sectionHeader: {
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 6,
     paddingBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: palette.text },
-  link: { color: palette.primaryDark, fontWeight: '700' },
+  link: { color: palette.primary, fontWeight: '700' },
   clubCard: {
-    backgroundColor: palette.surface,
-    borderRadius: 18,
-    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 12,
     borderWidth: 1,
     borderColor: palette.border,
     gap: 10,
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  clubHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  clubTitleRow: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
   },
   badge: {
     alignSelf: 'flex-start',
+    backgroundColor: '#E0F2F1',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 999,
+    borderRadius: 10,
   },
-  badgeActive: { backgroundColor: '#E7F6EF' },
-  badgePending: { backgroundColor: '#FEF3C7' },
-  badgeText: { fontWeight: '700', fontSize: 12 },
-  badgeTextActive: { color: palette.success },
-  badgeTextPending: { color: palette.warning },
+  badgeText: { color: palette.accent, fontWeight: '700', fontSize: 12 },
   payout: {
     alignItems: 'flex-end',
     gap: 4,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    backgroundColor: '#FFF4E8',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#F4D9C2',
+    backgroundColor: '#FFF3EC',
+    borderRadius: 12,
   },
   payoutLabel: { color: palette.gray, fontSize: 12 },
-  payoutValue: { color: palette.primaryDark, fontWeight: '700', fontSize: 15 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  actionsRow: { flexDirection: 'row', gap: 10 },
+  payoutValue: { color: palette.primary, fontWeight: '700', fontSize: 15 },
+  actionsRow: { flexDirection: 'row', gap: 8 },
   secondary: {
     flex: 1,
     borderWidth: 1,
     borderColor: palette.border,
-    borderRadius: 999,
+    borderRadius: 12,
     paddingVertical: 10,
     alignItems: 'center',
-    backgroundColor: '#FAFAF9',
   },
-  secondaryText: { color: palette.text, fontWeight: '700', fontSize: 13 },
+  secondaryText: { color: palette.text, fontWeight: '700' },
   primaryBtn: {
     flex: 1,
     backgroundColor: palette.primary,
-    borderRadius: 999,
+    borderRadius: 12,
     alignItems: 'center',
     paddingVertical: 10,
   },
-  primaryBtnCompact: { paddingHorizontal: 14, paddingVertical: 10, flex: 0 },
-  primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  primaryBtnText: { color: '#fff', fontWeight: '700' },
 });

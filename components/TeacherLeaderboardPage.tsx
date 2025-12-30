@@ -1,4 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
@@ -8,11 +9,15 @@ import TeacherBottomNav from '@/components/TeacherBottomNav';
 import { TeacherStackParamList } from '@/navigation/types';
 
 const palette = {
-  primary: '#F28B6F',
-  accent: '#41B6A6',
+  primary: '#35A89C',
+  primaryDark: '#2B8A7F',
+  accent: '#E39A5C',
   text: '#1F2937',
   gray: '#6B7280',
-  border: '#E5E7EB',
+  border: '#E6E2DD',
+  surface: '#FFFFFF',
+  background: '#F7F4F0',
+  warning: '#F59E0B',
 };
 
 const data = {
@@ -46,21 +51,28 @@ export default function TeacherLeaderboardPage() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={{ paddingBottom: 140 }} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>Classements</Text>
-            <Text style={styles.subtitle}>{data.season}</Text>
+        <LinearGradient
+          colors={[palette.primary, palette.primaryDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.title}>Classements</Text>
+              <Text style={styles.subtitle}>{data.season}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.headerBtn}
+              onPress={() => navigation.navigate('teacher-account')}
+            >
+              <Ionicons name="arrow-back" size={18} color={palette.surface} />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={styles.headerBtn}
-            onPress={() => navigation.navigate('teacher-account')}
-          >
-            <Ionicons name="arrow-back" size={18} color={palette.primary} />
-          </TouchableOpacity>
-        </View>
+        </LinearGradient>
 
         <View style={styles.podium}>
-          <View style={styles.podiumCard}>
+          <View style={[styles.podiumCard, styles.podiumCardPrimary]}>
             <View style={styles.medal}>
               <Text style={styles.medalText}>1</Text>
             </View>
@@ -161,21 +173,32 @@ export default function TeacherLeaderboardPage() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F5F7FA' },
+  safe: { flex: 1, backgroundColor: palette.background },
+  hero: {
+    paddingTop: 6,
+    paddingBottom: 22,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
   header: {
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingTop: 12,
+    paddingBottom: 6,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  title: { fontSize: 20, fontWeight: '700', color: palette.text },
-  subtitle: { color: palette.gray, fontSize: 13 },
+  title: { fontSize: 20, fontWeight: '700', color: palette.surface },
+  subtitle: { color: 'rgba(255, 255, 255, 0.85)', fontSize: 13 },
   headerBtn: {
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: '#FFF3EC',
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -183,69 +206,98 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     paddingHorizontal: 16,
-    paddingBottom: 10,
+    paddingBottom: 12,
+    marginTop: -18,
   },
   podiumCard: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 14,
+    backgroundColor: palette.surface,
+    borderRadius: 18,
     padding: 12,
     alignItems: 'center',
     gap: 6,
     borderWidth: 1,
     borderColor: palette.border,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  podiumCardPrimary: {
+    borderColor: '#CFEDE7',
+    backgroundColor: '#F6FEFC',
   },
   medal: {
-    backgroundColor: palette.primary,
-    borderRadius: 12,
+    backgroundColor: palette.accent,
+    borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   medalText: { color: '#fff', fontWeight: '700' },
-  avatar: { width: 60, height: 60, borderRadius: 20, backgroundColor: '#E5E7EB' },
-  podiumName: { color: palette.text, fontWeight: '700', textAlign: 'center' },
+  avatar: { width: 62, height: 62, borderRadius: 22, backgroundColor: '#E5E7EB' },
+  podiumName: { color: palette.text, fontWeight: '700', textAlign: 'center', fontSize: 14 },
   podiumMeta: { color: palette.gray, fontSize: 12 },
-  tabs: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 10 },
+  tabs: {
+    flexDirection: 'row',
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 4,
+    padding: 6,
+    borderRadius: 999,
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
   tab: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    paddingVertical: 10,
+    backgroundColor: 'transparent',
+    borderRadius: 999,
+    paddingVertical: 8,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: palette.border,
   },
-  tabActive: { backgroundColor: '#FFF3EC', borderColor: palette.primary },
-  tabText: { color: palette.gray, fontWeight: '700' },
-  tabTextActive: { color: palette.primary },
+  tabActive: { backgroundColor: palette.primary, borderColor: palette.primaryDark },
+  tabText: { color: palette.gray, fontWeight: '700', fontSize: 13 },
+  tabTextActive: { color: palette.surface },
   row: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 12,
+    backgroundColor: palette.surface,
+    borderRadius: 18,
+    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     borderWidth: 1,
     borderColor: palette.border,
+    borderLeftWidth: 4,
+    borderLeftColor: palette.primary,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 10,
+    elevation: 3,
   },
   rank: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: '#FFF3EC',
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: '#E0F2F1',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rankText: { color: palette.primary, fontWeight: '700' },
+  rankText: { color: palette.primaryDark, fontWeight: '700' },
   name: { color: palette.text, fontWeight: '700', fontSize: 15 },
   meta: { color: palette.gray, fontSize: 13 },
   stat: { alignItems: 'center', gap: 4 },
   statText: { color: palette.text, fontWeight: '700' },
   badge: {
-    backgroundColor: '#E0F2F1',
+    backgroundColor: '#FFF4E8',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#F4D9C2',
   },
   badgeText: { color: palette.accent, fontWeight: '700', fontSize: 12 },
   actions: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingVertical: 14 },
@@ -253,17 +305,18 @@ const styles = StyleSheet.create({
     flex: 1,
     borderWidth: 1,
     borderColor: palette.border,
-    borderRadius: 12,
+    borderRadius: 999,
     alignItems: 'center',
     paddingVertical: 12,
+    backgroundColor: '#FAFAF9',
   },
-  secondaryText: { color: palette.text, fontWeight: '700' },
+  secondaryText: { color: palette.text, fontWeight: '700', fontSize: 13 },
   primaryBtn: {
     flex: 1,
     backgroundColor: palette.primary,
-    borderRadius: 12,
+    borderRadius: 999,
     alignItems: 'center',
     paddingVertical: 12,
   },
-  primaryBtnText: { color: '#fff', fontWeight: '700' },
+  primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 });

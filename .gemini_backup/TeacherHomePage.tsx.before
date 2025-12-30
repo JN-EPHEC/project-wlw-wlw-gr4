@@ -1,5 +1,4 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useMemo } from 'react';
@@ -11,16 +10,15 @@ import { useUnreadNotificationCount } from '@/hooks/useNotifications';
 import { TeacherStackParamList } from '@/navigation/types';
 
 const palette = {
-  primary: '#2F9C8D',
-  primaryDark: '#277D71',
-  primarySoft: '#E6F4F1',
-  accent: '#F59E0B',
-  text: '#111827',
-  textSecondary: '#667085',
-  background: '#F3F6F5',
+  primary: '#F28B6F',
+  primaryDark: '#D97757',
+  accent: '#41B6A6',
+  text: '#1F2937',
+  textSecondary: '#6B7280',
+  background: '#F9FAFB',
   surface: '#FFFFFF',
-  border: '#E3EBEA',
-  success: '#16A34A',
+  border: '#E5E7EB',
+  success: '#10B981',
 };
 
 const nextSessions = [
@@ -69,52 +67,31 @@ export default function TeacherHomePage() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <LinearGradient
-          colors={[palette.primary, palette.primaryDark]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.header}
-        >
-          <View style={styles.headerTop}>
-            <View>
-              <Text style={styles.headerWelcome}>Bonjour Sophie</Text>
-              <Text style={styles.headerTitle}>Tableau de bord Enseignant</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.notificationButton}
-              onPress={() => navigation.navigate('notifications', { previousTarget: 'teacher-home' })}
-            >
-              <Ionicons name="notifications-outline" size={24} color={palette.surface} />
-              {unreadCount > 0 && (
-                <View style={styles.notificationBadge}>
-                  <Text style={styles.notificationBadgeText}>
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.headerWelcome}>Bonjour Sophie</Text>
+            <Text style={styles.headerTitle}>Tableau de bord Enseignant</Text>
           </View>
-
-          <View style={styles.statsPanel}>
-            <View style={styles.statsGrid}>
-              {followUps.map((item) => (
-                <View key={item.id} style={styles.statCard}>
-                  <View style={styles.statIcon}>
-                    <Ionicons name={item.icon} size={18} color={palette.surface} />
-                  </View>
-                  <Text style={styles.statValue}>{item.count}</Text>
-                  <Text style={styles.statLabel}>{item.label}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        </LinearGradient>
+          <TouchableOpacity
+            style={styles.notificationButton}
+            onPress={() => navigation.navigate('notifications', { previousTarget: 'teacher-home' })}
+          >
+            <Ionicons name="notifications-outline" size={24} color={palette.textSecondary} />
+            {unreadCount > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.container}>
           <View style={styles.focusCard}>
             <View style={styles.focusHeader}>
               <View style={styles.focusIcon}>
-                <Ionicons name="calendar-outline" size={18} color={palette.primary} />
+                <Ionicons name="calendar-outline" size={20} color={palette.primary} />
               </View>
               <Text style={styles.focusLabel}>Prochain RDV</Text>
             </View>
@@ -126,6 +103,30 @@ export default function TeacherHomePage() {
             </TouchableOpacity>
           </View>
 
+          <View style={styles.statsGrid}>
+            {followUps.map((item) => (
+              <View key={item.id} style={styles.statCard}>
+                <View style={styles.statIcon}>
+                  <Ionicons name={item.icon} size={22} color={palette.primary} />
+                </View>
+                <Text style={styles.statValue}>{item.count}</Text>
+                <Text style={styles.statLabel}>{item.label}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Accès rapide</Text>
+            <View style={styles.shortcutsGrid}>
+              {shortcuts.map((action) => (
+                <TouchableOpacity key={action.id} style={styles.shortcutCard} onPress={() => handleNavigate(action.id as keyof TeacherStackParamList)}>
+                  <Ionicons name={action.icon} size={24} color={palette.primary} />
+                  <Text style={styles.shortcutLabel}>{action.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Planning du jour</Text>
@@ -156,35 +157,16 @@ export default function TeacherHomePage() {
             </View>
           </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Accès rapide</Text>
-            <View style={styles.shortcutsGrid}>
-              {shortcuts.map((action) => (
-                <TouchableOpacity key={action.id} style={styles.shortcutCard} onPress={() => handleNavigate(action.id as keyof TeacherStackParamList)}>
-                  <View style={styles.shortcutIcon}>
-                    <Ionicons name={action.icon} size={20} color={palette.primary} />
-                  </View>
-                  <Text style={styles.shortcutLabel}>{action.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          <LinearGradient
-            colors={[palette.accent, '#F97316']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.section, styles.communitySection]}
-          >
+          <View style={[styles.section, styles.communitySection]}>
             <View style={styles.communityIconContainer}>
-              <MaterialCommunityIcons name="forum-outline" size={32} color={palette.surface} />
+              <MaterialCommunityIcons name="forum-outline" size={32} color={palette.accent} />
             </View>
             <Text style={styles.communityTitle}>Communauté active</Text>
             <Text style={styles.communitySubtitle}>3 questions attendent votre expertise aujourd'hui.</Text>
             <TouchableOpacity style={styles.communityButton} onPress={() => handleNavigate('teacher-community')}>
               <Text style={styles.communityButtonText}>Répondre aux questions</Text>
             </TouchableOpacity>
-          </LinearGradient>
+          </View>
         </View>
       </ScrollView>
       <TeacherBottomNav current="teacher-home" />
@@ -198,53 +180,45 @@ const styles = StyleSheet.create({
     backgroundColor: palette.background,
   },
   scrollContent: {
-    paddingBottom: 140,
+    paddingBottom: 120,
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 24,
-    borderBottomLeftRadius: 26,
-    borderBottomRightRadius: 26,
-    overflow: 'hidden',
-  },
-  headerTop: {
+    paddingTop: 20,
+    paddingBottom: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   headerWelcome: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.85)',
-    marginBottom: 4,
+    fontSize: 16,
+    color: palette.textSecondary,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: palette.surface,
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: palette.text,
   },
   notificationButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    backgroundColor: palette.surface,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: palette.border,
   },
   notificationBadge: {
     position: 'absolute',
     top: -3,
     right: -3,
-    backgroundColor: palette.accent,
+    backgroundColor: palette.primary,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: palette.primary,
   },
   notificationBadgeText: {
     color: palette.surface,
@@ -253,31 +227,13 @@ const styles = StyleSheet.create({
   },
   container: {
     paddingHorizontal: 20,
-    marginTop: 16,
-  },
-  statsPanel: {
-    marginTop: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.22)',
+    marginTop: 10,
   },
   focusCard: {
-    backgroundColor: palette.surface,
-    borderRadius: 18,
-    padding: 16,
+    backgroundColor: palette.primary,
+    borderRadius: 20,
+    padding: 20,
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.primary,
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
   },
   focusHeader: {
     flexDirection: 'row',
@@ -285,35 +241,36 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   focusIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: palette.primarySoft,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
   },
   focusLabel: {
-    color: palette.textSecondary,
-    fontSize: 13,
+    color: palette.surface,
+    fontSize: 16,
     fontWeight: '600',
   },
   focusTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: palette.text,
-    marginBottom: 4,
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: palette.surface,
+    marginBottom: 5,
   },
   focusMeta: {
-    fontSize: 14,
-    color: palette.textSecondary,
-    marginBottom: 12,
+    fontSize: 15,
+    color: palette.surface,
+    opacity: 0.8,
+    marginBottom: 15,
   },
   focusButton: {
-    backgroundColor: palette.primary,
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    backgroundColor: palette.primaryDark,
+    borderRadius: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -321,36 +278,36 @@ const styles = StyleSheet.create({
   },
   focusButtonText: {
     color: palette.surface,
-    fontSize: 14,
-    fontWeight: '700',
-    marginRight: 6,
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginRight: 8,
   },
   statsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 20,
   },
   statCard: {
     flex: 1,
+    backgroundColor: palette.surface,
+    borderRadius: 16,
+    padding: 16,
     alignItems: 'center',
-    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: palette.border,
+    marginHorizontal: 4,
   },
   statIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   statValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: palette.surface,
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: palette.text,
   },
   statLabel: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 13,
+    color: palette.textSecondary,
     textAlign: 'center',
     marginTop: 4,
   },
@@ -364,82 +321,61 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: 'bold',
     color: palette.text,
   },
   seeAll: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: palette.primaryDark,
+    color: palette.primary,
   },
   shortcutsGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  shortcutCard: {
-    width: '48%',
+    justifyContent: 'space-around',
     backgroundColor: palette.surface,
     borderRadius: 16,
-    padding: 14,
     borderWidth: 1,
     borderColor: palette.border,
-    alignItems: 'flex-start',
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    paddingVertical: 10,
   },
-  shortcutIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: palette.primarySoft,
+  shortcutCard: {
     alignItems: 'center',
-    justifyContent: 'center',
+    padding: 10,
+    flex: 1,
   },
   shortcutLabel: {
-    marginTop: 12,
-    fontSize: 14,
+    marginTop: 8,
+    fontSize: 13,
     fontWeight: '600',
     color: palette.text,
-    textAlign: 'left',
+    textAlign: 'center'
   },
   agenda: {
     gap: 12,
   },
   sessionCard: {
     backgroundColor: palette.surface,
-    borderRadius: 18,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: palette.border,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
+    padding: 12,
     overflow: 'hidden',
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
   },
   sessionTimeContainer: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: palette.primarySoft,
-    borderRadius: 14,
+    borderRightWidth: 1,
+    borderRightColor: palette.border,
     marginRight: 12,
-    minWidth: 64,
   },
   sessionTime: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: palette.primaryDark,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: palette.primary,
   },
   sessionDetails: {
     flex: 1,
@@ -451,12 +387,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   sessionTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     color: palette.text,
   },
   sessionMeta: {
-    fontSize: 13,
+    fontSize: 14,
     color: palette.textSecondary,
   },
   badgeBase: {
@@ -465,7 +401,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   badgeText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
   badgeSolo: {
@@ -487,49 +423,44 @@ const styles = StyleSheet.create({
     color: '#065F46',
   },
   communitySection: {
-    borderRadius: 22,
-    padding: 18,
+    backgroundColor: palette.surface,
+    borderRadius: 20,
+    padding: 20,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: palette.border,
     marginTop: 10,
-    overflow: 'hidden',
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
   },
   communityIconContainer: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: '#E0F2F1',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
   },
   communityTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: palette.surface,
+    fontWeight: 'bold',
+    color: palette.text,
     marginBottom: 4,
   },
   communitySubtitle: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: palette.textSecondary,
     textAlign: 'center',
     marginBottom: 16,
   },
   communityButton: {
-    backgroundColor: palette.surface,
-    borderRadius: 999,
-    paddingVertical: 10,
-    paddingHorizontal: 22,
+    backgroundColor: palette.accent,
+    borderRadius: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
   },
   communityButtonText: {
-    color: '#C2410C',
-    fontSize: 15,
-    fontWeight: '700',
+    color: palette.surface,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
-
-
