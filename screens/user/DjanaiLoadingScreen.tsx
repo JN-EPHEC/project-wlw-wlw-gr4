@@ -3,8 +3,10 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect } from 'react';
 import { Animated, Easing, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 import { useDjanai } from '@/context/DjanaiContext';
+import { useAuth } from '@/context/AuthContext';
 
 const palette = {
   primary: '#41B6A6',
@@ -136,7 +138,9 @@ export default function DjanaiLoadingScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { quizAnswers, setProgram, setIsLoading } = useDjanai();
+  const { user } = useAuth();
   const dogId = (route.params as any)?.dogId;
+  const dogName = (route.params as any)?.dogName || 'Mon chien';
 
   const pulseAnim = new Animated.Value(0);
 
@@ -154,14 +158,44 @@ export default function DjanaiLoadingScreen() {
 
     const generateProgram = async () => {
       setIsLoading(true);
-      // Simulation de délai
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      const mockProgram = generateMockProgram(quizAnswers);
-      setProgram(mockProgram);
-      setIsLoading(false);
+      try {
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
 
-      (navigation as any).replace('djanai-program', { dogId });
+        // Call the Cloud Function
+        const functions = getFunctions();
+        const generateDjanaiProgram = httpsCallable(functions, 'generateDjanaiProgram');
+
+        const result = await generateDjanaiProgram({
+          dogId,
+          dogName,
+          ageCategory: quizAnswers?.ageCategory || quizAnswers?.age || 'Adulte (3-7 ans)',
+          breedCategory: quizAnswers?.breedCategory || 'Croisé',
+          size: quizAnswers?.size || 'Moyen',
+          energyLevel: quizAnswers?.energyLevel || quizAnswers?.energy || 'Modéré',
+          ownerExperience: quizAnswers?.ownerExperience || quizAnswers?.experience || 'Débutant',
+          objectives: quizAnswers?.objectives || [],
+          behaviorsConcerns: quizAnswers?.behaviorsConcerns || quizAnswers?.behaviors || [],
+          environment: quizAnswers?.environment || 'Appartement',
+          availableTime: quizAnswers?.availableTime || quizAnswers?.timeAvailable || '30-60 min/jour',
+        });
+
+        if (result.data?.success) {
+          setProgram(result.data.program);
+          setIsLoading(false);
+          (navigation as any).replace('djanai-program', { dogId });
+        } else {
+          throw new Error('Failed to generate program');
+        }
+      } catch (error) {
+        console.error('Error generating program:', error);
+        // Fallback to mock if API fails
+        const mockProgram = generateMockProgram(quizAnswers);
+        setProgram(mockProgram);
+        setIsLoading(false);
+        (navigation as any).replace('djanai-program', { dogId });
+      }
     };
 
     if (quizAnswers) {
@@ -169,7 +203,7 @@ export default function DjanaiLoadingScreen() {
     } else {
       navigation.goBack();
     }
-  }, [quizAnswers, setProgram, setIsLoading, navigation, pulseAnim]);
+  }, [quizAnswers, setProgram, setIsLoading, navigation, pulseAnim, user, dogId, dogName]);
 
   const animatedStyle = (delay: number) => ({
     transform: [
