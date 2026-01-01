@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
   StyleSheet,
@@ -6,24 +6,130 @@ import {
   TouchableOpacity,
   View,
   ScrollView,
+  ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { doc, getDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 import { UserStackParamList } from '@/navigation/types';
 import { useDjanai } from '@/context/DjanaiContext';
+import { useAuth } from '@/context/AuthContext';
+import { db } from '@/firebaseConfig';
 
 type Props = NativeStackScreenProps<UserStackParamList, 'djanai-program'>;
 
-type TabType = 'programme' | 'exercises' | 'advice';
+type TabType = 'programme' | 'exercises' | 'advice' | 'progress';
 
 export default function DjanaiProgramScreen({ navigation, route }: Props) {
-  const { program } = useDjanai();
+  const { program, setProgram } = useDjanai();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('programme');
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState<any>({});
+  const [completedExercises, setCompletedExercises] = useState<{[key: string]: boolean}>({});
+  const dogId = (route.params as any)?.dogId;
+
+  // Charger le programme et le suivi depuis Firestore
+  useEffect(() => {
+    const loadData = async () => {
+      if (!user || !dogId) return;
+
+      try {
+        setLoading(true);
+
+        // Charger le programme
+        if (!program) {
+          const docRef = doc(
+            db,
+            'users',
+            user.uid,
+            'dogs',
+            dogId,
+            'trainingPrograms',
+            'latest'
+          );
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            setProgram(docSnap.data());
+          }
+        }
+
+        // Charger le suivi
+        const functions = getFunctions();
+        const getExerciseProgressFn = httpsCallable(functions, 'getExerciseProgress');
+        const progressResult = await getExerciseProgressFn({ dogId });
+        const progressData = (progressResult.data as any)?.progress || {};
+        setProgress(progressData);
+
+        // Construire l'état des exercices complétés
+        const completed: {[key: string]: boolean} = {};
+        if (progressData.exercises) {
+          Object.keys(progressData.exercises).forEach((exerciseName: string) => {
+            completed[exerciseName] = progressData.exercises[exerciseName].completed || false;
+          });
+        }
+        setCompletedExercises(completed);
+      } catch (error) {
+        console.error('Erreur chargement données:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [user, dogId, program, setProgram]);
+
+  // Mettre à jour le suivi d'un exercice
+  const toggleExerciseProgress = async (exerciseName: string) => {
+    if (!user || !dogId) return;
+
+    try {
+      const newStatus = !completedExercises[exerciseName];
+      const today = new Date().toISOString().split('T')[0];
+
+      const functions = getFunctions();
+      const updateProgress = httpsCallable(functions, 'updateExerciseProgress');
+
+      await updateProgress({
+        dogId,
+        exerciseName,
+        completed: newStatus,
+        completedDate: today,
+      });
+
+      // Update local state
+      setCompletedExercises({
+        ...completedExercises,
+        [exerciseName]: newStatus,
+      });
+    } catch (error) {
+      console.error('Erreur mise à jour suivi:', error);
+    }
+  };
 
   const handleBack = () => {
     (navigation as any).navigate('home');
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={24} color="white" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Programme DjanAI</Text>
+        </View>
+        <View style={styles.errorContainer}>
+          <ActivityIndicator size="large" color="#41B6A6" />
+          <Text style={styles.errorText}>Chargement du programme...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!program) {
     return (
@@ -62,15 +168,18 @@ export default function DjanaiProgramScreen({ navigation, route }: Props) {
         <View style={styles.tagsRow}>
           <View style={styles.tag}>
             <MaterialCommunityIcons name="dog" size={14} color="#41B6A6" />
-            <Text style={styles.tagText}>{program.ageCategory}</Text>
+            <Text style={styles.tagText}>{program.dogName}</Text>
           </View>
-          <View style={styles.tag}>
-            <MaterialCommunityIcons name="lightning-bolt" size={14} color="#41B6A6" />
-            <Text style={styles.tagText}>{program.energyLevel}</Text>
-          </View>
-          {program.objectives.length > 0 && (
+          {program.sessions && program.sessions.length > 0 && (
             <View style={styles.tag}>
-              <Text style={styles.tagText}>{program.objectives.length} objectif{program.objectives.length > 1 ? 's' : ''}</Text>
+              <MaterialCommunityIcons name="calendar" size={14} color="#41B6A6" />
+              <Text style={styles.tagText}>{program.sessions.length} semaines</Text>
+            </View>
+          )}
+          {program.exercises && program.exercises.length > 0 && (
+            <View style={styles.tag}>
+              <MaterialCommunityIcons name="dumbbell" size={14} color="#41B6A6" />
+              <Text style={styles.tagText}>{program.exercises.length} exercice{program.exercises.length > 1 ? 's' : ''}</Text>
             </View>
           )}
         </View>
@@ -138,18 +247,166 @@ export default function DjanaiProgramScreen({ navigation, route }: Props) {
             Conseils
           </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'progress' && styles.tabActive]}
+          onPress={() => setActiveTab('progress')}
+        >
+          <MaterialCommunityIcons
+            name="chart-line"
+            size={18}
+            color={activeTab === 'progress' ? '#41B6A6' : '#6B7280'}
+          />
+          <Text style={[styles.tabText, activeTab === 'progress' && styles.tabTextActive]}>
+            Suivi
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Content */}
       <ScrollView style={styles.contentContainer}>
         {activeTab === 'programme' && (
-          <ProgrammeTab programme={program.programme} />
+          <View style={styles.tabContent}>
+            <Text style={styles.sectionTitle}>Programme d'entraînement</Text>
+            {program.summary && (
+              <Text style={styles.sectionDescription}>{program.summary}</Text>
+            )}
+
+            {program.sessions && program.sessions.map((session: any, idx: number) => (
+              <View key={idx} style={styles.sessionCard}>
+                <View style={styles.sessionHeader}>
+                  <MaterialCommunityIcons name="calendar-range" size={20} color="#41B6A6" />
+                  <Text style={styles.sessionTitle}>Semaine {session.week}</Text>
+                </View>
+                <Text style={styles.sessionGoal}>{session.focus}</Text>
+
+                {session.exercises && (
+                  <View style={styles.exercisesList}>
+                    {session.exercises.map((ex: string, exIdx: number) => (
+                      <View key={exIdx} style={styles.exerciseItem}>
+                        <View style={styles.exerciseNumber}>
+                          <Text style={styles.exerciseNumberText}>{String(exIdx + 1)}</Text>
+                        </View>
+                        <View style={styles.exerciseInfo}>
+                          <Text style={styles.exerciseName}>{ex}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+                {session.notes && (
+                  <Text style={styles.sessionNotes}>{session.notes}</Text>
+                )}
+              </View>
+            ))}
+          </View>
         )}
+
         {activeTab === 'exercises' && (
-          <ExercisesTab exercises={program.exercises} />
+          <View style={styles.tabContent}>
+            <Text style={styles.sectionTitle}>Exercices recommandés</Text>
+
+            {program.exercises && program.exercises.map((item: any, idx: number) => (
+              <View key={idx} style={styles.exerciseCard}>
+                <View style={styles.exerciseCardHeader}>
+                  <View style={styles.exerciseCardInfo}>
+                    <Text style={styles.exerciseCardName}>{item.name}</Text>
+                    {item.description && (
+                      <Text style={styles.exerciseCardDescription}>{item.description}</Text>
+                    )}
+                  </View>
+                  <Switch
+                    value={completedExercises[item.name] || false}
+                    onValueChange={() => toggleExerciseProgress(item.name)}
+                    trackColor={{ false: '#D1D5DB', true: '#86EFAC' }}
+                    thumbColor={completedExercises[item.name] ? '#10B981' : '#6B7280'}
+                  />
+                </View>
+
+                <View style={styles.exerciseCardMeta}>
+                  <View style={styles.metaItem}>
+                    <MaterialCommunityIcons name="clock-outline" size={14} color="#41B6A6" />
+                    <Text style={styles.metaText}>{item.duration} min</Text>
+                  </View>
+                  <View style={styles.metaItem}>
+                    <MaterialCommunityIcons name="calendar-outline" size={14} color="#F59E0B" />
+                    <Text style={styles.metaText}>{item.frequency}</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
         )}
+
         {activeTab === 'advice' && (
-          <AdviceTab advice={program.advice} />
+          <View style={styles.tabContent}>
+            <Text style={styles.sectionTitle}>Conseils d'entraînement</Text>
+
+            {program.advices && program.advices.map((advice: string, idx: number) => (
+              <View key={idx} style={styles.adviceCard}>
+                <MaterialCommunityIcons name="lightbulb-outline" size={18} color="#F59E0B" />
+                <Text style={styles.adviceText}>{advice}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {activeTab === 'progress' && (
+          <View style={styles.tabContent}>
+            <Text style={styles.sectionTitle}>Suivi des progrès</Text>
+
+            {/* Statistiques globales */}
+            {program.exercises && program.exercises.length > 0 && (
+              <View style={styles.progressStatsCard}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Exercices complétés</Text>
+                  <Text style={styles.statValue}>
+                    {Object.values(completedExercises).filter(Boolean).length}/{program.exercises.length}
+                  </Text>
+                </View>
+                <View style={styles.progressBar}>
+                  <View
+                    style={[
+                      styles.progressBarFill,
+                      {
+                        width: `${
+                          program.exercises.length > 0
+                            ? (Object.values(completedExercises).filter(Boolean).length / program.exercises.length) * 100
+                            : 0
+                        }%`,
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+            )}
+
+            {/* Liste des exercices avec statut */}
+            <Text style={styles.progressListTitle}>État des exercices</Text>
+            {program.exercises && program.exercises.map((item: any, idx: number) => (
+              <View
+                key={idx}
+                style={[
+                  styles.progressItem,
+                  completedExercises[item.name] && styles.progressItemCompleted,
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name={completedExercises[item.name] ? 'check-circle' : 'circle-outline'}
+                  size={20}
+                  color={completedExercises[item.name] ? '#10B981' : '#D1D5DB'}
+                />
+                <Text
+                  style={[
+                    styles.progressItemText,
+                    completedExercises[item.name] && styles.progressItemTextCompleted,
+                  ]}
+                >
+                  {item.name}
+                </Text>
+              </View>
+            ))}
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -157,112 +414,6 @@ export default function DjanaiProgramScreen({ navigation, route }: Props) {
 }
 
 // Tab Components
-function ProgrammeTab({ programme }: any) {
-  return (
-    <View style={styles.tabContent}>
-      <Text style={styles.sectionTitle}>{programme.title}</Text>
-      <Text style={styles.sectionDescription}>{programme.description}</Text>
-
-      {programme.sessions.map((session: any) => (
-        <View key={session.id} style={styles.sessionCard}>
-          <View style={styles.sessionHeader}>
-            <MaterialCommunityIcons name="calendar-range" size={20} color="#41B6A6" />
-            <Text style={styles.sessionTitle}>{session.title}</Text>
-          </View>
-          <Text style={styles.sessionGoal}>{session.goal}</Text>
-
-          <View style={styles.exercisesList}>
-            {session.exercises.map((ex: any, idx: number) => (
-              <View key={ex.id} style={styles.exerciseItem}>
-                <View style={styles.exerciseNumber}><Text style={styles.exerciseNumberText}>{String(idx + 1)}</Text></View>
-                <View style={styles.exerciseInfo}>
-                  <Text style={styles.exerciseName}>{ex.name}</Text>
-                  <View style={styles.exerciseMeta}>
-                    <MaterialCommunityIcons name="clock" size={12} color="#6B7280" />
-                    <Text style={styles.exerciseMetaText}>{ex.duration}</Text>
-                    <MaterialCommunityIcons name="calendar-blank" size={12} color="#6B7280" style={{ marginLeft: 12 }} />
-                    <Text style={styles.exerciseMetaText}>{ex.frequency}</Text>
-                  </View>
-                </View>
-              </View>
-            ))}
-          </View>
-        </View>
-      ))}
-
-      <View style={styles.progressSection}>
-        <MaterialCommunityIcons name="trending-up" size={20} color="#41B6A6" />
-        <Text style={styles.progressTitle}>Suivi des progrès</Text>
-        <Text style={styles.progressText}>
-          Notez chaque semaine les progrès de votre chien pour ajuster le programme si nécessaire.
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function ExercisesTab({ exercises }: any) {
-  return (
-    <View style={styles.tabContent}>
-      <Text style={styles.sectionTitle}>{exercises.title}</Text>
-      <Text style={styles.sectionDescription}>{exercises.description}</Text>
-
-      {exercises.items.map((item: any) => (
-        <View key={item.id} style={styles.exerciseCard}>
-          <View style={styles.exerciseCardHeader}>
-            {item.emoji && <Text style={styles.exerciseEmoji}>{item.emoji}</Text>}
-            <View style={styles.exerciseCardInfo}>
-              <Text style={styles.exerciseCardName}>{item.name}</Text>
-              {item.description && (
-                <Text style={styles.exerciseCardDescription}>{item.description}</Text>
-              )}
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={20} color="#6B7280" />
-          </View>
-
-          <View style={styles.exerciseCardMeta}>
-            <View style={styles.metaItem}>
-              <MaterialCommunityIcons name="clock-outline" size={14} color="#41B6A6" />
-              <Text style={styles.metaText}>{item.duration}</Text>
-            </View>
-            <View style={styles.metaItem}>
-              <MaterialCommunityIcons name="calendar-outline" size={14} color="#F59E0B" />
-              <Text style={styles.metaText}>{item.frequency}</Text>
-            </View>
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function AdviceTab({ advice }: any) {
-  return (
-    <View style={styles.tabContent}>
-      <Text style={styles.sectionTitle}>{advice.title}</Text>
-      <Text style={styles.sectionDescription}>{advice.description}</Text>
-
-      {advice.categories.map((category: any) => (
-        <View key={category.id} style={styles.adviceCard}>
-          <View style={styles.adviceHeader}>
-            <MaterialCommunityIcons name="lightbulb-on" size={20} color="#41B6A6" />
-            <Text style={styles.adviceTitle}>{category.title}</Text>
-          </View>
-
-          <View style={styles.advicesList}>
-            {category.tips.map((tip: string, idx: number) => (
-              <View key={idx} style={styles.adviceItem}>
-                <MaterialCommunityIcons name="check-circle" size={16} color="#10B981" />
-                <Text style={styles.adviceText}>{tip}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F5F7FA' },
   header: { 
@@ -556,6 +707,95 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     lineHeight: 16,
     marginTop: 2,
+  },
+
+  // Exercise Card with Switch
+  exerciseCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+
+  // Progress Styles
+  progressStatsCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 16,
+    marginBottom: 16,
+    gap: 12,
+  },
+  statItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#41B6A6',
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#10B981',
+  },
+  progressListTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 12,
+    marginTop: 8,
+  },
+  progressItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 8,
+  },
+  progressItemCompleted: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#DCFCE7',
+  },
+  progressItemText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  progressItemTextCompleted: {
+    color: '#10B981',
+    fontWeight: '500',
+    textDecorationLine: 'line-through',
+  },
+
+  // Session Notes
+  sessionNotes: {
+    fontSize: 12,
+    color: '#4B5563',
+    fontStyle: 'italic',
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
   },
 
   // Error
