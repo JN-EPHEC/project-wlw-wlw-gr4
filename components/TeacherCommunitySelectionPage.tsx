@@ -4,10 +4,12 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 
 import TeacherBottomNav from '@/components/TeacherBottomNav';
 import { TeacherRoute, TeacherStackParamList } from '@/navigation/types';
+import { useAuth } from '@/context/AuthContext';
+import { useEducatorClubs } from '@/hooks/useEducatorClubs';
 
 const palette = {
   primary: '#F28B6F',
@@ -20,12 +22,6 @@ const palette = {
   background: '#F7F4F0',
 };
 
-const clubs = [
-  { id: 1, name: 'Club Vincennes', members: 186, unread: 4, last: 'Nouveau post dans Annonces' },
-  { id: 2, name: 'Caniparc Ouest', members: 94, unread: 2, last: 'Feedback cours collectif' },
-  { id: 3, name: 'Petits Loups', members: 42, unread: 0, last: 'Pas de nouveaute' },
-];
-
 const quickActions = [
   { id: 'teacher-channel-chat', label: 'Repondre clients', icon: 'chatbubbles-outline' as const },
   { id: 'teacher-club-community', label: 'Canaux clubs', icon: 'albums-outline' as const },
@@ -35,15 +31,17 @@ const quickActions = [
 export default function TeacherCommunitySelectionPage() {
   const navigation = useNavigation<NativeStackNavigationProp<TeacherStackParamList>>();
   const route = useRoute<RouteProp<TeacherStackParamList, 'teacher-community'>>();
+  const { user, profile } = useAuth();
+
+  // Récupérer les clubs de l'éducateur
+  const educatorId = (profile as any)?.educatorId || user?.uid;
+  const { clubs, loading } = useEducatorClubs(educatorId || null);
 
   const targetPage: TeacherRoute = route.params?.page ?? 'teacher-club-community';
   const fallbackClubId = route.params?.clubId ?? null;
 
-  const handleNavigate = (page: TeacherRoute, data?: { clubId?: number | null; channelId?: string | null }) => {
-    const nextParams =
-      data || fallbackClubId !== null
-        ? ({ clubId: data?.clubId ?? fallbackClubId, channelId: data?.channelId } as any)
-        : undefined;
+  const handleNavigate = (page: TeacherRoute, clubId: string) => {
+    const nextParams = { clubId } as any;
     navigation.navigate(page as any, nextParams);
   };
 
@@ -97,28 +95,43 @@ export default function TeacherCommunitySelectionPage() {
         </View>
 
         <View style={{ paddingHorizontal: 16, gap: 12 }}>
-          {clubs.map((club) => (
-            <TouchableOpacity
-              key={club.id}
-              style={styles.card}
-              activeOpacity={0.9}
-              onPress={() => handleNavigate(targetPage as keyof TeacherStackParamList, club.id)}
-            >
-              <View style={styles.iconBadge}>
-                <MaterialCommunityIcons name="shield-check-outline" size={18} color={palette.primary} />
-              </View>
-              <View style={{ flex: 1, gap: 4 }}>
-                <Text style={styles.cardTitle}>{club.name}</Text>
-                <Text style={styles.cardMeta}>{club.members} membres</Text>
-                <Text style={styles.cardMeta}>{club.last}</Text>
-              </View>
-              {club.unread > 0 ? (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{club.unread}</Text>
+          {loading ? (
+            <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={palette.primary} />
+            </View>
+          ) : clubs.length === 0 ? (
+            <View style={{ paddingVertical: 30, alignItems: 'center' }}>
+              <MaterialCommunityIcons name="club" size={40} color={palette.gray} />
+              <Text style={{ color: palette.gray, fontSize: 14, marginTop: 12, fontWeight: '600' }}>
+                Aucun club pour le moment
+              </Text>
+              <Text style={{ color: palette.gray, fontSize: 12, marginTop: 4 }}>
+                Rejoignez un club pour accéder à la communauté
+              </Text>
+            </View>
+          ) : (
+            clubs.map((club) => (
+              <TouchableOpacity
+                key={club.clubId}
+                style={styles.card}
+                activeOpacity={0.9}
+                onPress={() => handleNavigate(targetPage, club.clubId)}
+              >
+                <View style={styles.iconBadge}>
+                  <MaterialCommunityIcons name="shield-check-outline" size={18} color={palette.primary} />
                 </View>
-              ) : null}
-            </TouchableOpacity>
-          ))}
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={styles.cardTitle}>{club.clubName}</Text>
+                  <Text style={styles.cardMeta}>{club.members} membres</Text>
+                </View>
+                {club.unreadCount > 0 ? (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{club.unreadCount}</Text>
+                  </View>
+                ) : null}
+              </TouchableOpacity>
+            ))
+          )}
         </View>
 
         <View style={styles.sectionHeader}>

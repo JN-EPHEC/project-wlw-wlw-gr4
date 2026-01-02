@@ -4,10 +4,13 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 
 import TeacherBottomNav from '@/components/TeacherBottomNav';
 import { TeacherStackParamList } from '@/navigation/types';
+import { useCommunityChannels } from '@/hooks/useCommunityChannels';
+import { useCommunityMembers } from '@/hooks/useCommunityMembers';
+import { useAuth } from '@/context/AuthContext';
 
 const palette = {
   primary: '#E39A5C',
@@ -22,44 +25,24 @@ const palette = {
   warning: '#F59E0B',
 };
 
-const announcementChannel = {
-  name: 'Annonces du club',
-  description: 'Infos officielles',
-  unread: 2,
-  lastMessage: 'Club: Mise a jour planning weekend',
-  lastMessageTime: 'Il y a 2 h',
-};
-
-const eventHighlight = {
-  title: 'Collectif agility',
-  date: 'Sam 10:00',
-  place: 'Terrain principal',
-  slots: '8/12 places',
-};
-
-const channels = [
-  { id: 'general', name: 'General', description: 'Messages du club', unread: 3, last: 'Thomas: Merci pour la seance' },
-  { id: 'cours-22', name: 'Cours du 22', description: 'Groupe dedie', unread: 0, last: 'Photo ajoutee par Sophie' },
-  { id: 'coachs', name: 'Canal educateurs', description: 'Organisation interne', unread: 1, last: 'Ajuster les tarifs' },
-];
-
 export default function TeacherClubCommunityPage() {
   const navigation = useNavigation<NativeStackNavigationProp<TeacherStackParamList>>();
   const route = useRoute<RouteProp<TeacherStackParamList, 'teacher-club-community'>>();
   const baseClubId = route.params?.clubId ?? null;
-  const baseChannelId = route.params?.channelId;
+  const { user } = useAuth();
 
-  const buildParams = (data?: { clubId?: number | null; channelId?: string | null }) => {
-    const nextClubId = data?.clubId ?? baseClubId;
-    const nextChannelId = data?.channelId ?? baseChannelId;
-    const params: Record<string, unknown> = {};
-    if (nextClubId !== undefined) params.clubId = nextClubId;
-    if (nextChannelId !== undefined) params.channelId = nextChannelId;
-    return Object.keys(params).length > 0 ? (params as any) : undefined;
-  };
+  // Récupérer les channels et les membres du club
+  const { channels, loading: channelsLoading } = useCommunityChannels(baseClubId || '');
+  const { members, loading: membersLoading } = useCommunityMembers(baseClubId || '');
 
-  const handleNavigate = (page: keyof TeacherStackParamList, data?: { clubId?: number | null; channelId?: string | null }) => {
-    navigation.navigate(page as any, buildParams(data));
+  // Séparer les channels par type
+  const announcementChannels = channels.filter((ch) => ch.type === 'announcements');
+  const discussionChannels = channels.filter((ch) => ch.type === 'chat');
+
+  const handleNavigate = (page: keyof TeacherStackParamList, clubId: string, channelId?: string) => {
+    const params: any = { clubId };
+    if (channelId) params.channelId = channelId;
+    navigation.navigate(page, params);
   };
 
   return (
@@ -75,21 +58,21 @@ export default function TeacherClubCommunityPage() {
             <View style={styles.headerRow}>
               <TouchableOpacity
                 style={styles.backBtn}
-                onPress={() => navigation.navigate('teacher-community', route.params)}
+                onPress={() => navigation.navigate('teacher-community')}
               >
                 <Ionicons name="arrow-back" size={18} color={palette.surface} />
               </TouchableOpacity>
               <View style={{ flex: 1 }}>
-                <Text style={styles.title}>Club Vincennes</Text>
+                <Text style={styles.title}>Club</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Ionicons name="people-outline" size={16} color="#fff" />
-                  <Text style={styles.headerSub}>186 membres</Text>
+                  <Text style={styles.headerSub}>{members.length} membres</Text>
                 </View>
               </View>
             </View>
             <TouchableOpacity
               style={styles.headerBtn}
-              onPress={() => handleNavigate('teacher-club-members', { clubId: baseClubId })}
+              onPress={() => handleNavigate('teacher-club-members', baseClubId || '')}
             >
               <Text style={styles.headerBtnText}>Membres</Text>
             </TouchableOpacity>
@@ -97,96 +80,93 @@ export default function TeacherClubCommunityPage() {
         </LinearGradient>
 
         <View style={{ padding: 16, gap: 16 }}>
-          <View>
-            <View style={styles.sectionHeading}>
-              <MaterialCommunityIcons name="bell-outline" size={18} color={palette.primary} />
-              <Text style={styles.sectionTitle}>Annonces</Text>
+          {channelsLoading ? (
+            <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={palette.primary} />
             </View>
-            <TouchableOpacity activeOpacity={0.9} style={styles.announcementCard}>
-              <View style={styles.announcementIcon}>
-                <MaterialCommunityIcons name="bell-ring" size={22} color="#fff" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Text style={styles.cardTitle}>{announcementChannel.name}</Text>
-                  {announcementChannel.unread > 0 ? (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>{announcementChannel.unread}</Text>
-                    </View>
-                  ) : null}
-                </View>
-                <Text style={styles.cardMeta}>{announcementChannel.description}</Text>
-                <Text style={styles.cardMeta}>{announcementChannel.lastMessage}</Text>
-                <Text style={styles.cardTime}>{announcementChannel.lastMessageTime}</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View>
-            <View style={styles.sectionHeading}>
-              <MaterialCommunityIcons name="calendar-month-outline" size={18} color={palette.accent} />
-              <Text style={styles.sectionTitle}>Evenement a venir</Text>
-            </View>
-            <TouchableOpacity
-              activeOpacity={0.9}
-              style={styles.eventCard}
-              onPress={() => navigation.navigate('teacher-appointments')}
-            >
-              <View style={styles.eventIcon}>
-                <MaterialCommunityIcons name="calendar-star" size={22} color="#fff" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitle}>{eventHighlight.title}</Text>
-                <Text style={styles.cardMeta}>{eventHighlight.date} - {eventHighlight.place}</Text>
-                <Text style={[styles.cardMeta, { color: palette.text }]}>{eventHighlight.slots}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={palette.gray} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.sectionHeading}>
-            <MaterialCommunityIcons name="forum-outline" size={18} color={palette.primary} />
-            <Text style={styles.sectionTitle}>Canaux</Text>
-          </View>
-          <View style={{ gap: 12 }}>
-            {channels.map((channel) => (
-              <TouchableOpacity
-                key={channel.id}
-                style={styles.channelCard}
-                onPress={() => handleNavigate('teacher-channel-chat', { clubId: baseClubId, channelId: channel.id })}
-              >
-                <View style={styles.channelIcon}>
-                  <Ionicons name="chatbubbles-outline" size={18} color={palette.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Text style={styles.cardTitle}>{channel.name}</Text>
-                    {channel.unread > 0 && (
-                      <View style={[styles.badge, { backgroundColor: '#E0F2F1' }]}>
-                        <Text style={[styles.badgeText, { color: palette.accent }]}>{channel.unread}</Text>
-                      </View>
-                    )}
+          ) : (
+            <>
+              {/* Annonces */}
+              {announcementChannels.length > 0 && (
+                <View>
+                  <View style={styles.sectionHeading}>
+                    <MaterialCommunityIcons name="bell-outline" size={18} color={palette.primary} />
+                    <Text style={styles.sectionTitle}>Annonces</Text>
                   </View>
-                  <Text style={styles.cardMeta}>{channel.description}</Text>
-                  <Text style={styles.cardTime}>{channel.last}</Text>
+                  {announcementChannels.map((channel) => (
+                    <TouchableOpacity
+                      key={channel.id}
+                      activeOpacity={0.9}
+                      style={styles.announcementCard}
+                      onPress={() => navigation.navigate('teacher-announcements', { clubId: baseClubId })}
+                    >
+                      <View style={styles.announcementIcon}>
+                        <MaterialCommunityIcons name="bell-ring" size={22} color="#fff" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Text style={styles.cardTitle}>{channel.name}</Text>
+                        </View>
+                        <Text style={styles.cardMeta}>{channel.description}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-              </TouchableOpacity>
-            ))}
-          </View>
+              )}
 
-          <View style={styles.actionsRow}>
-            <TouchableOpacity style={styles.secondary} onPress={() => navigation.navigate('teacher-community')}>
-              <Text style={styles.secondaryText}>Poster</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.primaryBtn}
-              onPress={() => handleNavigate('teacher-club-members', { clubId: baseClubId })}
-            >
-              <Text style={styles.primaryBtnText}>Inviter membres</Text>
-            </TouchableOpacity>
-          </View>
+              {announcementChannels.length > 0 && discussionChannels.length > 0 && (
+                <View style={styles.divider} />
+              )}
+
+              {/* Canaux de discussion */}
+              {discussionChannels.length > 0 && (
+                <View>
+                  <View style={styles.sectionHeading}>
+                    <MaterialCommunityIcons name="forum-outline" size={18} color={palette.primary} />
+                    <Text style={styles.sectionTitle}>Canaux</Text>
+                  </View>
+                  <View style={{ gap: 12 }}>
+                    {discussionChannels.map((channel) => (
+                      <TouchableOpacity
+                        key={channel.id}
+                        style={styles.channelCard}
+                        onPress={() => handleNavigate('teacher-channel-chat', baseClubId || '', channel.id)}
+                      >
+                        <View style={styles.channelIcon}>
+                          <Ionicons name="chatbubbles-outline" size={18} color={palette.primary} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.cardTitle}>{channel.name}</Text>
+                          <Text style={styles.cardMeta}>{channel.description}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {channels.length === 0 && (
+                <View style={{ paddingVertical: 30, alignItems: 'center' }}>
+                  <MaterialCommunityIcons name="forum-outline" size={40} color={palette.gray} />
+                  <Text style={{ color: palette.gray, fontSize: 14, marginTop: 12, fontWeight: '600' }}>
+                    Aucun canal pour le moment
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.actionsRow}>
+                <TouchableOpacity style={styles.secondary} onPress={() => navigation.navigate('teacher-community')}>
+                  <Text style={styles.secondaryText}>Retour</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.primaryBtn}
+                  onPress={() => handleNavigate('teacher-club-members', baseClubId || '')}
+                >
+                  <Text style={styles.primaryBtnText}>Inviter membres</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
         </View>
       </ScrollView>
       <TeacherBottomNav current="teacher-community" />

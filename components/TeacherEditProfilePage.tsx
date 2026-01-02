@@ -37,7 +37,7 @@ const palette = {
 
 export default function TeacherEditProfilePage() {
   const navigation = useNavigation<NativeStackNavigationProp<TeacherStackParamList>>();
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const { updateProfile, loading: updating, error: updateError } = useUpdateEducatorProfile();
 
   const userId = (user as any)?.uid || '';
@@ -161,6 +161,10 @@ export default function TeacherEditProfilePage() {
       }
 
       await updateProfile(userId, updateData);
+      
+      // Rafraîchir le profil dans le contexte
+      await refreshProfile();
+      
       Alert.alert('Succès', 'Profil mis à jour avec succès');
       setIsDirty(false);
       navigation.goBack();

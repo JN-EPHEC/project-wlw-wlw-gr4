@@ -28,48 +28,6 @@ interface UseUpdateEducatorProfileResult {
   updateProfile: (userId: string, data: EducatorProfileUpdate) => Promise<void>;
 }
 
-const uploadPhotoToStorage = async (
-  file: { uri: string; name: string; mimeType: string },
-  folder: string
-): Promise<string> => {
-  try {
-    console.log('📸 Fetching image from URI:', file.uri);
-    const response = await fetch(file.uri);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const blob = await response.blob();
-    console.log('📸 Blob size:', blob.size, 'bytes');
-    
-    if (blob.size === 0) {
-      throw new Error('Le fichier image est vide');
-    }
-    
-    const extension = file.name.split('.').pop() || 'jpg';
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).slice(2);
-    const storagePath = `${folder}/${timestamp}_${random}.${extension}`;
-    
-    console.log('📸 Storage path:', storagePath);
-    const storageRef = ref(storage, storagePath);
-    
-    console.log('📸 Uploading to Firebase Storage...');
-    await uploadBytes(storageRef, blob);
-    
-    console.log('📸 Getting download URL...');
-    const downloadUrl = await getDownloadURL(storageRef);
-    console.log('✅ Photo uploaded successfully:', downloadUrl);
-    
-    return downloadUrl;
-  } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : 'Erreur inconnue';
-    console.error('❌ Upload error details:', errorMsg, err);
-    throw new Error(`Erreur lors du téléchargement de la photo: ${errorMsg}`);
-  }
-};
-
 export const useUpdateEducatorProfile = (): UseUpdateEducatorProfileResult => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,44 +39,53 @@ export const useUpdateEducatorProfile = (): UseUpdateEducatorProfileResult => {
     try {
       console.log('📝 [useUpdateEducatorProfile] Updating educator profile:', userId);
 
-      // Préparer les données à sauvegarder
+      // Préparer les données à sauvegarder avec dot notation
       const updateData: any = {};
 
-      // Copier les champs simples
-      if (data.firstName !== undefined) updateData.firstName = data.firstName.trim();
-      if (data.lastName !== undefined) updateData.lastName = data.lastName.trim();
-      if (data.email !== undefined) updateData.email = data.email.trim();
-      if (data.phone !== undefined) updateData.phone = data.phone.trim();
-      if (data.bio !== undefined) updateData.bio = data.bio.trim();
-      if (data.city !== undefined) updateData.city = data.city.trim();
-      if (data.postalCode !== undefined) updateData.postalCode = data.postalCode.trim();
-      if (data.hourlyRate !== undefined) updateData.hourlyRate = data.hourlyRate;
-      if (data.experienceYears !== undefined) updateData.experienceYears = data.experienceYears;
-      if (data.specialties !== undefined) updateData.specialties = data.specialties;
-      if (data.certifications !== undefined) updateData.certifications = data.certifications.trim();
-      if (data.trainings !== undefined) updateData.trainings = data.trainings.trim();
-      if (data.methods !== undefined) updateData.methods = data.methods;
-      if (data.website !== undefined) updateData.website = data.website.trim();
+      // Copier les champs simples avec la notation profile.xxx
+      if (data.firstName !== undefined) updateData['profile.firstName'] = data.firstName.trim();
+      if (data.lastName !== undefined) updateData['profile.lastName'] = data.lastName.trim();
+      if (data.email !== undefined) updateData['profile.email'] = data.email.trim();
+      if (data.phone !== undefined) updateData['profile.phone'] = data.phone.trim();
+      if (data.bio !== undefined) updateData['profile.bio'] = data.bio.trim();
+      if (data.city !== undefined) updateData['profile.city'] = data.city.trim();
+      if (data.postalCode !== undefined) updateData['profile.postalCode'] = data.postalCode.trim();
+      if (data.hourlyRate !== undefined) updateData['profile.hourlyRate'] = data.hourlyRate;
+      if (data.experienceYears !== undefined) updateData['profile.experienceYears'] = data.experienceYears;
+      if (data.specialties !== undefined) updateData['profile.specialties'] = data.specialties;
+      if (data.certifications !== undefined) updateData['profile.certifications'] = data.certifications.trim();
+      if (data.trainings !== undefined) updateData['profile.trainings'] = data.trainings.trim();
+      if (data.methods !== undefined) updateData['profile.methods'] = data.methods;
+      if (data.website !== undefined) updateData['profile.website'] = data.website.trim();
 
       // Gérer l'upload de la photo si fournie
       if (data.photoFile) {
         try {
           console.log('📸 [useUpdateEducatorProfile] Uploading new photo...');
-          const photoUrl = await uploadPhotoToStorage(
-            data.photoFile,
-            `users/${userId}/profile`
-          );
-          updateData.photoUrl = photoUrl;
+          const response = await fetch(data.photoFile.uri);
+          const blob = await response.blob();
+
+          const timestamp = Date.now();
+          const random = Math.random().toString(36).slice(2);
+          const storagePath = `profile-pictures/${userId}/${timestamp}_${random}.jpg`;
+
+          const storageRef = ref(storage, storagePath);
+          await uploadBytes(storageRef, blob);
+          const downloadUrl = await getDownloadURL(storageRef);
+          
+          updateData['profile.photoUrl'] = downloadUrl;
+          console.log('✅ Photo uploaded successfully:', downloadUrl);
         } catch (photoErr) {
           console.error('❌ [useUpdateEducatorProfile] Error uploading photo:', photoErr);
-          throw new Error('Erreur lors du téléchargement de la photo');
+          // Continuer sans la photo - ne pas bloquer la sauvegarde du profil
+          console.warn('Photo non uploadée, continuation sans image');
         }
       } else if (data.photoUrl !== undefined) {
-        updateData.photoUrl = data.photoUrl;
+        updateData['profile.photoUrl'] = data.photoUrl;
       }
 
       // Ajouter les métadonnées de mise à jour
-      updateData.updatedAt = new Date().toISOString();
+      updateData['profile.updatedAt'] = new Date().toISOString();
 
       // Mettre à jour dans Firestore
       const userRef = doc(db, 'users', userId);
