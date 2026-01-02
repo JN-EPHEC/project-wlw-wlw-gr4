@@ -1,9 +1,15 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useState } from 'react';
-import { Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 
 import { ClubStackParamList } from '@/navigation/types';
+import { useAuth } from '@/context/AuthContext';
+import { useCommunityChannels } from '@/hooks/useCommunityChannels';
+import { useCommunityMessages } from '@/hooks/useCommunityMessages';
+import { useCommunityMembers } from '@/hooks/useCommunityMembers';
+import { useMessagesWithUserInfo } from '@/hooks/useMessagesWithUserInfo';
+import { useClubPermissions } from '@/hooks/useClubPermissions';
 
 const palette = {
   terracotta: '#F28B6F',
@@ -13,45 +19,81 @@ const palette = {
   border: '#E5E7EB',
 };
 
-type Announcement = {
-  id: number;
-  title: string;
-  content: string;
-  author: string;
-  date: string;
-  isNew: boolean;
-};
-
 type Props = NativeStackScreenProps<ClubStackParamList, 'clubAnnouncements'>;
 
-export default function ClubAnnouncementsScreen({ navigation }: Props) {
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+export default function ClubAnnouncementsScreen({ navigation, route }: Props) {
+  const { user, profile } = useAuth();
+  const clubId = (route.params as any)?.clubId || '';
   const [showModal, setShowModal] = useState(false);
-  const [draft, setDraft] = useState({ title: '', content: '' });
+  const [draft, setDraft] = useState({ content: '' });
   const [isPublishing, setIsPublishing] = useState(false);
 
-  const handlePublish = () => {
-    if (!draft.title.trim() || !draft.content.trim() || isPublishing) return;
+  // Récupérer les channels du club
+  const { channels } = useCommunityChannels(clubId);
+  
+  // Trouver le channel d'annonces
+  const announcementChannel = useMemo(() => channels.find(ch => ch.type === 'announcements'), [channels]);
+  
+  // Récupérer les messages du channel d'annonces
+  const {
+    messages,
+    loading: messagesLoading,
+    sendMessage,
+  } = useCommunityMessages(announcementChannel?.id || '', user?.uid || '');
+  
+  // Enrichir les messages avec les infos utilisateur
+  const { messagesWithInfo } = useMessagesWithUserInfo(messages);
+  
+  // Récupérer les membres
+  const { members } = useCommunityMembers(clubId);
+  
+  // Vérifier les permissions
+  const { permissions, loading: permissionsLoading } = useClubPermissions(
+    clubId,
+    user?.uid || '',
+    (profile as any)?.role || 'user',
+    []
+  );
+
+  const handlePublish = async () => {
+    if (!draft.content.trim() || isPublishing || !announcementChannel) return;
+    
+    if (!permissions.canPostInAnnouncements) {
+      alert("Vous n'avez pas la permission de publier une annonce");
+      return;
+    }
     
     setIsPublishing(true);
-    const next: Announcement = {
-      id: announcements.length + 1,
-      title: draft.title.trim(),
-      content: draft.content.trim(),
-      author: 'Vous',
-      date: 'A l\'instant',
-      isNew: true,
-    };
-    setAnnouncements([next, ...announcements]);
-    setDraft({ title: '', content: '' });
-    setShowModal(false);
-    setIsPublishing(false);
+    try {
+      await sendMessage(draft.content.trim());
+      setDraft({ content: '' });
+      setShowModal(false);
+    } catch (err) {
+      console.error('Error publishing announcement:', err);
+      alert('Erreur lors de la publication de l\'annonce');
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const formatTime = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'À l\'instant';
+    if (diffMins < 60) return `Il y a ${diffMins}m`;
+    if (diffHours < 24) return `Il y a ${diffHours}h`;
+    if (diffDays < 7) return `Il y a ${diffDays}j`;
+    return date.toLocaleDateString('fr-FR');
   };
 
   const stats = {
-    total: announcements.length,
-    newCount: announcements.filter((a) => a.isNew).length,
-    readers: 0,
+    total: messagesWithInfo.length,
+    newCount: 0, // TODO: Implémenter le tracking des messages lus
   };
 
   return (
@@ -94,48 +136,40 @@ export default function ClubAnnouncementsScreen({ navigation }: Props) {
             <Text style={styles.sectionTitle}>Toutes les annonces</Text>
           </View>
 
-          {announcements.length === 0 ? (
+          {messagesLoading ? (
+            <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={palette.terracotta} />
+            </View>
+          ) : messagesWithInfo.length === 0 ? (
             <View style={styles.emptyState}>
               <MaterialCommunityIcons name="bell-outline" size={48} color={palette.gray} />
               <Text style={styles.emptyText}>Aucune annonce pour le moment</Text>
               <Text style={styles.emptySubText}>Créez votre première annonce pour communiquer avec vos membres</Text>
             </View>
           ) : (
-            announcements.map((a) => (
-              <View
-                key={a.id}
-                style={[
-                  styles.card,
-                  a.isNew && { borderColor: '#F28B6F66', backgroundColor: '#FFF1EB' },
-                ]}
-              >
-                <View style={styles.cardHeader}>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={styles.cardTitle}>{a.title}</Text>
-                      {a.isNew ? (
-                        <View style={[styles.badge, { backgroundColor: '#F28B6F' }]}>
-                          <Text style={[styles.badgeText, { color: '#fff' }]}>Nouveau</Text>
-                        </View>
-                      ) : null}
+            messagesWithInfo.map((msg) => {
+              const member = members.find((m) => m.id === msg.createdBy);
+              const role = member?.role || 'member';
+              
+              return (
+                <View key={msg.id} style={styles.card}>
+                  <View style={styles.cardHeader}>
+                    <View style={{ flex: 1, gap: 4 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={styles.author}>{msg.userName}</Text>
+                        {(role === 'owner' || role === 'educator') && (
+                          <View style={styles.badge}>
+                            <Text style={styles.badgeText}>{role === 'owner' ? 'Propriétaire' : 'Éducateur'}</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.cardMeta}>{formatTime(msg.createdAt)}</Text>
                     </View>
                   </View>
+                  <Text style={styles.cardContent}>{msg.text}</Text>
                 </View>
-                <Text style={styles.cardContent}>{a.content}</Text>
-                <View style={styles.cardFooter}>
-                  <Text style={styles.cardMeta}>{a.author}</Text>
-                  <Text style={styles.bullet}>·</Text>
-                  <Text style={styles.cardMeta}>{a.date}</Text>
-                  <View style={{ flex: 1 }} />
-                  <TouchableOpacity style={styles.iconBtn}>
-                    <MaterialCommunityIcons name="pencil-outline" size={16} color={palette.gray} />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.iconBtn}>
-                    <MaterialCommunityIcons name="trash-can-outline" size={16} color="#DC2626" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))
+              );
+            })
           )}
         </View>
 
@@ -163,17 +197,7 @@ export default function ClubAnnouncementsScreen({ navigation }: Props) {
             </View>
             <View style={{ gap: 12 }}>
               <View>
-                <Text style={styles.label}>Titre de l'annonce</Text>
-                <TextInput
-                  value={draft.title}
-                  onChangeText={(text) => setDraft({ ...draft, title: text })}
-                  placeholder="Ex: Nouvelle session de groupe..."
-                  style={styles.input}
-                  placeholderTextColor={palette.gray}
-                />
-              </View>
-              <View>
-                <Text style={styles.label}>Contenu</Text>
+                <Text style={styles.label}>Contenu de l'annonce</Text>
                 <TextInput
                   value={draft.content}
                   onChangeText={(text) => setDraft({ ...draft, content: text })}
@@ -181,13 +205,14 @@ export default function ClubAnnouncementsScreen({ navigation }: Props) {
                   style={[styles.input, { height: 120, textAlignVertical: 'top' }]}
                   multiline
                   placeholderTextColor={palette.gray}
+                  editable={!isPublishing}
                 />
               </View>
               <TouchableOpacity 
-                style={[styles.publishBtn, isPublishing && { opacity: 0.6 }]} 
+                style={[styles.publishBtn, (isPublishing || !permissions.canPostInAnnouncements) && { opacity: 0.6 }]} 
                 onPress={handlePublish} 
                 activeOpacity={0.9}
-                disabled={isPublishing}
+                disabled={isPublishing || !permissions.canPostInAnnouncements}
               >
                 <MaterialCommunityIcons name="bell-outline" size={18} color="#fff" />
                 <Text style={styles.publishText}>Publier l'annonce</Text>
@@ -323,6 +348,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
   },
+  author: {
+    color: palette.text,
+    fontWeight: '700',
+    fontSize: 14,
+  },
   cardContent: {
     color: palette.text,
     lineHeight: 20,
@@ -344,10 +374,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 10,
+    backgroundColor: '#FEF0E8',
   },
   badgeText: {
     fontWeight: '700',
-    fontSize: 12,
+    fontSize: 11,
+    color: palette.terracotta,
   },
   iconBtn: {
     width: 32,

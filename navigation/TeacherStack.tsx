@@ -7,6 +7,7 @@ import RatingInvitationScreen from '@/app/rating-invitation';
 import RatingScreen from '@/app/rating';
 import TeacherDetailScreen from '@/app/teacher-detail';
 import TeacherAccountPage from '@/components/TeacherAccountPage';
+import TeacherAnnouncementsPage from '@/components/TeacherAnnouncementsPage';
 import TeacherAppointmentsPage from '@/components/TeacherAppointmentsPage';
 import TeacherAppointmentDetailScreen from '@/components/TeacherAppointmentDetailScreen';
 import TeacherChannelChatPage from '@/components/TeacherChannelChatPage';
@@ -32,6 +33,7 @@ export default function TeacherStack() {
       <Stack.Screen name="teacher-club-community" component={TeacherClubCommunityPage} />
       <Stack.Screen name="teacher-channel-chat" component={TeacherChannelChatPage} />
       <Stack.Screen name="teacher-club-members" component={TeacherClubMembersPage} />
+      <Stack.Screen name="teacher-announcements" component={TeacherAnnouncementsPage} />
       <Stack.Screen name="teacher-account" component={TeacherAccountPage} />
       <Stack.Screen name="teacher-edit-profile" component={TeacherEditProfilePage} />
       <Stack.Screen name="teacher-clubs" component={TeacherClubsPage} />

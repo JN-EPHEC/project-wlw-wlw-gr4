@@ -29,6 +29,7 @@ export type UserRoute =
   | 'bookings'
   | 'addDog'
   | 'dogDetail'
+  | 'promoDetail'
   | 'dogs'
   | 'followedClubs'
   | 'djanaiResults'
@@ -71,6 +72,7 @@ export type TeacherRoute =
   | 'teacher-club-community'
   | 'teacher-channel-chat'
   | 'teacher-club-members'
+  | 'teacher-announcements'
   | 'teacher-account'
   | 'teacher-edit-profile'
   | 'teacher-clubs'
@@ -116,6 +118,7 @@ export type UserStackParamList = {
   addDog: undefined;
   dogDetail: { dogId: string };
   editDog: { dogId: string };
+  promoDetail: { promotion: any };
   dogs: undefined;
   followedClubs: undefined;
   djanaiResults: { profile?: Record<string, unknown>; previousPage?: UserRoute; dogId?: string; dogName?: string };
@@ -161,10 +164,11 @@ export type TeacherStackParamList = {
   'teacher-home': undefined;
   'teacher-appointments': undefined;
   'teacher-appointment-detail': { bookingId: string };
-  'teacher-community': { page?: TeacherRoute; clubId?: number | null } | undefined;
-  'teacher-club-community': { clubId?: number | null; channelId?: string | null } | undefined;
-  'teacher-channel-chat': { channelId: string; clubId: number | null };
-  'teacher-club-members': { clubId: number | null };
+  'teacher-community': { page?: TeacherRoute; clubId?: string | number | null } | undefined;
+  'teacher-club-community': { clubId?: string | number | null; channelId?: string | null } | undefined;
+  'teacher-channel-chat': { channelId: string; clubId: string | number | null };
+  'teacher-club-members': { clubId: string | number | null };
+  'teacher-announcements': { clubId: string | number | null };
   'teacher-account': undefined;
   'teacher-edit-profile': undefined;
   'teacher-clubs': undefined;

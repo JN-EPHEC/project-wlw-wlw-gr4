@@ -40,6 +40,7 @@ import { UserStackParamList } from '@/navigation/types';
 import AddDogScreen from '@/app/add-dog';
 import EditDogScreen from '@/app/edit-dog';
 import DogDetailPage from '@/app/DogDetailPage';
+import PromoDetailScreen from '@/app/promo-detail';
 
 const Stack = createNativeStackNavigator<UserStackParamList>();
 
@@ -69,6 +70,7 @@ export default function UserStack() {
       <Stack.Screen name="dogBadges" component={DogBadgesScreen} />
       <Stack.Screen name="addDog" component={AddDogScreen} />
       <Stack.Screen name="dogDetail" component={DogDetailPage} />
+      <Stack.Screen name="promoDetail" component={PromoDetailScreen} />
       <Stack.Screen name="editDog" component={EditDogScreen} />
       <Stack.Screen name="account" component={AccountScreen} />
       <Stack.Screen name="ratingInvitation" component={RatingInvitationScreen} />

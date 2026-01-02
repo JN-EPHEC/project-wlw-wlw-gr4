@@ -17,48 +17,10 @@ import UserBottomNav from '@/components/UserBottomNav';
 import { useBoostedClubs } from '@/hooks/useBoostedClubs';
 import { useUpcomingUserEvents } from '@/hooks/useUpcomingUserEvents';
 import { useUserUpcomingBookings } from '@/hooks/useUserUpcomingBookings';
+import { useActivePromotions } from '@/hooks/useActivePromotions';
+import { useClubImage } from '@/hooks/useClubImage';
 
 const { width } = Dimensions.get('window');
-
-type Promo = {
-  id: number;
-  title: string;
-  description: string;
-  club: string;
-  discount: string;
-  image: string;
-  color: string;
-};
-
-const promotions: Promo[] = [
-  {
-    id: 1,
-    title: '50% sur votre 1ère séance',
-    description: "Découvrez l'agility",
-    club: 'Agility Pro',
-    discount: '-50%',
-    image: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=800&q=80',
-    color: '#7C3AED',
-  },
-  {
-    id: 2,
-    title: 'Mois gratuit pour les nouveaux',
-    description: 'Abonnement premium',
-    club: 'Canin Club Paris',
-    discount: 'GRATUIT',
-    image: 'https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=800&q=80',
-    color: '#DB2777',
-  },
-  {
-    id: 3,
-    title: 'Pack découverte 3 séances',
-    description: 'Obéissance + Agility',
-    club: 'Dog Academy',
-    discount: '-30%',
-    image: 'https://images.unsplash.com/photo-1560807707-8cc77767d783?auto=format&fit=crop&w=800&q=80',
-    color: '#2563EB',
-  },
-];
 
 const boostedClubs = [
   {
@@ -140,11 +102,43 @@ const palette = {
   text: '#1F2937',
 };
 
+// Composant PromoCard avec sa propre gestion d'image
+function PromoCard({ promo, navigation, width }: any) {
+  const { imageUrl } = useClubImage(promo.clubId);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={() => navigation.navigate('promoDetail', { promotion: promo })}
+      style={[styles.promoCard, { width: width * 0.8 }]}
+    >
+      {imageUrl ? (
+        <Image source={{ uri: imageUrl }} style={styles.promoImage} />
+      ) : (
+        <View style={[styles.promoImage, { backgroundColor: '#E5E7EB' }]} />
+      )}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: 18 }]} />
+      <View style={styles.promoDiscount}>
+        <Text style={styles.promoDiscountText}>-{promo.discountPercentage}%</Text>
+      </View>
+      <View style={styles.promoContent}>
+        <Text style={styles.promoTitle}>{promo.title}</Text>
+        <Text style={styles.promoDesc}>{promo.description}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={styles.promoClub}>{promo.code}</Text>
+          <MaterialCommunityIcons name="gift-outline" size={18} color="#fff" />
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const { clubs: boostedClubsData, loading: clubsLoading } = useBoostedClubs();
   const { events: userEvents, loading: eventsLoading } = useUpcomingUserEvents();
   const { bookings: userBookings, hasBookings } = useUserUpcomingBookings();
+  const { promotions, loading: promotionsLoading } = useActivePromotions();
 
   // Utiliser les données Firebase si disponibles, sinon fallback vide
   const displayedClubs = boostedClubsData.length > 0 ? boostedClubsData : boostedClubs;
@@ -188,25 +182,23 @@ export default function HomeScreen() {
               <Text style={styles.badgeNewText}>Nouveau</Text>
             </View>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-            {promotions.map((promo) => (
-              <TouchableOpacity key={promo.id} activeOpacity={0.9} style={[styles.promoCard, { width: width * 0.8 }]}>
-                <Image source={{ uri: promo.image }} style={styles.promoImage} />
-                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: 18 }]} />
-                <View style={styles.promoDiscount}>
-                  <Text style={styles.promoDiscountText}>{promo.discount}</Text>
-                </View>
-                <View style={styles.promoContent}>
-                  <Text style={styles.promoTitle}>{promo.title}</Text>
-                  <Text style={styles.promoDesc}>{promo.description}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Text style={styles.promoClub}>{promo.club}</Text>
-                    <MaterialCommunityIcons name="gift-outline" size={18} color="#fff" />
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          {promotionsLoading ? (
+            <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={palette.primary} />
+            </View>
+          ) : promotions.length === 0 ? (
+            <View style={{ paddingVertical: 30, alignItems: 'center' }}>
+              <MaterialCommunityIcons name="tag-off" size={40} color={palette.gray} />
+              <Text style={{ color: palette.gray, fontSize: 14, marginTop: 12, fontWeight: '600' }}>Aucune promotion en cours</Text>
+              <Text style={{ color: palette.gray, fontSize: 12, marginTop: 4 }}>Revenez bientôt pour découvrir nos nouvelles offres</Text>
+            </View>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+              {promotions.map((promo) => (
+                <PromoCard key={promo.id} promo={promo} navigation={navigation} width={width} />
+              ))}
+            </ScrollView>
+          )}
 
           {/* Clubs boostés */}
           <View style={styles.sectionHeader}>
@@ -493,6 +485,7 @@ const styles = StyleSheet.create({
   },
   badgeNewText: { color: '#7C3AED', fontWeight: '700', fontSize: 12 },
   promoCard: { borderRadius: 18, overflow: 'hidden', height: 180, justifyContent: 'flex-end' },
+  promoCardGradient: { width: '100%', height: '100%' },
   promoImage: { width: '100%', height: '100%' },
   promoDiscount: {
     position: 'absolute',
