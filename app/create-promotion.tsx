@@ -58,7 +58,7 @@ interface ValidationErrors {
 
 export default function CreatePromotionScreen({ navigation }: Props) {
   const { user, profile } = useAuth();
-  const clubId = (profile as any)?.uid || user?.uid || '';
+  const clubId = (profile as any)?.clubId || user?.uid || '';
 
   const [form, setForm] = useState<FormData>({
     title: '',

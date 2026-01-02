@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import ClubBottomNav from '@/components/ClubBottomNav';
 import { ClubStackParamList } from '@/navigation/types';
+import { useAuth } from '@/context/AuthContext';
+import { useFetchClubPayments } from '@/hooks/useFetchClubPayments';
+import { useFetchClubAllBookings } from '@/hooks/useFetchClubAllBookings';
 
 const palette = {
   primary: '#E9B782',
@@ -13,39 +16,54 @@ const palette = {
   border: '#E5E7EB',
 };
 
-const stats = {
-  totalRevenue: 2850,
-  pendingPayments: 3,
-  completedPayments: 34,
-  monthlyGrowth: 12,
-  averageTransaction: 52,
-};
-
-const recentTransactions = [
-  { id: 1, date: '22 Oct 2025', client: 'Marie Dupont', service: 'Agility', amount: 45, status: 'completed', method: 'card' },
-  { id: 2, date: '22 Oct 2025', client: 'Jean Martin', service: 'Education', amount: 50, status: 'completed', method: 'card' },
-  { id: 3, date: '21 Oct 2025', client: 'Sophie Bernard', service: 'Cours collectif', amount: 30, status: 'completed', method: 'cash' },
-  { id: 4, date: '20 Oct 2025', client: 'Thomas Petit', service: 'Comportement', amount: 65, status: 'completed', method: 'transfer' },
-];
-
-const pendingPayments = [
-  { id: 1, date: '25 Oct 2025', client: 'Julie Rousseau', service: 'Agility', amount: 45, dueDate: '27 Oct 2025' },
-  { id: 2, date: '25 Oct 2025', client: 'Marc Dubois', service: 'Education', amount: 50, dueDate: '28 Oct 2025' },
-  { id: 3, date: '24 Oct 2025', client: 'Laura Martin', service: 'Obéissance', amount: 30, dueDate: '26 Oct 2025' },
-];
-
-const monthlyBreakdown = [
-  { service: 'Agility', revenue: 890, sessions: 18, percentage: 31 },
-  { service: 'Éducation canine', revenue: 1200, sessions: 24, percentage: 42 },
-  { service: 'Obéissance', revenue: 480, sessions: 16, percentage: 17 },
-  { service: 'Comportement', revenue: 280, sessions: 4, percentage: 10 },
-];
-
-
 type Props = NativeStackScreenProps<ClubStackParamList, 'clubPayments'>;
 export default function ClubPaymentsScreen({ navigation }: Props) {
+  const { profile, user } = useAuth();
+  const clubId = (profile as any)?.clubId || user?.uid || '';
+  const { payments, stats, loading, error } = useFetchClubPayments(clubId);
+  const { bookings: allBookings } = useFetchClubAllBookings(clubId);
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'pending'>('overview');
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
+
+  // Calculer les revenus par éducateur basé sur les bookings confirmés
+  const educatorStats = React.useMemo(() => {
+    const statsMap = new Map<string, {
+      educatorId: string;
+      courseCount: number;
+      participantCount: number;
+      totalRevenue: number;
+    }>();
+    
+    // Pour chaque booking confirmé
+    allBookings.forEach((booking: any) => {
+      const isConfirmed = booking.confirmedAt || booking.status === 'confirmed';
+      const educatorId = booking.educatorId;
+      
+      if (educatorId && isConfirmed && booking.userIds) {
+        const existing = statsMap.get(educatorId) || {
+          educatorId,
+          courseCount: 0,
+          participantCount: 0,
+          totalRevenue: 0,
+        };
+        
+        // Ajouter 1 pour ce cours
+        // Ajouter le nombre de participants à ce cours
+        const participantCount = booking.userIds.length || 0;
+        const coursePrice = (booking.price || 0) / 2; // Le club reçoit 50%
+        const courseRevenue = coursePrice * participantCount;
+        
+        statsMap.set(educatorId, {
+          educatorId,
+          courseCount: existing.courseCount + 1,
+          participantCount: existing.participantCount + participantCount,
+          totalRevenue: existing.totalRevenue + courseRevenue,
+        });
+      }
+    });
+    
+    return Array.from(statsMap.values()).sort((a, b) => b.totalRevenue - a.totalRevenue);
+  }, [allBookings]);
 
   const paymentMethodIcon = (method: string) => {
     switch (method) {
@@ -81,12 +99,7 @@ export default function ClubPaymentsScreen({ navigation }: Props) {
       >
         <View style={styles.header}>
           <View style={styles.headerTop}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <TouchableOpacity style={styles.backBtn} onPress={() => navigation.navigate('clubHome')}>
-                <Ionicons name="arrow-back" size={18} color={palette.primary} />
-              </TouchableOpacity>
-              <Text style={styles.headerTitle}>Paiements</Text>
-            </View>
+            <Text style={styles.headerTitle}>Paiements</Text>
             <TouchableOpacity style={styles.exportBtn}>
               <MaterialCommunityIcons name="download" size={18} color={palette.primary} />
               <Text style={styles.exportText}>Exporter</Text>
@@ -96,11 +109,17 @@ export default function ClubPaymentsScreen({ navigation }: Props) {
           <View style={styles.revenueCard}>
             <View>
               <Text style={styles.revenueLabel}>Revenus du mois</Text>
-              <Text style={styles.revenueValue}>{stats.totalRevenue}€</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <MaterialCommunityIcons name="arrow-up" size={16} color="#16A34A" />
-                <Text style={styles.revenueDelta}>+{stats.monthlyGrowth}% vs mois dernier</Text>
-              </View>
+              {loading ? (
+                <ActivityIndicator size="large" color={palette.primary} />
+              ) : (
+                <>
+                  <Text style={styles.revenueValue}>{(stats?.totalAmount || 0).toFixed(2)}€</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <MaterialCommunityIcons name="arrow-up" size={16} color="#16A34A" />
+                    <Text style={styles.revenueDelta}>Données en temps réel</Text>
+                  </View>
+                </>
+              )}
             </View>
             <View style={styles.revenueIcon}>
               <MaterialCommunityIcons name="trending-up" size={26} color="#16A34A" />
@@ -110,23 +129,37 @@ export default function ClubPaymentsScreen({ navigation }: Props) {
           <View style={styles.quickRow}>
             <View style={styles.statCard}>
               <MaterialCommunityIcons name="check-circle-outline" size={18} color="#16A34A" />
-              <Text style={styles.statValue}>{stats.completedPayments}</Text>
+              <Text style={styles.statValue}>{stats?.completed || 0}</Text>
               <Text style={styles.statLabel}>Payés</Text>
             </View>
             <View style={styles.statCard}>
               <MaterialCommunityIcons name="clock-outline" size={18} color="#EA580C" />
-              <Text style={styles.statValue}>{stats.pendingPayments}</Text>
+              <Text style={styles.statValue}>{stats?.pending || 0}</Text>
               <Text style={styles.statLabel}>En attente</Text>
             </View>
             <View style={styles.statCard}>
               <MaterialCommunityIcons name="currency-eur" size={18} color="#2563EB" />
-              <Text style={styles.statValue}>{stats.averageTransaction}€</Text>
+              <Text style={styles.statValue}>{stats?.average ? stats.average.toFixed(0) : 0}€</Text>
               <Text style={styles.statLabel}>Moy/séance</Text>
             </View>
           </View>
         </View>
 
         <View style={{ padding: 16, gap: 16 }}>
+          <TouchableOpacity 
+            style={[styles.card, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14 }]}
+            onPress={() => navigation.navigate('educatorPayments')}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+              <MaterialCommunityIcons name="account-multiple" size={20} color="#1D4ED8" />
+              <View>
+                <Text style={[styles.cardTitle, { color: '#1D4ED8' }]}>Paiements des éducateurs</Text>
+                <Text style={[styles.cardMeta, { color: '#2563EB' }]}>Voir ce que tu dois aux éducateurs</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#1D4ED8" />
+          </TouchableOpacity>
+
           <View style={styles.tabs}>
             {(
               [
@@ -168,50 +201,37 @@ export default function ClubPaymentsScreen({ navigation }: Props) {
               </View>
 
               <View style={styles.card}>
-                <Text style={styles.sectionTitle}>Revenus par service</Text>
+                <Text style={styles.sectionTitle}>Revenus par éducateur</Text>
                 <View style={{ gap: 12, marginTop: 8 }}>
-                  {monthlyBreakdown.map((item) => (
-                    <View key={item.service}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <View>
-                          <Text style={styles.cardTitle}>{item.service}</Text>
-                          <Text style={styles.cardMeta}>{item.sessions} séances</Text>
+                  {educatorStats.length === 0 ? (
+                    <Text style={styles.cardMeta}>Aucun cours confirmé pour le moment</Text>
+                  ) : (
+                    educatorStats.map((educator, idx) => {
+                      const maxRevenue = educatorStats[0]?.totalRevenue || 1;
+                      const percentage = (educator.totalRevenue / maxRevenue) * 100;
+                      return (
+                        <View key={educator.educatorId || idx} style={styles.educatorRow}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.educatorName}>Éducateur {idx + 1}</Text>
+                            <Text style={styles.educatorStats}>
+                              {educator.courseCount} cours • {educator.participantCount} participants
+                            </Text>
+                          </View>
+                          <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={styles.educatorAmount}>{educator.totalRevenue.toFixed(2)}€</Text>
+                            <View style={styles.progressBar}>
+                              <View
+                                style={[
+                                  styles.progressFill,
+                                  { width: `${Math.max(percentage, 10)}%` }, // Min 10% for visibility
+                                ]}
+                              />
+                            </View>
+                          </View>
                         </View>
-                        <Text style={styles.cardTitle}>{item.revenue}€</Text>
-                      </View>
-                      <View style={styles.progressTrack}>
-                        <View style={[styles.progressFill, { width: `${item.percentage}%` }]} />
-                        <Text style={styles.progressLabel}>{item.percentage}%</Text>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              </View>
-
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <View style={[styles.card, { flex: 1 }]}>
-                  <Text style={styles.sectionTitle}>Carte</Text>
-                  <View style={styles.methodPercent}>
-                    <Ionicons name="card-outline" size={20} color={palette.primary} />
-                    <Text style={styles.methodValue}>65%</Text>
-                  </View>
-                  <Text style={styles.cardMeta}>Paiements par carte</Text>
-                </View>
-                <View style={[styles.card, { flex: 1 }]}>
-                  <Text style={styles.sectionTitle}>Espèces</Text>
-                  <View style={styles.methodPercent}>
-                    <MaterialCommunityIcons name="cash" size={20} color="#10B981" />
-                    <Text style={styles.methodValue}>25%</Text>
-                  </View>
-                  <Text style={styles.cardMeta}>Sur place</Text>
-                </View>
-                <View style={[styles.card, { flex: 1 }]}>
-                  <Text style={styles.sectionTitle}>Virement</Text>
-                  <View style={styles.methodPercent}>
-                    <MaterialCommunityIcons name="bank-transfer" size={20} color="#8B5CF6" />
-                    <Text style={styles.methodValue}>10%</Text>
-                  </View>
-                  <Text style={styles.cardMeta}>Transferts</Text>
+                      );
+                    })
+                  )}
                 </View>
               </View>
 
@@ -242,26 +262,26 @@ export default function ClubPaymentsScreen({ navigation }: Props) {
                 </TouchableOpacity>
               </View>
 
-              {recentTransactions.map((transaction) => (
+              {payments.filter(p => p.status === 'completed').map((transaction) => (
                 <View key={transaction.id} style={styles.card}>
                   <View style={styles.transactionHeader}>
                     <View style={styles.transactionIcon}>
-                      <Ionicons name={paymentMethodIcon(transaction.method)} size={18} color={palette.primary} />
+                      <Ionicons name="card-outline" size={18} color={palette.primary} />
                     </View>
                     <View style={{ flex: 1, marginLeft: 10 }}>
-                      <Text style={styles.cardTitle}>{transaction.client}</Text>
-                      <Text style={styles.cardMeta}>{transaction.service}</Text>
+                      <Text style={styles.cardTitle}>{transaction.payerName || 'Client'}</Text>
+                      <Text style={styles.cardMeta}>{transaction.description || 'Paiement'}</Text>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={styles.cardTitle}>+{transaction.amount}€</Text>
+                      <Text style={styles.cardTitle}>+{(transaction.amount || 0).toFixed(2)}€</Text>
                       <View style={[styles.status, { backgroundColor: '#DCFCE7' }]}>
                         <Text style={[styles.statusText, { color: '#166534' }]}>Payé</Text>
                       </View>
                     </View>
                   </View>
                   <View style={styles.transactionFooter}>
-                    <Text style={styles.cardTime}>{transaction.date}</Text>
-                    <Text style={styles.cardTime}>{paymentMethodLabel(transaction.method)}</Text>
+                    <Text style={styles.cardTime}>{transaction.createdAt ? new Date(transaction.createdAt.seconds * 1000).toLocaleDateString('fr-FR') : ''}</Text>
+                    <Text style={styles.cardTime}>Carte bancaire</Text>
                   </View>
                 </View>
               ))}
@@ -274,31 +294,31 @@ export default function ClubPaymentsScreen({ navigation }: Props) {
 
           {activeTab === 'pending' ? (
             <View style={{ gap: 12 }}>
-              {pendingPayments.length ? (
+              {payments.filter(p => p.status === 'pending').length > 0 ? (
                 <>
                   <View style={[styles.card, { backgroundColor: '#FFFBEB', borderColor: '#FCD34D' }]}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                       <MaterialCommunityIcons name="clock-outline" size={18} color="#D97706" />
                       <Text style={[styles.cardTitle, { color: '#92400E' }]}>
-                        {pendingPayments.length} paiements en attente
+                        {payments.filter(p => p.status === 'pending').length} paiements en attente
                       </Text>
                     </View>
                   </View>
-                  {pendingPayments.map((payment) => (
+                  {payments.filter(p => p.status === 'pending').map((payment) => (
                     <View key={payment.id} style={styles.card}>
                       <View style={styles.transactionHeader}>
                         <View style={[styles.transactionIcon, { backgroundColor: '#FFEDD5' }]}>
                           <MaterialCommunityIcons name="clock-outline" size={18} color="#EA580C" />
                         </View>
                         <View style={{ flex: 1, marginLeft: 10 }}>
-                          <Text style={styles.cardTitle}>{payment.client}</Text>
-                          <Text style={styles.cardMeta}>{payment.service}</Text>
+                          <Text style={styles.cardTitle}>{payment.payerName || 'Client'}</Text>
+                          <Text style={styles.cardMeta}>{payment.description || 'Paiement'}</Text>
                         </View>
-                        <Text style={styles.cardTitle}>{payment.amount}€</Text>
+                        <Text style={styles.cardTitle}>{(payment.amount || 0).toFixed(2)}€</Text>
                       </View>
                       <View style={styles.transactionFooter}>
-                        <Text style={styles.cardTime}>Séance : {payment.date}</Text>
-                        <Text style={[styles.cardTime, { color: '#C2410C' }]}>Échéance : {payment.dueDate}</Text>
+                        <Text style={styles.cardTime}>Créé : {payment.createdAt ? new Date(payment.createdAt.seconds * 1000).toLocaleDateString('fr-FR') : ''}</Text>
+                        <Text style={[styles.cardTime, { color: '#C2410C' }]}>En attente de paiement</Text>
                       </View>
                       <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
                         <TouchableOpacity style={[styles.smallBtn, { backgroundColor: '#41B6A6', flex: 1 }]}>
@@ -533,6 +553,48 @@ const styles = StyleSheet.create({
     color: palette.text,
     fontWeight: '700',
     fontSize: 16,
+  },
+  educatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    gap: 12,
+  },
+  educatorName: {
+    color: palette.text,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  educatorStats: {
+    color: palette.gray,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  educatorCourses: {
+    color: palette.gray,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  educatorAmount: {
+    color: palette.primary,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  progressBar: {
+    width: 80,
+    height: 6,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 3,
+    marginTop: 6,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: palette.primary,
+    borderRadius: 3,
   },
   chartRow: {
     flexDirection: 'row',

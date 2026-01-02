@@ -49,6 +49,7 @@ export type ClubRoute =
   | 'clubAppointments'
   | 'clubHomeTrainingRequests'
   | 'clubPayments'
+  | 'educatorPayments'
   | 'clubTeachers'
   | 'clubAddTeacher'
   | 'clubTeachersPricing'
@@ -144,6 +145,7 @@ export type ClubStackParamList = {
   clubAppointments: undefined;
   clubHomeTrainingRequests: undefined;
   clubPayments: undefined;
+  educatorPayments: undefined;
   clubTeachers: undefined;
   clubAddTeacher: undefined;
   clubTeachersPricing: { current?: number };
