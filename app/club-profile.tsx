@@ -227,7 +227,7 @@ export default function ClubProfileScreen({ navigation }: Props) {
   const loadPromotions = async () => {
     try {
       setLoadingPromotions(true);
-      const clubId = (profile as any)?.uid || user?.uid;
+      const clubId = (profile as any)?.clubId || user?.uid;
       if (!clubId) {
         console.error('clubId non trouvé');
         setPromotions([]);

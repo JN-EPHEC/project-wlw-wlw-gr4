@@ -36,7 +36,7 @@ const TRAINING_TYPES = ['agility', 'obéissance', 'pistage', 'protection', 'ring
 
 export default function CreateFieldScreen({ navigation }: Props) {
   const { user, profile } = useAuth();
-  const clubId = (profile as any)?.uid || user?.uid;
+  const clubId = (profile as any)?.clubId || user?.uid;
   const { addField } = useClubFields(clubId || null);
 
   const [saving, setSaving] = useState(false);
