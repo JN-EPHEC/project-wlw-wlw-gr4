@@ -2,10 +2,13 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useMemo } from 'react';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { Timestamp } from 'firebase/firestore';
 
 import TeacherBottomNav from '@/components/TeacherBottomNav';
+import { useAuth } from '@/context/AuthContext';
+import { useFetchEducatorClubsFromCollection } from '@/hooks/useFetchEducatorClubsFromCollection';
 import { TeacherStackParamList } from '@/navigation/types';
 import { router } from 'expo-router';
 
@@ -22,39 +25,94 @@ const palette = {
   warning: '#F59E0B',
 };
 
-const clubs = [
-  {
-    id: 1,
-    name: 'Club Vincennes',
-    role: 'Collectifs & agility',
-    status: 'Actif',
-    nextSlot: 'Jeu 14:00',
-    payout: '420 EUR',
-  },
-  {
-    id: 2,
-    name: 'Caniparc Ouest',
-    role: 'Coaching individuel',
-    status: 'Actif',
-    nextSlot: 'Sam 10:00',
-    payout: '285 EUR',
-  },
-  {
-    id: 3,
-    name: 'Petits Loups',
-    role: 'Evaluation chiot',
-    status: 'En attente',
-    nextSlot: 'A planifier',
-    payout: 'Proposition',
-  },
-];
-
-const invites = [
-  { id: 1, club: 'Dog Run Nation', detail: '2 cours collectifs par semaine', city: 'Montreuil' },
-];
-
 export default function TeacherClubsPage() {
   const navigation = useNavigation<NativeStackNavigationProp<TeacherStackParamList>>();
+  const { profile } = useAuth();
+  
+  // Get educator ID from profile
+  const educatorProfile = (profile as any)?.profile || {};
+  const educatorId = educatorProfile?.educatorId || (profile as any)?.educatorId || '';
+  
+  // Fetch clubs where this educator is affiliated
+  const { clubs, loading, error } = useFetchEducatorClubsFromCollection(educatorId);
+
+  const formatTime = (date: any): string => {
+    const d = date instanceof Timestamp ? date.toDate() : new Date(date);
+    return d.toLocaleDateString('fr-FR', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Component to render a club with its next booking
+  const ClubCard = ({ club, educatorId: edId, navigation: nav }: { club: any; educatorId: string; navigation: any }) => {
+    const [nextBooking, setNextBooking] = React.useState<any>(null);
+    const [bookingLoading, setBookingLoading] = React.useState(true);
+
+    React.useEffect(() => {
+      const fetchNextBooking = async () => {
+        try {
+          setBookingLoading(true);
+          const { collection, query, where, getDocs, orderBy, limit, Timestamp } = await import('firebase/firestore');
+          const { db } = await import('@/firebaseConfig');
+          
+          const now = new Date();
+          const q = query(
+            collection(db, 'Bookings'),
+            where('educatorId', '==', edId),
+            where('clubId', '==', club.id),
+            where('sessionDate', '>=', Timestamp.fromDate(now)),
+            orderBy('sessionDate', 'asc'),
+            limit(1)
+          );
+
+          const snapshot = await getDocs(q);
+          if (!snapshot.empty) {
+            setNextBooking(snapshot.docs[0].data());
+          }
+        } catch (err) {
+          console.error('Error fetching booking:', err);
+        } finally {
+          setBookingLoading(false);
+        }
+      };
+
+      if (edId && club.id) {
+        fetchNextBooking();
+      }
+    }, [club.id, edId]);
+
+    return (
+      <View key={club.id} style={styles.clubCard}>
+        <View style={styles.clubHeader}>
+          <View style={styles.clubTitleRow}>
+            <Text style={styles.cardTitle}>{club.name}</Text>
+            <View style={[styles.badge, styles.badgeActive]}>
+              <Text style={[styles.badgeText, styles.badgeTextActive]}>Actif</Text>
+            </View>
+          </View>
+        </View>
+        <Text style={styles.cardMeta}>{club.services || 'Services disponibles'}</Text>
+        <View style={styles.metaRow}>
+          <Ionicons name="time-outline" size={14} color={palette.gray} />
+          <Text style={styles.cardMeta}>
+            {bookingLoading ? 'Chargement...' : nextBooking ? `Prochain: ${formatTime(nextBooking.sessionDate)}` : 'A planifier'}
+          </Text>
+        </View>
+        <View style={styles.actionsRow}>
+          <TouchableOpacity
+            style={styles.secondary}
+            onPress={() => nav.navigate('teacher-community')}
+          >
+            <Text style={styles.secondaryText}>Messages</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={() => nav.navigate('teacher-appointments')}
+          >
+            <Text style={styles.primaryBtnText}>Bloc horaires</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -106,24 +164,6 @@ export default function TeacherClubsPage() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.listBlock}>
-          {invites.map((inv) => (
-            <View key={inv.id} style={styles.card}>
-              <View style={{ flex: 1, gap: 4 }}>
-                <Text style={styles.cardTitle}>{inv.club}</Text>
-                <Text style={styles.cardMeta}>{inv.city}</Text>
-                <Text style={styles.cardMeta}>{inv.detail}</Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.primaryBtn, styles.primaryBtnCompact]}
-                onPress={() => navigation.navigate('teacher-clubs')}
-              >
-                <Text style={styles.primaryBtnText}>Voir</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
-
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Partenariats actifs</Text>
           <TouchableOpacity onPress={() => navigation.navigate('teacher-appointments')}>
@@ -131,55 +171,25 @@ export default function TeacherClubsPage() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.listBlock}>
-          {clubs.map((club) => (
-            <View key={club.id} style={styles.clubCard}>
-              <View style={styles.clubHeader}>
-                <View style={styles.clubTitleRow}>
-                  <Text style={styles.cardTitle}>{club.name}</Text>
-                  <View
-                    style={[
-                      styles.badge,
-                      club.status === 'Actif' ? styles.badgeActive : styles.badgePending,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.badgeText,
-                        club.status === 'Actif' ? styles.badgeTextActive : styles.badgeTextPending,
-                      ]}
-                    >
-                      {club.status}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.payout}>
-                  <Text style={styles.payoutLabel}>Solde</Text>
-                  <Text style={styles.payoutValue}>{club.payout}</Text>
-                </View>
-              </View>
-              <Text style={styles.cardMeta}>{club.role}</Text>
-              <View style={styles.metaRow}>
-                <Ionicons name="time-outline" size={14} color={palette.gray} />
-                <Text style={styles.cardMeta}>Prochain: {club.nextSlot}</Text>
-              </View>
-              <View style={styles.actionsRow}>
-                <TouchableOpacity
-                  style={styles.secondary}
-                  onPress={() => navigation.navigate('teacher-community')}
-                >
-                  <Text style={styles.secondaryText}>Messages</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.primaryBtn}
-                  onPress={() => navigation.navigate('teacher-appointments')}
-                >
-                  <Text style={styles.primaryBtnText}>Bloc horaires</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
-        </View>
+        {loading ? (
+          <View style={[styles.listBlock, { alignItems: 'center', paddingVertical: 40 }]}>
+            <ActivityIndicator size="large" color={palette.primary} />
+          </View>
+        ) : error ? (
+          <View style={[styles.listBlock, { alignItems: 'center', paddingVertical: 20 }]}>
+            <Text style={{ color: palette.gray }}>Erreur: {error}</Text>
+          </View>
+        ) : clubs.length === 0 ? (
+          <View style={[styles.listBlock, { alignItems: 'center', paddingVertical: 20 }]}>
+            <Text style={{ color: palette.gray }}>Aucun club partenaire pour le moment</Text>
+          </View>
+        ) : (
+          <View style={styles.listBlock}>
+            {clubs.map((club) => (
+              <ClubCard key={club.id} club={club} educatorId={educatorId} navigation={navigation} />
+            ))}
+          </View>
+        )}
       </ScrollView>
       <TeacherBottomNav current="teacher-clubs" />
     </SafeAreaView>
