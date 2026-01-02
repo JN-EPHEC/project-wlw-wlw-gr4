@@ -19,7 +19,7 @@ type Props = NativeStackScreenProps<UserStackParamList, 'bookings'>;
 
 export default function BookingsScreen({ navigation }: Props) {
   const { bookings, loading, error, loadUserBookings } = useUserUpcomingBookings();
-  const { updateBooking, loading: updateLoading } = useUpdateBooking();
+  const { updateBooking, cancelBooking, loading: updateLoading } = useUpdateBooking();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const handleAcceptBooking = async (bookingId: string) => {
@@ -51,6 +51,36 @@ export default function BookingsScreen({ navigation }: Props) {
               setTimeout(() => loadUserBookings(), 500);
             } catch (err) {
               Alert.alert('Erreur', 'Impossible de refuser la réservation');
+            } finally {
+              setUpdatingId(null);
+            }
+          },
+          style: 'destructive',
+        },
+      ]
+    );
+  };
+
+  const handleCancelBooking = async (bookingId: string) => {
+    console.log('🗑️ handleCancelBooking called for:', bookingId);
+    Alert.alert(
+      'Annuler la réservation',
+      'Êtes-vous sûr de vouloir annuler cette réservation?',
+      [
+        { text: 'Garder', onPress: () => console.log('Cancel declined') },
+        {
+          text: 'Annuler',
+          onPress: async () => {
+            try {
+              console.log('🗑️ Attempting to cancel booking:', bookingId);
+              setUpdatingId(bookingId);
+              await cancelBooking(bookingId);
+              console.log('✅ Booking cancelled successfully');
+              Alert.alert('Succès', 'Réservation annulée');
+              setTimeout(() => loadUserBookings(), 500);
+            } catch (err) {
+              console.error('❌ Error cancelling booking:', err);
+              Alert.alert('Erreur', 'Impossible d\'annuler la réservation');
             } finally {
               setUpdatingId(null);
             }
@@ -210,14 +240,12 @@ export default function BookingsScreen({ navigation }: Props) {
               <View style={styles.actionButtons}>
                 <TouchableOpacity 
                   style={[styles.actionBtn, styles.refuseBtn]}
-                  onPress={() => handleRefuseBooking(item.id)}
-                  disabled={updatingId === item.id || updateLoading}
+                  onPress={() => {
+                    console.log('✅ BUTTON PRESSED for booking:', item.id);
+                    handleCancelBooking(item.id);
+                  }}
                 >
-                  {updatingId === item.id && updateLoading ? (
-                    <ActivityIndicator size="small" color="#DC2626" />
-                  ) : (
-                    <Text style={styles.refuseBtnText}>Refuser</Text>
-                  )}
+                  <Text style={styles.refuseBtnText}>Annuler la réservation</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -345,10 +373,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   refuseBtn: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#DC2626',
   },
   refuseBtnText: {
-    color: '#DC2626',
+    color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 13,
   },

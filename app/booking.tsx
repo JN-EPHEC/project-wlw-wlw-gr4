@@ -1,13 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useMemo, useState, useEffect } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Alert } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Alert, Picker } from 'react-native';
 import { doc, getDoc, Timestamp, updateDoc, arrayUnion } from 'firebase/firestore';
 
 import { UserStackParamList } from '@/navigation/types';
 import { db } from '@/firebaseConfig';
 import { useAuth } from '@/context/AuthContext';
 import { useFetchClubAllBookings } from '@/hooks/useFetchClubAllBookings';
+import { useCreatePayment } from '@/hooks/useFetchClubPayments';
+import { useValidatePromoCode } from '@/hooks/useValidatePromoCode';
+import { useDogs } from '@/hooks/useDogs';
 
 type Step = 'datetime' | 'info' | 'payment';
 
@@ -24,6 +27,9 @@ type Props = NativeStackScreenProps<UserStackParamList, 'booking'>;
 export default function BookingScreen({ navigation, route }: Props) {
   const { clubId } = route.params;
   const { user } = useAuth();
+  const { createPayment } = useCreatePayment();
+  const { validatePromoCode } = useValidatePromoCode();
+  const { dogs, loading: dogsLoading } = useDogs();
   const [step, setStep] = useState<Step>('datetime');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
@@ -32,6 +38,10 @@ export default function BookingScreen({ navigation, route }: Props) {
   const [club, setClub] = useState<any>(null);
   const [clubLoading, setClubLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<any>(null);
+  const [promoError, setPromoError] = useState('');
+  const [validatingPromo, setValidatingPromo] = useState(false);
   
   // Récupérer les bookings du club
   const { bookings, loading: bookingsLoading } = useFetchClubAllBookings(clubId);
@@ -119,6 +129,29 @@ export default function BookingScreen({ navigation, route }: Props) {
   const canGoPayment =
     formData.name.trim() && formData.email.trim() && formData.phone.trim() && formData.dogName.trim();
 
+  // Appliquer un code promo
+  const handleApplyPromoCode = async () => {
+    if (!promoCode.trim()) {
+      setPromoError('Veuillez entrer un code promo');
+      return;
+    }
+
+    setValidatingPromo(true);
+    setPromoError('');
+
+    const promo = await validatePromoCode(promoCode, clubId);
+    
+    setValidatingPromo(false);
+
+    if (promo) {
+      setAppliedPromo(promo);
+      setPromoCode('');
+      Alert.alert('✅ Succès', `Code "${promo.code}" appliqué! Réduction: ${promo.discountPercentage}%`);
+    } else {
+      setPromoError('Code promo invalide ou expiré');
+    }
+  };
+
   // Fonction pour continuer depuis l'étape info
   const handleContinueFromInfo = async () => {
     if (!canGoPayment) {
@@ -200,6 +233,83 @@ export default function BookingScreen({ navigation, route }: Props) {
       });
 
       console.log('✅ User added to booking:', user.uid, 'Booking:', selectedBookingId);
+      
+      // 💳 CRÉER LES PAIEMENTS (50/50 SPLIT AVEC RÉDUCTION)
+      let bookingPrice = bookingData.price || 0;
+      const educatorId = bookingData.educatorId;
+      
+      // Appliquer la réduction si applicable
+      if (appliedPromo) {
+        bookingPrice = (bookingPrice * (100 - appliedPromo.discountPercentage)) / 100;
+      }
+      
+      console.log('💳 Creating payments with 50/50 split for booking:', selectedBookingId);
+      console.log('  Final price after discount:', bookingPrice, '€');
+      console.log('  Club gets:', bookingPrice / 2, '€');
+      console.log('  Educator gets:', bookingPrice / 2, '€');
+      console.log('  Payer (user):', user.uid);
+      console.log('  Club receiver:', clubId);
+      console.log('  Educator receiver:', educatorId);
+      
+      // 50% pour le club
+      try {
+        const clubPaymentId = await createPayment({
+          payerUserId: user.uid,
+          receiverUserId: clubId,
+          amount: bookingPrice / 2,
+          currency: 'EUR',
+          description: `Paiement club - ${bookingData.title || 'cours'}${appliedPromo ? ` (code: ${appliedPromo.code})` : ''}`,
+          targetRef: `/Bookings/${selectedBookingId}`,
+          targetId: selectedBookingId,
+          targetType: 'booking',
+          clubId: clubId,
+          bookingId: selectedBookingId,
+          paymentMethodType: 'card',
+          provider: 'manual',
+          status: 'completed',
+        });
+        
+        if (clubPaymentId) {
+          console.log('✅ Club payment created:', clubPaymentId, 'Amount:', bookingPrice / 2);
+        } else {
+          console.log('❌ Failed to create club payment - returned null');
+        }
+      } catch (clubPaymentErr) {
+        console.error('❌ Error creating club payment:', clubPaymentErr);
+      }
+      
+      // 50% pour l'éducateur (si disponible)
+      if (educatorId) {
+        try {
+          const educatorPaymentId = await createPayment({
+            payerUserId: user.uid,
+            receiverUserId: educatorId,
+            amount: bookingPrice / 2,
+            currency: 'EUR',
+            description: `Paiement éducateur - ${bookingData.title || 'cours'}${appliedPromo ? ` (code: ${appliedPromo.code})` : ''}`,
+            targetRef: `/Bookings/${selectedBookingId}`,
+            targetId: selectedBookingId,
+            targetType: 'booking',
+            educatorId: educatorId,
+            bookingId: selectedBookingId,
+            paymentMethodType: 'card',
+            provider: 'manual',
+            status: 'completed',
+          });
+          
+          if (educatorPaymentId) {
+            console.log('✅ Educator payment created:', educatorPaymentId, 'Amount:', bookingPrice / 2);
+          } else {
+            console.log('❌ Failed to create educator payment - returned null');
+          }
+        } catch (educatorPaymentErr) {
+          console.error('❌ Error creating educator payment:', educatorPaymentErr);
+        }
+      } else {
+        console.log('⚠️ No educatorId found, skipping educator payment');
+      }
+      
+      console.log('✅ All payments created for booking:', selectedBookingId);
       
       // Afficher confirmation et revenir
       Alert.alert(
@@ -323,7 +433,34 @@ export default function BookingScreen({ navigation, route }: Props) {
             <InputField label="Votre nom" value={formData.name} onChangeText={(t) => setFormData({ ...formData, name: t })} placeholder="Nom complet" />
             <InputField label="Email" value={formData.email} onChangeText={(t) => setFormData({ ...formData, email: t })} placeholder="votre@email.com" keyboardType="email-address" />
             <InputField label="Téléphone" value={formData.phone} onChangeText={(t) => setFormData({ ...formData, phone: t })} placeholder="+33 6 00 00 00 00" keyboardType="phone-pad" />
-            <InputField label="Nom de votre chien" value={formData.dogName} onChangeText={(t) => setFormData({ ...formData, dogName: t })} placeholder="Max" />
+            
+            {/* Sélection du chien */}
+            <View style={{ gap: 4 }}>
+              <Text style={styles.label}>Votre chien</Text>
+              {dogsLoading ? (
+                <ActivityIndicator size="small" color={palette.primary} />
+              ) : dogs.length === 0 ? (
+                <Text style={[styles.input, { color: palette.gray }]}>Aucun chien enregistré</Text>
+              ) : (
+                <TouchableOpacity 
+                  style={styles.input}
+                  onPress={() => {
+                    const dogOptions = dogs.map(dog => ({
+                      text: dog.name,
+                      onPress: () => setFormData({ ...formData, dogName: dog.id || dog.name })
+                    }));
+                    dogOptions.push({ text: 'Annuler', onPress: () => {} });
+                    
+                    Alert.alert('Sélectionner un chien', '', dogOptions);
+                  }}
+                >
+                  <Text style={{ flex: 1, color: formData.dogName ? palette.text : '#9CA3AF', fontSize: 14 }}>
+                    {formData.dogName ? dogs.find(d => d.id === formData.dogName || d.name === formData.dogName)?.name || 'Sélectionner un chien' : 'Sélectionner un chien'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color={palette.gray} />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         ) : null}
 
@@ -335,7 +472,56 @@ export default function BookingScreen({ navigation, route }: Props) {
                 <RowLabel label="Date" value={dates.find((d) => d.value === selectedDate)?.label || ''} />
                 <RowLabel label="Heure" value={selectedTime} />
                 <View style={styles.divider} />
-                <RowLabel label="Total" value="45 €" emphasize />
+                {appliedPromo ? (
+                  <>
+                    <RowLabel label="Prix" value={`${slots.find(s => s.time === selectedTime)?.price || 0} €`} />
+                    <RowLabel label="Réduction" value={`-${appliedPromo.discountPercentage}%`} />
+                    <View style={styles.divider} />
+                    <RowLabel 
+                      label="Total" 
+                      value={`${(((slots.find(s => s.time === selectedTime)?.price || 0) * (100 - appliedPromo.discountPercentage)) / 100).toFixed(2)} €`} 
+                      emphasize 
+                    />
+                  </>
+                ) : (
+                  <RowLabel label="Total" value={`${slots.find(s => s.time === selectedTime)?.price || 0} €`} emphasize />
+                )}
+              </View>
+            </View>
+
+            <View>
+              <Text style={styles.title}>Code de réduction</Text>
+              <View style={{ gap: 8 }}>
+                {appliedPromo ? (
+                  <View style={[styles.card, { backgroundColor: '#F0FDF4', borderColor: '#86EFAC', borderWidth: 1 }]}>
+                    <Text style={{ color: '#16A34A', fontWeight: '600', fontSize: 14 }}>✓ Code "{appliedPromo.code}" appliqué</Text>
+                    <TouchableOpacity onPress={() => {setAppliedPromo(null); setPromoCode('');}} style={{ marginTop: 8 }}>
+                      <Text style={{ color: '#DC2626', fontSize: 12 }}>Supprimer</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TextInput
+                        style={[styles.input, { flex: 1 }]}
+                        placeholder="Ex: PROMO2025"
+                        value={promoCode}
+                        onChangeText={setPromoCode}
+                        editable={!validatingPromo}
+                        autoCapitalize="characters"
+                        placeholderTextColor="#9CA3AF"
+                      />
+                      <TouchableOpacity
+                        style={[styles.primaryButton, { paddingHorizontal: 16 }, validatingPromo && styles.primaryDisabled]}
+                        onPress={handleApplyPromoCode}
+                        disabled={validatingPromo}
+                      >
+                        <Text style={styles.primaryButtonText}>{validatingPromo ? '...' : 'Valider'}</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {promoError && <Text style={{ color: '#DC2626', fontSize: 12, marginLeft: 4 }}>{promoError}</Text>}
+                  </>
+                )}
               </View>
             </View>
 

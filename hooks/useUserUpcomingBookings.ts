@@ -61,8 +61,25 @@ export function useUserUpcomingBookings() {
           }
         }
 
+        // Déterminer le statut réel du booking basé sur les timestamps
+        // Les statuts valides du booking sont: pending, confirmed, cancelled, rejected, refused
+        let bookingStatus = 'pending';
+        
+        // Vérifier d'abord les timestamps (qui sont plus fiables)
+        if (data.confirmedAt) {
+          bookingStatus = 'confirmed';
+        } else if (data.cancelledAt) {
+          bookingStatus = 'cancelled';
+        } else if (data.rejectedAt || data.refusedAt) {
+          bookingStatus = 'rejected';
+        }
+        // Si aucun timestamp, utiliser le champ status s'il existe et est valide
+        else if (data.status && ['pending', 'confirmed', 'cancelled', 'rejected', 'refused'].includes(data.status)) {
+          bookingStatus = data.status;
+        }
+
         // Filtrer seulement les bookings futurs et non annulés/refusés
-        if (bookingDate && bookingDate > now && !['cancelled', 'rejected', 'refused'].includes(data.status)) {
+        if (bookingDate && bookingDate > now && !['cancelled', 'rejected', 'refused'].includes(bookingStatus)) {
           // Récupérer les infos du club
           let clubName = 'Club inconnu';
           if (data.clubId) {
@@ -106,7 +123,7 @@ export function useUserUpcomingBookings() {
           upcomingBookings.push({
             id: bookingDoc.id,
             title: data.title || 'Séance',
-            status: data.status || 'pending',
+            status: bookingStatus,
             club: clubName,
             trainer: educatorName,
             dog: dogName,

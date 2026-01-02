@@ -98,7 +98,19 @@ export default function ClubTeachersPaymentScreen({ navigation, route }: Props) 
               Premier paiement aujourd’hui : {totalPrice}€. Renouvellement automatique mensuel. Annulation à tout moment.
             </Text>
           </View>
-
+          <TouchableOpacity 
+            style={[styles.card, { backgroundColor: '#F0FDF4', borderColor: '#86EFAC', borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14 }]}
+            onPress={() => navigation.navigate('educatorPayments')}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+              <MaterialCommunityIcons name="account-cash" size={20} color="#16A34A" />
+              <View>
+                <Text style={[styles.sectionTitle, { color: '#16A34A' }]}>Voir les paiements</Text>
+                <Text style={[styles.cardMeta, { color: '#22C55E' }]}>Suivi complet de tes paiements</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#16A34A" />
+          </TouchableOpacity>
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Carte bancaire</Text>
             <View style={{ gap: 12, marginTop: 8 }}>
