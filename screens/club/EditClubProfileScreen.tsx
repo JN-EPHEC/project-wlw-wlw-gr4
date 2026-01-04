@@ -20,7 +20,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ClubStackParamList } from '@/navigation/types';
 import { db, storage } from '@/firebaseConfig';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 type Props = NativeStackScreenProps<ClubStackParamList, 'editClubProfile'>;
 
@@ -134,6 +134,7 @@ export default function EditClubProfileScreen({ navigation }: Props) {
 
     try {
       let newLogoUrl = photoUrl;
+      let oldPhotoUrl = photoUrl; // Stocker l'ancienne URL pour la supprimer
 
       // Upload de la photo si une nouvelle est sélectionnée
       if (selectedImage) {
@@ -144,9 +145,19 @@ export default function EditClubProfileScreen({ navigation }: Props) {
         const storageRef = ref(storage, storagePath);
         await uploadBytes(storageRef, blob);
         newLogoUrl = await getDownloadURL(storageRef);
+
+        // Supprimer l'ancienne photo si elle existait
+        if (oldPhotoUrl && oldPhotoUrl.includes('firebasestorage')) {
+          try {
+            const oldRef = ref(storage, oldPhotoUrl);
+            await deleteObject(oldRef);
+          } catch (err) {
+            console.warn('Erreur lors de la suppression de l\'ancienne photo:', err);
+          }
+        }
       }
 
-      // Mise à jour des données du club dans Firestore
+      // Mise à jour des données du club dans Firestore (collection users)
       const clubRef = doc(db, 'users', user.uid);
       console.log('📤 Sauvegarde services:', services);
       console.log('📤 Services array is empty?', services.length === 0);
@@ -170,6 +181,20 @@ export default function EditClubProfileScreen({ navigation }: Props) {
       await updateDoc(clubRef, updateData);
       console.log('✅ Profil sauvegardé avec services:', services);
       console.log('✅ Services tableau complet:', JSON.stringify(services));
+
+      // Mise à jour de la collection club avec PhotoUrl
+      if (newLogoUrl) {
+        try {
+          const clubDocRef = doc(db, 'club', user.uid);
+          await updateDoc(clubDocRef, {
+            PhotoUrl: newLogoUrl,
+            updatedAt: new Date(),
+          });
+          console.log('✅ PhotoUrl mise à jour dans la collection club');
+        } catch (err) {
+          console.warn('Erreur lors de la mise à jour de PhotoUrl dans club:', err);
+        }
+      }
 
       setSuccess(true);
       Alert.alert('Succès', 'Profil du club mis à jour avec succès');

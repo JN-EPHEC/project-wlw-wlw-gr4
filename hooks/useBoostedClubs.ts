@@ -52,12 +52,12 @@ export function useBoostedClubs() {
             boostedClubsData.push({
               id: clubId,
               name: clubData.name || 'Club sans nom',
-              rating: clubData.rating || 4.5,
+              rating: typeof clubData.averageRating === 'number' ? clubData.averageRating : (typeof clubData.rating === 'number' ? clubData.rating : 0),
               verified: clubData.verified || false,
               distance: clubData.distance || 'N/A',
               city: clubData.city || clubData.location || 'Ville inconnue',
               speciality: clubData.speciality || clubData.type || 'Entraînement',
-              image: clubData.image || clubData.photoUrl || 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=800&q=80',
+              image: clubData.PhotoUrl || clubData.logoUrl || clubData.image || clubData.photoUrl || 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=800&q=80',
             });
           }
         }
