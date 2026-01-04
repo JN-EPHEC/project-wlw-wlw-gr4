@@ -176,22 +176,52 @@ export const notifyUserMembershipRejected = async (
 // À placer dans: event-booking.tsx (fonction handleBooking)
 // ============================================
 export const notifyClubNewBooking = async (
-  clubId: string,
+  recipientId: string,
   eventId: string,
   eventTitle: string,
-  userName: string,
-  userId: string,
-  userAvatar?: string
+  senderName: string,
+  senderId: string,
+  senderAvatar?: string
 ): Promise<void> => {
-  await createNotificationFromTemplate('new_booking', {
-    recipientId: clubId,
-    relatedId: eventId,
-    senderId: userId,
-    senderName: userName,
-    senderAvatar: userAvatar,
-    metadata: { eventTitle },
-    actionParams: { eventId },
-  });
+  try {
+    // Valider recipientId
+    if (!recipientId || recipientId.trim() === '') {
+      console.warn('⚠️ notifyClubNewBooking: recipientId vide ou undefined');
+      return;
+    }
+
+    // Déterminer le type de destinataire
+    const isUser = recipientId.length <= 28 && recipientId.length > 10;
+    const recipientType = isUser ? 'user' : 'club';
+
+    const message = recipientType === 'club' 
+      ? `${senderName} s'est inscrit(e) à ${eventTitle}`
+      : `Votre inscription pour ${eventTitle} a été confirmée`;
+
+    const title = recipientType === 'club'
+      ? 'Nouvelle réservation'
+      : 'Réservation confirmée! ✅';
+
+    await createNotification({
+      type: recipientType === 'club' ? 'new_booking' : 'booking_confirmed',
+      title,
+      message,
+      recipientId: recipientId.trim(),
+      recipientType,
+      relatedId: eventId,
+      relatedType: 'booking',
+      senderId,
+      senderName,
+      senderAvatar,
+      actionUrl: 'event-detail',
+      actionParams: { eventId },
+      metadata: { eventTitle },
+    });
+    console.log(`✅ Notification booking créée pour ${recipientId} (type: ${recipientType})`);
+  } catch (err) {
+    console.error(`❌ Erreur notification booking pour ${recipientId}:`, err);
+    throw err;
+  }
 };
 
 // ============================================
@@ -243,14 +273,38 @@ export const notifyNewMessage = async (
   senderId: string,
   chatRoomId: string
 ): Promise<void> => {
-  await createNotificationFromTemplate('message_received', {
-    recipientId,
-    relatedId: messageId,
-    senderId,
-    senderName,
-    metadata: { messagePreview },
-    actionParams: { chatRoomId },
-  });
+  try {
+    // Valider recipientId
+    if (!recipientId || recipientId.trim() === '') {
+      console.warn('⚠️ notifyNewMessage: recipientId vide ou undefined');
+      return;
+    }
+
+    // Déterminer le type de destinataire
+    // clubs ont généralement des IDs longs (Firebase), users aussi
+    // On utilise une heuristique: si c'est un UID Firebase classique (28 chars), c'est probablement un user
+    const isUser = recipientId.length <= 28 && recipientId.length > 10;
+    const recipientType = isUser ? 'user' : 'club';
+
+    await createNotification({
+      type: 'message_received',
+      title: `Nouveau message de ${senderName}`,
+      message: messagePreview,
+      recipientId: recipientId.trim(),
+      recipientType,
+      relatedId: messageId,
+      relatedType: 'message',
+      senderId,
+      senderName,
+      actionUrl: 'chat-room',
+      actionParams: { chatRoomId },
+      metadata: { messagePreview },
+    });
+    console.log(`✅ Notification message créée pour ${recipientId} (type: ${recipientType})`);
+  } catch (err) {
+    console.error(`❌ Erreur notification message pour ${recipientId}:`, err);
+    throw err;
+  }
 };
 
 // ============================================

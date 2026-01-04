@@ -144,11 +144,35 @@ export default function EventBookingScreen({ navigation, route }: Props) {
       }
 
       // Send notification to the club that organized the event
+      console.log('🔔 Tentative notification au club:', { clubId: currentData.clubId, eventId, eventTitle: event.title });
       try {
-        const clubName = event.clubName || 'un club';
-        await notifyClubNewBooking(currentData.clubId, event.title, form.name);
+        await notifyClubNewBooking(
+          currentData.clubId,        // clubId
+          eventId,                   // eventId
+          event.title,               // eventTitle
+          form.name,                 // userName
+          user?.uid || '',           // userId
+          (profile as any)?.photoURL // userAvatar (optional)
+        );
+        console.log('✅ Notification club créée avec succès');
       } catch (notifErr) {
-        console.warn('Erreur création notification:', notifErr);
+        console.error('❌ Erreur création notification club:', notifErr);
+      }
+
+      // Also send notification to the owner (user who booked)
+      console.log('🔔 Tentative notification au user:', { userId: user?.uid, eventId, eventTitle: event.title });
+      try {
+        await notifyClubNewBooking(
+          user?.uid || '',           // recipientId = OWNER/USER ID
+          eventId,                   // eventId
+          event.title,               // eventTitle
+          event.clubName || 'un club',  // senderName (the club name)
+          currentData.clubId,        // senderId (the club id)
+          undefined                  // userAvatar (optional)
+        );
+        console.log('✅ Notification user créée avec succès');
+      } catch (notifErr) {
+        console.error('❌ Erreur création notification user:', notifErr);
       }
 
       console.log('✅ Booking confirmed:', newParticipant);

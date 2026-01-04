@@ -11,6 +11,7 @@ import { useFetchClubAllBookings } from '@/hooks/useFetchClubAllBookings';
 import { useCreatePayment } from '@/hooks/useFetchClubPayments';
 import { useValidatePromoCode } from '@/hooks/useValidatePromoCode';
 import { useDogs } from '@/hooks/useDogs';
+import { notifyClubNewBooking } from '@/utils/notificationHelpers';
 
 type Step = 'datetime' | 'info' | 'payment';
 
@@ -310,6 +311,29 @@ export default function BookingScreen({ navigation, route }: Props) {
       }
       
       console.log('✅ All payments created for booking:', selectedBookingId);
+      
+      // 🔔 CRÉER LES NOTIFICATIONS
+      try {
+        console.log('🔔 Tentative notification au club:', clubId);
+        await notifyClubNewBooking(user.uid, clubId, {
+          ...bookingData,
+          id: selectedBookingId,
+        });
+        console.log('✅ Notification club créée avec succès');
+      } catch (notifyErr) {
+        console.error('❌ Erreur création notification club:', notifyErr);
+      }
+
+      try {
+        console.log('🔔 Tentative notification à l\'utilisateur:', user.uid);
+        await notifyClubNewBooking(clubId, user.uid, {
+          ...bookingData,
+          id: selectedBookingId,
+        });
+        console.log('✅ Notification utilisateur créée avec succès');
+      } catch (notifyErr) {
+        console.error('❌ Erreur création notification utilisateur:', notifyErr);
+      }
       
       // Afficher confirmation et revenir
       Alert.alert(

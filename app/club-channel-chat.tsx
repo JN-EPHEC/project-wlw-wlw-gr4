@@ -17,6 +17,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useCommunityMessages } from '@/hooks/useCommunityMessages';
 import { useCommunityMembers } from '@/hooks/useCommunityMembers';
 import { useClubPermissions } from '@/hooks/useClubPermissions';
+import { notifyNewMessage } from '@/utils/notificationHelpers';
 
 const palette = {
   primary: '#41B6A6',
@@ -87,6 +88,39 @@ export default function ClubChannelChatScreen({ navigation, route }: Props) {
     }
 
     await sendMessage(value.trim());
+    
+    // ✅ Créer notification CLUB pour le nouveau message
+    if (clubId) {
+      try {
+        await notifyNewMessage(
+          clubId,  // recipientId = CLUB ID
+          channelId,  // messageId = CHANNEL ID
+          (profile as any)?.displayName || 'Un utilisateur',  // senderName
+          value.trim().substring(0, 50),  // messagePreview
+          user?.uid || '',  // senderId
+          channelId  // chatRoomId
+        );
+      } catch (notifErr) {
+        console.warn('Avertissement: notification message club non créée:', notifErr);
+      }
+    }
+
+    // ✅ Créer notification OWNER (user) pour le nouveau message
+    if (user?.uid) {
+      try {
+        await notifyNewMessage(
+          user.uid,  // recipientId = OWNER/USER ID
+          channelId,  // messageId = CHANNEL ID
+          channelName || 'le canal',  // senderName (channel name)
+          value.trim().substring(0, 50),  // messagePreview
+          user.uid,  // senderId
+          channelId  // chatRoomId
+        );
+      } catch (notifErr) {
+        console.warn('Avertissement: notification message owner non créée:', notifErr);
+      }
+    }
+    
     setValue('');
   };
 
