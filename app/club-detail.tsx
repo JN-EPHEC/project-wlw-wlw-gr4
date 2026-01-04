@@ -13,6 +13,7 @@ import { useFetchClubUpcomingEvents } from '@/hooks/useFetchClubUpcomingEvents';
 import { useFetchEducatorById } from '@/hooks/useFetchEducatorById';
 import { useJoinClub } from '@/hooks/useJoinClub';
 import { useAuth } from '@/context/AuthContext';
+import { createNotificationFromTemplate } from '@/utils/notificationHelpers';
 
 const palette = {
   primary: '#41B6A6',
@@ -112,6 +113,24 @@ export default function ClubDetailScreen({ navigation, route }: Props) {
         userEmail: user.email || '',
         userName,
       });
+
+      // ✅ Créer notification pour le club
+      try {
+        await createNotificationFromTemplate('pending_member_request', {
+          recipientId: clubData?.id || clubId,
+          recipientType: 'club',
+          relatedId: clubId,
+          senderId: user.uid,
+          senderName: userName,
+          actionParams: { clubId },
+          metadata: {
+            clubName: clubData?.name || 'le club',
+            memberName: userName,
+          },
+        });
+      } catch (notifErr) {
+        console.warn('Avertissement: notification non créée:', notifErr);
+      }
 
       Alert.alert('✓ Succès', 'Votre demande d\'adhésion a été envoyée au club. Un responsable l\'examinera prochainement.');
     } catch (err) {

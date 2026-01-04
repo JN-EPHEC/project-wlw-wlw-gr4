@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { doc, updateDoc, Timestamp, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc, Timestamp, deleteDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/firebaseConfig';
 import { Booking, BookingStatus, UpdateBookingInput } from '@/types/Booking';
+import { notifyClubNewBooking } from '@/utils/notificationHelpers';
 
 interface UseUpdateBookingResult {
   loading: boolean;
@@ -32,7 +33,15 @@ export const useUpdateBooking = (): UseUpdateBookingResult => {
     try {
       console.log('📝 [useUpdateBooking] Confirming booking:', bookingId);
       
+      // Récupérer les données du booking pour les notifications
       const bookingRef = doc(db, 'Bookings', bookingId);
+      const bookingSnap = await getDoc(bookingRef);
+      const booking = bookingSnap.data() as Booking | undefined;
+      
+      if (!booking) {
+        throw new Error('Booking not found');
+      }
+      
       const updateData: any = {
         status: 'confirmed',
         confirmedAt: Timestamp.now(),
@@ -45,6 +54,25 @@ export const useUpdateBooking = (): UseUpdateBookingResult => {
 
       await updateDoc(bookingRef, updateData);
       console.log('✅ [useUpdateBooking] Booking confirmed successfully');
+
+      // 🔔 Créer notifications après confirmation
+      try {
+        // Notification au club
+        console.log('🔔 Tentative notification au club:', booking.clubId);
+        await notifyClubNewBooking(booking.userId, booking.clubId, booking);
+        console.log('✅ Notification club créée avec succès');
+      } catch (notifyErr) {
+        console.error('❌ Erreur création notification club:', notifyErr);
+      }
+
+      // Notification à l'utilisateur
+      try {
+        console.log('🔔 Tentative notification à l\'utilisateur:', booking.userId);
+        await notifyClubNewBooking(booking.clubId, booking.userId, booking);
+        console.log('✅ Notification utilisateur créée avec succès');
+      } catch (notifyErr) {
+        console.error('❌ Erreur création notification utilisateur:', notifyErr);
+      }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Erreur lors de la confirmation';
       console.error('❌ [useUpdateBooking] Error confirming booking:', err);

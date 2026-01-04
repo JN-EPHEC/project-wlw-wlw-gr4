@@ -1,7 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/firebaseConfig';
 
 import { RootStackParamList } from '@/navigation/types';
 import { useAuth } from '@/context/AuthContext';
@@ -18,12 +20,52 @@ const palette = {
 type Props = NativeStackScreenProps<RootStackParamList, 'notifications'>;
 
 export default function NotificationsScreen({ navigation, route }: Props) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const userId = (user as any)?.uid || '';
+  const [clubIds, setClubIds] = useState<string[]>([]);
   
-  const { notifications, loading, error, markAsRead, markAllAsRead } = useNotifications(userId);
+  // Charger les clubs auxquels l'utilisateur appartient
+  useEffect(() => {
+    if (!userId) return;
+    
+    const loadClubs = async () => {
+      try {
+        const clubs: string[] = [];
+        
+        // 1. Clubs où l'utilisateur est membre (memberships subcollection)
+        const membershipsRef = collection(db, 'users', userId, 'memberships');
+        const membershipSnap = await getDocs(membershipsRef);
+        const memberClubs = membershipSnap.docs.map(doc => doc.id);
+        console.log('🏢 Clubs (memberships):', memberClubs);
+        clubs.push(...memberClubs);
+        
+        // 2. Club où l'utilisateur est owner (s'il y en a un)
+        if (profile?.clubId) {
+          console.log('👑 Club owner:', profile.clubId);
+          clubs.push(profile.clubId);
+        }
+        
+        // Remover les doublons
+        const uniqueClubs = [...new Set(clubs)];
+        setClubIds(uniqueClubs);
+        console.log('📋 Total clubs (unique):', uniqueClubs);
+      } catch (err) {
+        console.error('Erreur chargement clubs:', err);
+      }
+    };
+    
+    loadClubs();
+  }, [userId, profile?.clubId]);
+  
+  // DEBUG
+  console.log('📱 Notifications Screen - userId:', userId, 'clubIds:', clubIds, 'ownerClubId:', profile?.clubId);
+  
+  // Récupérer les notifications personnelles ET de tous les clubs
+  const { notifications, loading, error, markAsRead, markAllAsRead } = useNotifications(userId, clubIds);
   const unreadCount = useMemo(() => notifications.filter((n) => !n.isRead).length, [notifications]);
   const previousTarget = route.params?.previousTarget;
+  
+  console.log('📬 Notifications reçues:', notifications.length, notifications.map(n => ({ id: n.id, type: n.type, recipientId: n.recipientId })));
 
   // Affichage du chargement
   if (loading) {
@@ -99,10 +141,10 @@ export default function NotificationsScreen({ navigation, route }: Props) {
 
         {notifications.map((notif) => (
           <NotificationCard
-            key={notif.id}
+            key={`${notif.id}-${notif.createdAt}`}
             notification={notif}
             onPress={() => {
-              markAsRead(notif.id);
+              markAsRead(notif.id, notif.recipientId);
               handleNavigate(navigation, notif);
             }}
           />
@@ -190,6 +232,18 @@ function handleNavigate(navigation: any, notification: Notification) {
     case 'club-reviews':
       navigation.navigate('reviews', { 
         clubId: notification.relatedId,
+        ...params 
+      });
+      break;
+    case 'club-announcements':
+      navigation.navigate('clubAnnouncements', { 
+        clubId: notification.relatedId,
+        ...params 
+      });
+      break;
+    case 'post-detail':
+      navigation.navigate('postDetail', { 
+        postId: notification.relatedId,
         ...params 
       });
       break;
