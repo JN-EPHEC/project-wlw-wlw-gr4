@@ -15,7 +15,6 @@ import { useJoinClub } from '@/hooks/useJoinClub';
 import { useAuth } from '@/context/AuthContext';
 import { createNotificationFromTemplate } from '@/utils/notificationHelpers';
 import { useClubBoostBadge } from '@/hooks/useClubBoostBadge';
-import { useAuth } from '@/context/AuthContext';
 
 const palette = {
   primary: '#41B6A6',

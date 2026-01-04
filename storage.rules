@@ -25,6 +25,14 @@ service firebase.storage {
       allow delete: if request.auth.uid == clubId;
     }
 
+    // Documents et certificats des chiens (photos, certificats vaccins, etc.)
+    match /dogs/{userId}/{allPaths=**} {
+      allow read: if request.auth.uid == userId;
+      allow create: if request.auth.uid == userId && request.resource.size < 10 * 1024 * 1024;
+      allow update: if request.auth.uid == userId && request.resource.size < 10 * 1024 * 1024;
+      allow delete: if request.auth.uid == userId;
+    }
+
     // Par défaut, interdire tous les accès
     match /{allPaths=**} {
       allow read, write: if false;

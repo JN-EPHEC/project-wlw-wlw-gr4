@@ -200,6 +200,7 @@ export default function EditDogScreen() {
 
       // Upload nouvelle photo si présente
       if (photoFile) {
+        console.log('📸 [handleSave] Uploading photo:', photoFile.name);
         const response = await fetch(photoFile.uri);
         const blob = await response.blob();
         const timestamp = Date.now();
@@ -209,6 +210,53 @@ export default function EditDogScreen() {
         const storageRef = ref(storage, storagePath);
         const uploadResult = await uploadBytes(storageRef, blob);
         photoUrl = await getDownloadURL(uploadResult.ref);
+        console.log('✅ [handleSave] Photo uploaded successfully');
+      }
+
+      // Upload les documents/certificats s'il y en a de nouveaux
+      let vaccineFile = form.vaccineFile || undefined;
+      
+      if (documents.length > 0) {
+        console.log('📄 [handleSave] Processing documents, count:', documents.length);
+        
+        for (const doc of documents) {
+          try {
+            console.log('📤 [handleSave] Uploading document:', doc.name);
+            
+            // Fetch le fichier
+            const response = await fetch(doc.uri);
+            const blob = await response.blob();
+            
+            // Créer un ID unique
+            const docId = `${Date.now()}_${doc.name}`;
+            // Important: Utiliser userId, pas dogId (pour les Storage rules)
+            const storagePath = `dogs/${user?.uid}/documents/${docId}`;
+            const storageRef = ref(storage, storagePath);
+            
+            // Upload
+            await uploadBytes(storageRef, blob, { contentType: doc.type });
+            
+            // Obtenir l'URL
+            const downloadUrl = await getDownloadURL(storageRef);
+            
+            // Créer l'objet vaccineFile
+            vaccineFile = {
+              id: docId,
+              name: doc.name,
+              type: doc.type,
+              url: downloadUrl,
+              uploadedAt: Timestamp.now(),
+              size: blob.size,
+            };
+            
+            console.log('✅ [handleSave] Document uploaded successfully:', doc.name);
+          } catch (docErr) {
+            console.error('❌ [handleSave] Error uploading document:', docErr);
+            Alert.alert('Erreur', `Impossible d'uploader le document ${doc.name}`);
+            setSaving(false);
+            return;
+          }
+        }
       }
 
       const docRef = doc(db, 'Chien', dogId);
@@ -222,16 +270,23 @@ export default function EditDogScreen() {
         weight: form.weight,
         otherInfo: form.otherInfo,
         ...(photoUrl && { photoUrl }),
+        ...(vaccineFile && { vaccineFile }),
       });
 
+      console.log('💾 [handleSave] Updating Firestore with payload:', Object.keys(updatePayload));
+      
       await updateDoc(docRef, {
         ...updatePayload,
         updatedAt: Timestamp.now(),
       });
 
+      console.log('✅ [handleSave] Firestore updated successfully');
+      
       Alert.alert('Succès', 'Chien modifié avec succès');
+      setDocuments([]); // Vider la liste des documents après succès
       navigation.goBack();
     } catch (err) {
+      console.error('❌ [handleSave] Error:', err);
       Alert.alert('Erreur', err instanceof Error ? err.message : 'Erreur lors de la modification');
     } finally {
       setSaving(false);

@@ -18,7 +18,7 @@ export const useDogDocuments = () => {
   const storage = getStorage();
 
   const uploadDocument = async (
-    dogId: string,
+    userId: string,
     fileUri: string,
     fileName: string,
     mimeType: string
@@ -33,7 +33,8 @@ export const useDogDocuments = () => {
 
       // Créer un ID unique pour le document
       const docId = `${Date.now()}_${fileName}`;
-      const storageRef = ref(storage, `dogs/${dogId}/documents/${docId}`);
+      // Important: Utiliser userId pour correspondre aux Storage rules
+      const storageRef = ref(storage, `dogs/${userId}/documents/${docId}`);
 
       // Uploader le fichier
       await uploadBytes(storageRef, blob, {

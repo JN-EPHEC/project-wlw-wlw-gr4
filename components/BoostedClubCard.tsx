@@ -36,25 +36,11 @@ export default function BoostedClubCard({ club, width, onPress }: BoostedClubCar
       <Image source={{ uri: club.image }} style={styles.boostImage} />
       <View style={[StyleSheet.absoluteFill, styles.boostOverlay]} />
 
-      {/* Badge de boost avec vraies données */}
-      {boostBadge.isActive && boostBadge.label && boostBadge.color && boostBadge.bgColor ? (
-        <View
-          style={[
-            styles.boostBadge,
-            { backgroundColor: boostBadge.bgColor, borderColor: boostBadge.color },
-          ]}
-        >
-          <Ionicons name="flash" size={14} color={boostBadge.color} />
-          <Text style={[styles.boostBadgeText, { color: boostBadge.color }]}>
-            {boostBadge.label}
-          </Text>
-        </View>
-      ) : (
-        <View style={styles.boostBadge}>
-          <MaterialCommunityIcons name="lightning-bolt" size={14} color="#fff" />
-          <Text style={styles.boostBadgeText}>Boosté</Text>
-        </View>
-      )}
+      {/* Badge de boost - toujours affichée pour les clubs dans cette section */}
+      <View style={styles.boostBadge}>
+        <MaterialCommunityIcons name="lightning-bolt" size={14} color="#fff" />
+        <Text style={styles.boostBadgeText}>Boosté</Text>
+      </View>
 
       {club.rating > 0 && (
         <View style={styles.boostRating}>

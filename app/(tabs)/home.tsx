@@ -221,7 +221,10 @@ export default function HomeScreen() {
                   key={club.id}
                   club={club}
                   width={width * 0.8}
-                  onPress={() => navigation.navigate('clubDetail', { clubId: String(club.id) })}
+                  onPress={() => {
+                    console.log('🔗 Navigating to clubDetail with clubId:', String(club.id), 'club name:', club.name);
+                    navigation.navigate('clubDetail', { clubId: String(club.id) });
+                  }}
                 />
               ))}
             </ScrollView>
