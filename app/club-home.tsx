@@ -6,8 +6,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 
 import ClubBottomNav from '@/components/ClubBottomNav';
+import ClubBoostPlansModal from '@/components/ClubBoostPlansModal';
 import { ClubStackParamList } from '@/navigation/types';
 import { useAuth } from '@/context/AuthContext';
+import { useClubActiveBoost } from '@/hooks/useClubActiveBoost';
+import { useFetchClubPayments } from '@/hooks/useFetchClubPayments';
 import { db } from '@/firebase';
 
 const palette = {
@@ -44,6 +47,9 @@ interface ActivityData {
 
 export default function ClubHomeScreen({ navigation }: Props) {
   const { user, profile, refreshProfile } = useAuth();
+  const { activeBoost, loading: boostLoading, formatDate, refetch: refetchBoost } = useClubActiveBoost(user?.uid);
+  const clubId = (profile as any)?.clubId || user?.uid || '';
+  const { payments, stats: paymentStats, loading: paymentsLoading } = useFetchClubPayments(clubId);
   const clubProfile = (profile as any)?.profile || {};
   const clubName = clubProfile?.clubName || 'Mon Club';
   const logoUrl = clubProfile?.logoUrl || null;
@@ -55,14 +61,99 @@ export default function ClubHomeScreen({ navigation }: Props) {
     today: 0,
     week: 0,
     pending: 0,
-    monthlyRevenue: 2850,
+    monthlyRevenue: 0,
   });
+  const [isBoostModalVisible, setBoostModalVisible] = useState(false);
   
   const initials = useMemo(() => {
     const name = clubName || 'MC';
     const words = name.split(' ');
-    return words.map((w) => w[0]).join('').toUpperCase().slice(0, 2);
+    return words.map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
   }, [clubName]);
+
+  // Calculer les revenus du mois courant
+  const monthlyRevenue = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    return payments
+      .filter((payment) => {
+        // Vérifier que le paiement est complété
+        if (payment.status !== 'completed') return false;
+
+        // Vérifier que completedAt existe
+        if (!payment.completedAt) return false;
+
+        // Vérifier que le paiement est du mois courant
+        let paymentDate: Date;
+        if (payment.completedAt instanceof Date) {
+          paymentDate = payment.completedAt;
+        } else if (payment.completedAt instanceof Timestamp) {
+          paymentDate = payment.completedAt.toDate();
+        } else {
+          try {
+            paymentDate = new Date(payment.completedAt as unknown as string | number);
+          } catch {
+            return false;
+          }
+        }
+        
+        return (
+          paymentDate.getMonth() === currentMonth &&
+          paymentDate.getFullYear() === currentYear
+        );
+      })
+      .reduce((sum, payment) => sum + payment.amount, 0);
+  }, [payments]);
+
+  // Récupérer la dernière transaction complétée
+  const lastTransaction = useMemo(() => {
+    const completedPayments = payments
+      .filter((p) => p.status === 'completed')
+      .sort((a, b) => {
+        const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+        const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+        return dateB - dateA; // DESC
+      });
+    return completedPayments.length > 0 ? completedPayments[0] : null;
+  }, [payments]);
+
+  // Compter les paiements en attente
+  const pendingPaymentCount = useMemo(() => {
+    return payments.filter((p) => p.status !== 'completed').length;
+  }, [payments]);
+
+  // Formater la date pour affichage
+  const formatTransactionDate = (date: any): string => {
+    if (!date) return '';
+    let d: Date;
+    
+    if (date instanceof Date) {
+      d = date;
+    } else if (date instanceof Timestamp) {
+      d = date.toDate();
+    } else {
+      try {
+        d = new Date(date);
+      } catch {
+        return '';
+      }
+    }
+
+    const now = new Date();
+    const diff = now.getTime() - d.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return 'À l\'instant';
+    if (minutes < 60) return `Il y a ${minutes}m`;
+    if (hours < 24) return `Il y a ${hours}h`;
+    if (days < 7) return `Il y a ${days}j`;
+    
+    return d.toLocaleDateString('fr-FR');
+  };
 
   // Charger les données au focus
   useFocusEffect(
@@ -171,6 +262,13 @@ export default function ClubHomeScreen({ navigation }: Props) {
     return `Il y a ${Math.floor(seconds / 86400)}j`;
   };
 
+  const handleBoostSuccess = () => {
+    loadAppointments();
+    loadActivity();
+    refreshProfile?.();
+    refetchBoost();
+  };
+
   const goTo = <T extends keyof ClubStackParamList>(screen: T, params?: ClubStackParamList[T]) => {
     if (params === undefined) {
       navigation.navigate(screen as any);
@@ -239,39 +337,58 @@ export default function ClubHomeScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.content}>
-          {/* Section Premium */}
-          <View style={styles.premiumCard}>
-            <View style={styles.premiumHeader}>
-              <View style={styles.premiumBadge}>
-                <Ionicons name="star" size={16} color="#fff" />
-                <Text style={styles.premiumBadgeText}>Premium</Text>
+          {/* Section Premium / Boost Actif */}
+          {activeBoost ? (
+            <View style={styles.activeboostCard}>
+              <View style={styles.activeboostHeader}>
+                <View style={styles.activeboostBadge}>
+                  <Ionicons name="flash" size={16} color="#fff" />
+                  <Text style={styles.activeboostBadgeText}>{activeBoost.planName}</Text>
+                </View>
               </View>
-              <Text style={styles.premiumTitle}>Booster votre visibilité !</Text>
+              <Text style={styles.activeboostTitle}>Boost actif</Text>
+              <Text style={styles.activeboostDescription}>
+                Votre club bénéficie déjà du <Text style={{ fontWeight: '700' }}>{activeBoost.planName}</Text> jusqu'au <Text style={{ fontWeight: '700' }}>{formatDate(activeBoost.endDate)}</Text>
+              </Text>
+              <TouchableOpacity style={styles.activeboostButton} onPress={() => setBoostModalVisible(true)}>
+                <Ionicons name="swap-horizontal" size={16} color="#fff" />
+                <Text style={styles.activeboostButtonText}>Changer de plan</Text>
+              </TouchableOpacity>
             </View>
-            <Text style={styles.premiumDescription}>
-              Améliorez la visibilité de vos annonces et attirez plus de clients
-            </Text>
-            <TouchableOpacity style={styles.premiumButton}>
-              <Ionicons name="flash" size={16} color="#fff" />
-              <Text style={styles.premiumButtonText}>Découvrir les offres</Text>
-            </TouchableOpacity>
-          </View>
+          ) : (
+            <View style={styles.premiumCard}>
+              <View style={styles.premiumHeader}>
+                <View style={styles.premiumBadge}>
+                  <Ionicons name="star" size={16} color="#fff" />
+                  <Text style={styles.premiumBadgeText}>Premium</Text>
+                </View>
+                <Text style={styles.premiumTitle}>Booster votre visibilité !</Text>
+              </View>
+              <Text style={styles.premiumDescription}>
+                Améliorez la visibilité de vos annonces et attirez plus de clients
+              </Text>
+              <TouchableOpacity style={styles.premiumButton} onPress={() => setBoostModalVisible(true)}>
+                <Ionicons name="flash" size={16} color="#fff" />
+                <Text style={styles.premiumButtonText}>Découvrir les offres</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Section Revenus */}
           <View>
             <Text style={styles.sectionTitle}>Revenus du mois</Text>
             <View style={styles.revenueCard}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={styles.revenueAmount}>2850€</Text>
+                <Text style={styles.revenueAmount}>{monthlyRevenue.toFixed(2)}€</Text>
                 <View style={styles.progressBadge}>
                   <Ionicons name="trending-up" size={12} color="#10B981" />
-                  <Text style={styles.progressText}>+12% vs mois dernier</Text>
+                  <Text style={styles.progressText}>Données en temps réel</Text>
                 </View>
               </View>
               <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: '75%' }]} />
+                <View style={[styles.progressFill, { width: `${monthlyRevenue > 0 ? Math.min((monthlyRevenue / 4000) * 100, 100) : 0}%` }]} />
               </View>
-              <Text style={styles.progressLabel}>Objectif mensuel</Text>
+              <Text style={styles.progressLabel}>Revenus complétés ce mois</Text>
             </View>
           </View>
 
@@ -303,27 +420,37 @@ export default function ClubHomeScreen({ navigation }: Props) {
           )}
 
           {/* Section Activité récente */}
-          {recentActivity.length > 0 && (
-            <View>
-              <Text style={styles.sectionTitle}>Activité récente</Text>
-              <View style={{ gap: 12 }}>
-                {recentActivity.map((activity) => (
-                  <View key={activity.id} style={styles.activityItem}>
-                    <View style={styles.activityIcon}>
-                      <Ionicons name={activity.icon as any} size={18} color={palette.accent} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.activityTitle}>{activity.title}</Text>
-                      {activity.subtitle && (
-                        <Text style={styles.activitySubtitle}>{activity.subtitle}</Text>
-                      )}
-                    </View>
-                    <Text style={styles.activityTime}>{activity.time}</Text>
+          <View>
+            <Text style={styles.sectionTitle}>Activité récente</Text>
+            {lastTransaction ? (
+              <View style={styles.transactionCard}>
+                <View style={styles.transactionHeader}>
+                  <View style={styles.transactionIcon}>
+                    <Ionicons name="card-outline" size={20} color={palette.primary} />
                   </View>
-                ))}
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.transactionTitle}>{lastTransaction.payerName || 'Client'}</Text>
+                    <Text style={styles.transactionMeta}>{lastTransaction.description || 'Paiement'}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.transactionAmount}>+{(lastTransaction.amount || 0).toFixed(2)}€</Text>
+                    <View style={styles.statusBadge}>
+                      <Text style={styles.statusBadgeText}>Payé</Text>
+                    </View>
+                  </View>
+                </View>
+                <View style={styles.transactionFooter}>
+                  <Text style={styles.transactionTime}>{formatTransactionDate(lastTransaction.createdAt)}</Text>
+                  <Text style={styles.transactionTime}>Carte bancaire</Text>
+                </View>
               </View>
-            </View>
-          )}
+            ) : (
+              <View style={styles.emptyStateCard}>
+                <Ionicons name="receipt-outline" size={32} color={palette.gray} />
+                <Text style={styles.emptyStateText}>Aucune transaction récente</Text>
+              </View>
+            )}
+          </View>
 
           {/* Section Actions rapides */}
           <View>
@@ -360,27 +487,37 @@ export default function ClubHomeScreen({ navigation }: Props) {
             </View>
           </View>
 
-          {/* Section Alerte requise */}
-          <View style={styles.alertCard}>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <View style={styles.alertIcon}>
-                <Ionicons name="alert-circle" size={20} color="#DC2626" />
+          {/* Section Alerte requise - Affichée conditionnellement si paiements en attente */}
+          {pendingPaymentCount > 0 && (
+            <View style={styles.alertCard}>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={styles.alertIcon}>
+                  <Ionicons name="alert-circle" size={20} color="#DC2626" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.alertTitle}>Attention requise</Text>
+                  <Text style={styles.alertDescription}>
+                    Vous avez {pendingPaymentCount} paiement{pendingPaymentCount > 1 ? 's' : ''} en attente de confirmation
+                  </Text>
+                </View>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.alertTitle}>Attention requise</Text>
-                <Text style={styles.alertDescription}>
-                  Vous avez 3 paiements en attente de confirmation
-                </Text>
-              </View>
+              <TouchableOpacity style={styles.alertButton} onPress={() => goTo('clubPayments')}>
+                <Text style={styles.alertButtonText}>Voir les paiements</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.alertButton}>
-              <Text style={styles.alertButtonText}>Voir les paiements</Text>
-            </TouchableOpacity>
-          </View>
+          )}
         </View>
       </ScrollView>
 
       <ClubBottomNav current="clubHome" />
+
+      <ClubBoostPlansModal
+        visible={isBoostModalVisible}
+        onClose={() => setBoostModalVisible(false)}
+        clubId={user?.uid || ''}
+        activeBoostId={activeBoost?.id}
+        onSuccess={handleBoostSuccess}
+      />
     </SafeAreaView>
   );
 }
@@ -548,6 +685,55 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  activeboostCard: {
+    backgroundColor: '#10B981',
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
+  },
+  activeboostHeader: {
+    gap: 8,
+  },
+  activeboostBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  activeboostBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  activeboostTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  activeboostDescription: {
+    color: 'rgba(255, 255, 255, 0.95)',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  activeboostButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  activeboostButtonText: {
+    color: '#10B981',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   revenueCard: {
     backgroundColor: palette.surface,
     borderRadius: 12,
@@ -655,6 +841,79 @@ const styles = StyleSheet.create({
   activityTime: {
     fontSize: 11,
     color: palette.gray,
+  },
+  transactionCard: {
+    backgroundColor: palette.surface,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: palette.border,
+    gap: 12,
+  },
+  transactionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  transactionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: '#F0FBF9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  transactionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: palette.text,
+  },
+  transactionMeta: {
+    fontSize: 12,
+    color: palette.gray,
+    marginTop: 2,
+  },
+  transactionAmount: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: palette.primary,
+  },
+  statusBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginTop: 4,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#166534',
+  },
+  transactionFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: palette.border,
+  },
+  transactionTime: {
+    fontSize: 12,
+    color: palette.gray,
+  },
+  emptyStateCard: {
+    backgroundColor: palette.surface,
+    borderRadius: 12,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: palette.border,
+    alignItems: 'center',
+    gap: 12,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: palette.gray,
+    fontWeight: '500',
   },
   actionsGrid: {
     flexDirection: 'row',

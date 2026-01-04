@@ -12,6 +12,7 @@ import { useFetchClubUpcomingBookings } from '@/hooks/useFetchClubUpcomingBookin
 import { useFetchClubUpcomingEvents } from '@/hooks/useFetchClubUpcomingEvents';
 import { useFetchEducatorById } from '@/hooks/useFetchEducatorById';
 import { useJoinClub } from '@/hooks/useJoinClub';
+import { useClubBoostBadge } from '@/hooks/useClubBoostBadge';
 import { useAuth } from '@/context/AuthContext';
 
 const palette = {
@@ -58,6 +59,7 @@ export default function ClubDetailScreen({ navigation, route }: Props) {
   // Auth et join club hook
   const { user, profile } = useAuth();
   const { joinClub } = useJoinClub();
+  const boostBadge = useClubBoostBadge(clubId);
   
   // Récupérer les terrains et éducateurs du club
   const { fields, loading: fieldsLoading } = useFetchClubFields(clubId);
@@ -183,6 +185,19 @@ export default function ClubDetailScreen({ navigation, route }: Props) {
         </View>
 
         <View style={styles.section}>
+          {boostBadge.isActive && boostBadge.label && boostBadge.color && boostBadge.bgColor && (
+            <View
+              style={[
+                styles.boostBadge,
+                { backgroundColor: boostBadge.bgColor, borderColor: boostBadge.color },
+              ]}
+            >
+              <Ionicons name="flash" size={14} color={boostBadge.color} />
+              <Text style={[styles.boostBadgeText, { color: boostBadge.color }]}>
+                {boostBadge.label}
+              </Text>
+            </View>
+          )}
           <Text style={styles.title}>Description</Text>
           <Text style={styles.sub}>{club.description || 'Pas de description disponible'}</Text>
         </View>
@@ -685,6 +700,21 @@ const styles = StyleSheet.create({
   },
   ratingText: { color: '#1F2937', fontWeight: '700', fontSize: 12 },
   section: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
+  boostBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  boostBadgeText: {
+    fontWeight: '700',
+    fontSize: 12,
+  },
   sectionRow: { paddingHorizontal: 16, flexDirection: 'row', gap: 10, alignItems: 'center', paddingVertical: 6 },
   title: { color: palette.text, fontSize: 18, fontWeight: '700' },
   sub: { color: palette.gray, fontSize: 14 },
