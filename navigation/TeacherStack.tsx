@@ -15,7 +15,9 @@ import TeacherClubCommunityPage from '@/components/TeacherClubCommunityPage';
 import TeacherClubMembersPage from '@/components/TeacherClubMembersPage';
 import TeacherClubsPage from '@/components/TeacherClubsPage';
 import TeacherCommunitySelectionPage from '@/components/TeacherCommunitySelectionPage';
+import TeacherJoinClubPage from '@/components/TeacherJoinClubPage';
 import TeacherEditProfilePage from '@/components/TeacherEditProfilePage';
+import TeacherExportSessionsPage from '@/components/TeacherExportSessionsPage';
 import TeacherHomePage from '@/components/TeacherHomePage';
 import TeacherLeaderboardPage from '@/components/TeacherLeaderboardPage';
 import TeacherTrainingPage from '@/components/TeacherTrainingPage';
@@ -35,8 +37,10 @@ export default function TeacherStack() {
       <Stack.Screen name="teacher-club-members" component={TeacherClubMembersPage} />
       <Stack.Screen name="teacher-announcements" component={TeacherAnnouncementsPage} />
       <Stack.Screen name="teacher-account" component={TeacherAccountPage} />
+      <Stack.Screen name="teacher-export-sessions" component={TeacherExportSessionsPage} />
       <Stack.Screen name="teacher-edit-profile" component={TeacherEditProfilePage} />
       <Stack.Screen name="teacher-clubs" component={TeacherClubsPage} />
+      <Stack.Screen name="teacher-join-club" component={TeacherJoinClubPage} />
       <Stack.Screen name="teacher-training" component={TeacherTrainingPage} />
       <Stack.Screen name="notifications" component={NotificationsScreen} />
       <Stack.Screen name="teacherLeaderboard" component={TeacherLeaderboardPage} />

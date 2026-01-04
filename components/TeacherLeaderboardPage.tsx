@@ -23,11 +23,11 @@ const palette = {
 const data = {
   season: 'Hiver 2025',
   overall: [
-    { id: 1, rank: 1, name: 'Sophie Martin', city: 'Paris', rating: 4.9, sessions: 128, growth: '+12%', badge: 'Top coach' },
-    { id: 2, rank: 2, name: 'Thomas Leroy', city: 'Lyon', rating: 4.85, sessions: 117, growth: '+10%', badge: 'Client love' },
-    { id: 3, rank: 3, name: 'Julie Roux', city: 'Bordeaux', rating: 4.8, sessions: 110, growth: '+8%', badge: 'Community' },
-    { id: 4, rank: 4, name: 'Pierre Martel', city: 'Marseille', rating: 4.78, sessions: 98, growth: '+6%' },
-    { id: 5, rank: 5, name: 'Emma Blanc', city: 'Toulouse', rating: 4.75, sessions: 92, growth: '+5%' },
+    { id: 1, rank: 1, name: 'Sophie Martin', city: 'Bruxelles', rating: 4.9, sessions: 128, growth: '+12%', badge: 'Top coach' },
+    { id: 2, rank: 2, name: 'Thomas Leroy', city: 'Anvers', rating: 4.85, sessions: 117, growth: '+10%', badge: 'Client love' },
+    { id: 3, rank: 3, name: 'Julie Roux', city: 'Gand', rating: 4.8, sessions: 110, growth: '+8%', badge: 'Community' },
+    { id: 4, rank: 4, name: 'Pierre Martel', city: 'Liege', rating: 4.78, sessions: 98, growth: '+6%' },
+    { id: 5, rank: 5, name: 'Emma Blanc', city: 'Bruges', rating: 4.75, sessions: 92, growth: '+5%' },
   ],
   bySessions: [
     { id: 1, rank: 1, name: 'Sophie Martin', sessions: 128, growth: '+12%' },

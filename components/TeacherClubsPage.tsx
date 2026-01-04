@@ -3,14 +3,28 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useMemo } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
-import { Timestamp } from 'firebase/firestore';
+import {
+  ActivityIndicator,
+  Alert,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { Timestamp, doc, getDoc } from 'firebase/firestore';
 
 import TeacherBottomNav from '@/components/TeacherBottomNav';
 import { useAuth } from '@/context/AuthContext';
 import { useFetchEducatorClubsFromCollection } from '@/hooks/useFetchEducatorClubsFromCollection';
+import {
+  useClubEducatorInviteActions,
+  usePendingClubEducatorInvitesForEducator,
+} from '@/hooks/useClubEducatorInvites';
 import { TeacherStackParamList } from '@/navigation/types';
-import { router } from 'expo-router';
+import { db } from '@/firebaseConfig';
+import { getInviteErrorMessage } from '@/services/clubEducatorInvitations';
 
 const palette = {
   primary: '#E39A5C',
@@ -27,7 +41,7 @@ const palette = {
 
 export default function TeacherClubsPage() {
   const navigation = useNavigation<NativeStackNavigationProp<TeacherStackParamList>>();
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   
   // Get educator ID from profile
   const educatorProfile = (profile as any)?.profile || {};
@@ -35,10 +49,104 @@ export default function TeacherClubsPage() {
   
   // Fetch clubs where this educator is affiliated
   const { clubs, loading, error } = useFetchEducatorClubsFromCollection(educatorId);
+  const { invites: pendingInvites, loading: pendingLoading } =
+    usePendingClubEducatorInvitesForEducator(educatorId);
+  const {
+    loading: inviteActionLoading,
+    acceptInviteOrRequest,
+    rejectInviteOrRequest,
+    cancelInviteOrRequest,
+  } = useClubEducatorInviteActions();
+  const [clubsById, setClubsById] = React.useState<Record<string, any>>({});
+
+  React.useEffect(() => {
+    const fetchClubs = async () => {
+      const ids = Array.from(new Set(pendingInvites.map((invite) => invite.clubId)));
+      if (ids.length === 0) {
+        setClubsById({});
+        return;
+      }
+      try {
+        const entries = await Promise.all(
+          ids.map(async (id) => {
+            const snap = await getDoc(doc(db, 'club', id));
+            if (snap.exists()) {
+              return { id: snap.id, ...(snap.data() as Record<string, unknown>) };
+            }
+            return { id } as Record<string, unknown>;
+          }),
+        );
+        const map: Record<string, any> = {};
+        entries.forEach((entry) => {
+          map[entry.id] = entry;
+        });
+        setClubsById(map);
+      } catch (err) {
+        console.warn('Erreur chargement clubs invites', err);
+      }
+    };
+
+    fetchClubs();
+  }, [pendingInvites]);
 
   const formatTime = (date: any): string => {
     const d = date instanceof Timestamp ? date.toDate() : new Date(date);
     return d.toLocaleDateString('fr-FR', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  };
+
+  const receivedInvites = useMemo(
+    () => pendingInvites.filter((invite) => invite.createdByRole === 'club'),
+    [pendingInvites],
+  );
+  const sentInvites = useMemo(
+    () => pendingInvites.filter((invite) => invite.createdByRole === 'educator'),
+    [pendingInvites],
+  );
+
+  const handleAcceptInvite = async (clubId: string) => {
+    if (!user?.uid || !educatorId) return;
+    try {
+      await acceptInviteOrRequest({ authUid: user.uid, clubId, educatorId });
+      Alert.alert('Succes', 'Affiliation acceptee.');
+    } catch (err) {
+      Alert.alert('Erreur', getInviteErrorMessage(err));
+    }
+  };
+
+  const handleRejectInvite = async (clubId: string) => {
+    if (!user?.uid || !educatorId) return;
+    Alert.alert('Refuser', "Refuser l'invitation ?", [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Refuser',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await rejectInviteOrRequest({ authUid: user.uid, clubId, educatorId });
+          } catch (err) {
+            Alert.alert('Erreur', getInviteErrorMessage(err));
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleCancelInvite = async (clubId: string) => {
+    if (!user?.uid || !educatorId) return;
+    Alert.alert('Annuler', 'Annuler votre demande ?', [
+      { text: 'Retour', style: 'cancel' },
+      {
+        text: 'Annuler',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await cancelInviteOrRequest({ authUid: user.uid, clubId, educatorId });
+          } catch (err) {
+            Alert.alert('Erreur', getInviteErrorMessage(err));
+          }
+        },
+      },
+    ]);
   };
 
   // Component to render a club with its next booking
@@ -153,14 +261,93 @@ export default function TeacherClubsPage() {
             <MaterialCommunityIcons name="handshake-outline" size={22} color={palette.accent} />
             <View style={{ flex: 1 }}>
               <Text style={styles.inviteTitle}>Nouvelles invitations</Text>
-              <Text style={styles.inviteMeta}>1 club souhaite collaborer</Text>
+              <Text style={styles.inviteMeta}>
+                {pendingLoading
+                  ? 'Chargement des invitations...'
+                  : receivedInvites.length
+                    ? `${receivedInvites.length} club${receivedInvites.length > 1 ? 's' : ''} souhaite${
+                        receivedInvites.length > 1 ? 'nt' : ''
+                      } collaborer`
+                    : 'Aucune invitation en attente'}
+              </Text>
+            </View>
+          </View>
+
+          {pendingLoading ? (
+            <View style={styles.inviteLoading}>
+              <ActivityIndicator size="small" color={palette.primary} />
+            </View>
+          ) : receivedInvites.length > 0 ? (
+            <View style={styles.inviteList}>
+              {receivedInvites.map((invite) => {
+                const clubInfo = clubsById[invite.clubId] || {};
+                const clubName = (clubInfo as any).name || invite.clubId;
+                return (
+                  <View key={invite.id} style={styles.inviteRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.inviteClubName}>{clubName}</Text>
+                      <Text style={styles.inviteMetaSmall}>Invitation en attente</Text>
+                    </View>
+                    <View style={styles.inviteActions}>
+                      <TouchableOpacity
+                        style={styles.inviteReject}
+                        onPress={() => handleRejectInvite(invite.clubId)}
+                        disabled={inviteActionLoading}
+                      >
+                        <Text style={styles.inviteActionText}>Refuser</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.inviteAccept}
+                        onPress={() => handleAcceptInvite(invite.clubId)}
+                        disabled={inviteActionLoading}
+                      >
+                        <Text style={styles.inviteActionTextLight}>Accepter</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <Text style={styles.inviteMetaSmall}>Aucune invitation pour le moment.</Text>
+          )}
+
+          {sentInvites.length > 0 ? (
+            <View style={styles.sentBlock}>
+              <Text style={styles.sentTitle}>Demandes envoyees</Text>
+              {sentInvites.map((invite) => {
+                const clubInfo = clubsById[invite.clubId] || {};
+                const clubName = (clubInfo as any).name || invite.clubId;
+                return (
+                  <View key={invite.id} style={styles.sentRow}>
+                    <Text style={styles.inviteClubName}>{clubName}</Text>
+                    <TouchableOpacity
+                      style={styles.sentButton}
+                      onPress={() => handleCancelInvite(invite.clubId)}
+                      disabled={inviteActionLoading}
+                    >
+                      <Text style={styles.sentButtonText}>Annuler</Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
+        </View>
+
+        <View style={styles.joinCard}>
+          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+            <MaterialCommunityIcons name="account-group-outline" size={22} color={palette.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.joinTitle}>Rejoindre un club</Text>
+              <Text style={styles.joinMeta}>Envoyez une demande aux clubs disponibles.</Text>
             </View>
           </View>
           <TouchableOpacity
-            style={[styles.primaryBtn, { marginTop: 10 }]}
-            onPress={() => router.push('/teacher-community' as any)}
+            style={styles.joinButton}
+            onPress={() => navigation.navigate('teacher-join-club')}
           >
-            <Text style={styles.primaryBtnText}>Repondre</Text>
+            <Text style={styles.joinButtonText}>Voir tous les clubs</Text>
           </TouchableOpacity>
         </View>
 
@@ -254,6 +441,78 @@ const styles = StyleSheet.create({
   },
   inviteTitle: { fontSize: 15, fontWeight: '700', color: palette.text },
   inviteMeta: { color: palette.gray, fontSize: 13 },
+  inviteLoading: { paddingTop: 12, alignItems: 'center' },
+  inviteList: { marginTop: 12, gap: 10 },
+  inviteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#FBFBFA',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  inviteClubName: { fontSize: 14, fontWeight: '700', color: palette.text },
+  inviteMetaSmall: { color: palette.gray, fontSize: 12 },
+  inviteActions: { flexDirection: 'row', gap: 8 },
+  inviteAccept: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: palette.accent,
+    borderRadius: 999,
+  },
+  inviteReject: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 999,
+  },
+  inviteActionText: { color: '#DC2626', fontWeight: '700', fontSize: 12 },
+  inviteActionTextLight: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  sentBlock: { marginTop: 12, gap: 8 },
+  sentTitle: { color: palette.text, fontWeight: '700', fontSize: 13 },
+  sentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFF7ED',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  sentButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 999,
+  },
+  sentButtonText: { color: '#DC2626', fontWeight: '700', fontSize: 12 },
+  joinCard: {
+    backgroundColor: palette.surface,
+    marginHorizontal: 16,
+    marginBottom: 14,
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: palette.border,
+    gap: 12,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+  joinTitle: { fontSize: 15, fontWeight: '700', color: palette.text },
+  joinMeta: { color: palette.gray, fontSize: 13 },
+  joinButton: {
+    backgroundColor: palette.primary,
+    borderRadius: 999,
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  joinButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   listBlock: { paddingHorizontal: 16, gap: 12 },
   card: {
     backgroundColor: palette.surface,

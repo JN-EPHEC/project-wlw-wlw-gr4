@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   SafeAreaView,
@@ -14,7 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Timestamp, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import { Timestamp, collection, addDoc } from 'firebase/firestore';
 import { db } from '@/firebase';
 
 interface AddCourseModalProps {
@@ -47,8 +47,7 @@ export default function AddCourseModal({ visible, onClose, educatorId, clubId }:
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [duration, setDuration] = useState(60);
   const [price, setPrice] = useState('');
-  const [selectedField, setSelectedField] = useState<any>(null);
-  const [fields, setFields] = useState<any[]>([]);
+  const [terrainAddress, setTerrainAddress] = useState('');
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
@@ -56,32 +55,6 @@ export default function AddCourseModal({ visible, onClose, educatorId, clubId }:
   const [dogBreed, setDogBreed] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showFieldPicker, setShowFieldPicker] = useState(false);
-
-  // Fetch fields on modal open
-  React.useEffect(() => {
-    if (visible) {
-      fetchFields();
-    }
-  }, [visible]);
-
-  const fetchFields = async () => {
-    try {
-      const fieldsRef = collection(db, 'fields');
-      let snapshot;
-      
-      if (clubId) {
-        const q = query(fieldsRef, where('clubId', '==', clubId));
-        snapshot = await getDocs(q);
-      } else {
-        snapshot = await getDocs(fieldsRef);
-      }
-      
-      setFields(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    } catch (error) {
-      console.error('Error fetching fields:', error);
-    }
-  };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     if (selectedDate) {
@@ -118,8 +91,8 @@ export default function AddCourseModal({ visible, onClose, educatorId, clubId }:
       return;
     }
 
-    if (!selectedField) {
-      Alert.alert('Erreur', 'Veuillez sélectionner un terrain');
+    if (!terrainAddress.trim()) {
+      Alert.alert('Erreur', 'Veuillez renseigner une adresse');
       return;
     }
 
@@ -133,7 +106,7 @@ export default function AddCourseModal({ visible, onClose, educatorId, clubId }:
       const bookingData = {
         educatorId,
         clubId: clubId || 'independent',
-        fieldId: selectedField.id,
+        fieldAddress: terrainAddress.trim(),
         title: courseType,
         trainingType: courseType.toLowerCase(),
         description: notes,
@@ -186,7 +159,7 @@ export default function AddCourseModal({ visible, onClose, educatorId, clubId }:
     setTime(new Date());
     setDuration(60);
     setPrice('');
-    setSelectedField(null);
+    setTerrainAddress('');
     setClientName('');
     setClientPhone('');
     setClientEmail('');
@@ -291,7 +264,7 @@ export default function AddCourseModal({ visible, onClose, educatorId, clubId }:
                       }
                     }}
                   >
-                    <Ionicons name="chevron-up" size={16} color={palette.text} />
+                    <Ionicons name="chevron-down" size={16} color={palette.text} />
                   </TouchableOpacity>
                   <Text style={styles.pickerValue}>{duration} min</Text>
                   <TouchableOpacity
@@ -303,7 +276,7 @@ export default function AddCourseModal({ visible, onClose, educatorId, clubId }:
                       }
                     }}
                   >
-                    <Ionicons name="chevron-down" size={16} color={palette.text} />
+                    <Ionicons name="chevron-up" size={16} color={palette.text} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -321,42 +294,19 @@ export default function AddCourseModal({ visible, onClose, educatorId, clubId }:
             </View>
           </View>
 
-          {/* Terrain */}
+                    {/* Adresse du terrain */}
           <View style={styles.section}>
-            <Text style={styles.label}>Terrain</Text>
-            <TouchableOpacity
-              style={styles.input}
-              onPress={() => setShowFieldPicker(!showFieldPicker)}
-            >
-              <Text style={[styles.dateText, !selectedField && { color: palette.textSecondary }]}>
-                {selectedField ? selectedField.name : 'Sélectionner un terrain'}
-              </Text>
-              <Ionicons name={showFieldPicker ? 'chevron-up' : 'chevron-down'} size={16} color={palette.textSecondary} />
-            </TouchableOpacity>
-
-            {showFieldPicker && (
-              <View style={styles.fieldList}>
-                {fields.length > 0 ? (
-                  fields.map((field) => (
-                    <TouchableOpacity
-                      key={field.id}
-                      style={styles.fieldItem}
-                      onPress={() => {
-                        setSelectedField(field);
-                        setShowFieldPicker(false);
-                      }}
-                    >
-                      <Text style={styles.fieldItemText}>{field.name}</Text>
-                      {selectedField?.id === field.id && (
-                        <Ionicons name="checkmark" size={16} color={palette.accent} />
-                      )}
-                    </TouchableOpacity>
-                  ))
-                ) : (
-                  <Text style={styles.noFieldsText}>Aucun terrain disponible</Text>
-                )}
-              </View>
-            )}
+            <Text style={styles.label}>Adresse</Text>
+            <View style={styles.terrainInput}>
+              <Ionicons name="location-outline" size={18} color={palette.textSecondary} />
+              <TextInput
+                style={styles.terrainText}
+                placeholder="Adresse du terrain"
+                placeholderTextColor={palette.textSecondary}
+                value={terrainAddress}
+                onChangeText={setTerrainAddress}
+              />
+            </View>
           </View>
 
           {/* Informations client */}
@@ -369,7 +319,7 @@ export default function AddCourseModal({ visible, onClose, educatorId, clubId }:
               value={clientName}
               onChangeText={setClientName}
             />
-            <View style={styles.row}>
+            <View style={[styles.row, { marginTop: 12 }]}>
               <View style={[styles.column, { marginRight: 8 }]}>
                 <TextInput
                   style={styles.input}
@@ -465,7 +415,11 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 16,
-    paddingTop: 0,
+    paddingTop: 12,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    overflow: 'hidden',
   },
   headerTitle: {
     fontSize: 24,
@@ -482,6 +436,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 16,
     top: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     flex: 1,
@@ -515,10 +477,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  dateText: {
+    dateText: {
     color: palette.text,
     fontSize: 14,
     flex: 1,
+  },
+  terrainInput: {
+    backgroundColor: palette.surface,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: palette.border,
+    color: palette.text,
+    fontSize: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  terrainText: {
+    flex: 1,
+    fontSize: 14,
+    color: palette.text,
   },
   row: {
     flexDirection: 'row',
@@ -547,33 +528,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: palette.text,
   },
-  fieldList: {
-    backgroundColor: palette.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: palette.border,
-    marginTop: 8,
-    maxHeight: 200,
-  },
-  fieldItem: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  fieldItemText: {
-    fontSize: 14,
-    color: palette.text,
-  },
-  noFieldsText: {
-    fontSize: 14,
-    color: palette.textSecondary,
-    padding: 12,
-    textAlign: 'center',
-  },
   buttonContainer: {
     flexDirection: 'row',
     gap: 12,
@@ -601,7 +555,7 @@ const styles = StyleSheet.create({
     color: palette.text,
   },
   submitButton: {
-    backgroundColor: palette.accent,
+    backgroundColor: palette.primary,
   },
   submitButtonText: {
     fontSize: 14,
@@ -612,3 +566,8 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
 });
+
+
+
+
+

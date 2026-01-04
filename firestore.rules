@@ -1,0 +1,175 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function userRole() {
+      return userDoc().role;
+    }
+
+    function userClubId() {
+      return userDoc().clubId;
+    }
+
+    function userEducatorId() {
+      return userDoc().educatorId;
+    }
+
+    function isClubUser(clubId) {
+      return signedIn() && userRole() == 'club' && userClubId() == clubId;
+    }
+
+    function isEducatorUser(educatorId) {
+      return signedIn() && userRole() == 'educator' && userEducatorId() == educatorId;
+    }
+
+    function inviteId(clubId, educatorId) {
+      return clubId + '_' + educatorId;
+    }
+
+    function inviteRef(clubId, educatorId) {
+      return /databases/$(database)/documents/clubEducatorInvites/$(inviteId(clubId, educatorId));
+    }
+
+    function inviteDoc(clubId, educatorId) {
+      return get(inviteRef(clubId, educatorId));
+    }
+
+    function inviteExists(clubId, educatorId) {
+      return exists(inviteRef(clubId, educatorId));
+    }
+
+    function inviteDocAfter(clubId, educatorId) {
+      return getAfter(inviteRef(clubId, educatorId));
+    }
+
+    function inviteExistsAfter(clubId, educatorId) {
+      return existsAfter(inviteRef(clubId, educatorId));
+    }
+
+    function isInviteReceiver(invite) {
+      return (invite.createdByRole == 'club' && isEducatorUser(invite.educatorId)) ||
+        (invite.createdByRole == 'educator' && isClubUser(invite.clubId));
+    }
+
+    function isInviteSender(invite) {
+      return signedIn() && request.auth.uid == invite.createdByUid;
+    }
+
+    function isValidInviteStatusTransition() {
+      return resource.data.status == 'pending' &&
+        request.resource.data.status in ['accepted', 'rejected', 'cancelled'] &&
+        (
+          (request.resource.data.status == 'cancelled' && isInviteSender(resource.data)) ||
+          ((request.resource.data.status == 'accepted' || request.resource.data.status == 'rejected') &&
+            isInviteReceiver(resource.data))
+        );
+    }
+
+    function inviteFieldsUnchanged() {
+      return request.resource.data.clubId == resource.data.clubId &&
+        request.resource.data.educatorId == resource.data.educatorId &&
+        request.resource.data.createdByUid == resource.data.createdByUid &&
+        request.resource.data.createdByRole == resource.data.createdByRole &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        request.resource.data.message == resource.data.message;
+    }
+
+    function membershipFieldsOnly() {
+      return request.resource.data
+        .diff(resource.data)
+        .affectedKeys()
+        .hasOnly(['pendingMembers', 'members', 'educatorIds', 'updatedAt']);
+    }
+
+    function educatorInviteAllowsMembershipUpdate(clubId) {
+      return signedIn() &&
+        userRole() == 'educator' &&
+        inviteExistsAfter(clubId, userEducatorId()) &&
+        inviteDocAfter(clubId, userEducatorId()).data.status in ['pending', 'accepted', 'rejected', 'cancelled'];
+    }
+
+    match /clubEducatorInvites/{inviteId} {
+      allow read: if signedIn() &&
+        (isClubUser(resource.data.clubId) || isEducatorUser(resource.data.educatorId));
+
+      allow create: if signedIn() &&
+        request.auth.uid == request.resource.data.createdByUid &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.clubId is string &&
+        request.resource.data.educatorId is string &&
+        request.resource.data.clubId.size() > 0 &&
+        request.resource.data.educatorId.size() > 0 &&
+        request.resource.data.createdByRole in ['club', 'educator'] &&
+        request.resource.id == inviteId(request.resource.data.clubId, request.resource.data.educatorId) &&
+        (
+          (request.resource.data.createdByRole == 'club' &&
+            isClubUser(request.resource.data.clubId)) ||
+          (request.resource.data.createdByRole == 'educator' &&
+            isEducatorUser(request.resource.data.educatorId))
+        );
+
+      allow update: if signedIn() &&
+        inviteFieldsUnchanged() &&
+        request.resource.data
+          .diff(resource.data)
+          .affectedKeys()
+          .hasOnly(['status', 'updatedAt']) &&
+        isValidInviteStatusTransition();
+
+      allow delete: if false;
+    }
+
+    match /clubEducators/{affiliationId} {
+      allow read: if signedIn() &&
+        (isClubUser(resource.data.clubId) || isEducatorUser(resource.data.educatorId));
+
+      allow create: if signedIn() &&
+        request.resource.data.clubId is string &&
+        request.resource.data.educatorId is string &&
+        request.resource.id == inviteId(request.resource.data.clubId, request.resource.data.educatorId) &&
+        (isClubUser(request.resource.data.clubId) || isEducatorUser(request.resource.data.educatorId)) &&
+        inviteExistsAfter(request.resource.data.clubId, request.resource.data.educatorId) &&
+        inviteDocAfter(request.resource.data.clubId, request.resource.data.educatorId).data.status == 'accepted';
+
+      allow update: if signedIn() &&
+        (isClubUser(resource.data.clubId) || isEducatorUser(resource.data.educatorId)) &&
+        request.resource.data.clubId == resource.data.clubId &&
+        request.resource.data.educatorId == resource.data.educatorId;
+
+      allow delete: if false;
+    }
+
+    match /club/{clubId} {
+      allow read: if true;
+      allow create: if isClubUser(clubId);
+      allow update: if isClubUser(clubId) ||
+        (educatorInviteAllowsMembershipUpdate(clubId) && membershipFieldsOnly());
+    }
+
+    match /educators/{educatorId} {
+      allow read: if true;
+      allow create: if signedIn() && request.auth.uid == educatorId;
+      allow update: if isEducatorUser(educatorId) ||
+        (isClubUser(userClubId()) &&
+          inviteExistsAfter(userClubId(), educatorId) &&
+          inviteDocAfter(userClubId(), educatorId).data.status == 'accepted');
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow update, delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -53,6 +53,9 @@ export default function TeacherHomePage() {
 
   // Get educator ID from profile
   const educatorProfile = (profile as any)?.profile || {};
+  const firstName = educatorProfile?.firstName?.trim() || '';
+  const lastName = educatorProfile?.lastName?.trim() || '';
+  const displayName = firstName || lastName || '!';
   const educatorId = educatorProfile?.educatorId || (profile as any)?.educatorId || '';
   
   // Fetch bookings from Firebase
@@ -131,7 +134,7 @@ export default function TeacherHomePage() {
         >
           <View style={styles.headerTop}>
             <View>
-              <Text style={styles.headerWelcome}>Bonjour Sophie</Text>
+              <Text style={styles.headerWelcome}>Bonjour {displayName}</Text>
               <Text style={styles.headerTitle}>Tableau de bord Enseignant</Text>
             </View>
             <TouchableOpacity
@@ -296,8 +299,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerWelcome: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 18,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.9)',
     marginBottom: 4,
   },
   headerTitle: {

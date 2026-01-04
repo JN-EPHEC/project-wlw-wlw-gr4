@@ -12,7 +12,12 @@ import { useFetchClubUpcomingBookings } from '@/hooks/useFetchClubUpcomingBookin
 import { useFetchClubUpcomingEvents } from '@/hooks/useFetchClubUpcomingEvents';
 import { useFetchEducatorById } from '@/hooks/useFetchEducatorById';
 import { useJoinClub } from '@/hooks/useJoinClub';
+import {
+  useClubEducatorInvite,
+  useClubEducatorInviteActions,
+} from '@/hooks/useClubEducatorInvites';
 import { useAuth } from '@/context/AuthContext';
+import { getInviteErrorMessage } from '@/services/clubEducatorInvitations';
 
 const palette = {
   primary: '#41B6A6',
@@ -58,11 +63,27 @@ export default function ClubDetailScreen({ navigation, route }: Props) {
   // Auth et join club hook
   const { user, profile } = useAuth();
   const { joinClub } = useJoinClub();
+  const userRole = (profile as any)?.role || (profile as any)?.profile?.role || 'user';
+  const educatorId = (profile as any)?.educatorId || (profile as any)?.profile?.educatorId || '';
+  const isEducator = userRole === 'educator';
+  const hasEducatorId = isEducator && !!educatorId;
+
+  const { invite, loading: inviteLoading } = useClubEducatorInvite(
+    hasEducatorId ? clubId : null,
+    hasEducatorId ? educatorId : null,
+  );
+  const {
+    loading: inviteActionLoading,
+    educatorRequestJoinClub: requestJoinClub,
+    acceptInviteOrRequest,
+    rejectInviteOrRequest,
+    cancelInviteOrRequest,
+  } = useClubEducatorInviteActions();
   
   // Récupérer les terrains et éducateurs du club
   const { fields, loading: fieldsLoading } = useFetchClubFields(clubId);
-  const educatorId = club?.educatorId ? [club.educatorId] : [];
-  const { educators, loading: educatorsLoading } = useFetchClubEducators(educatorId);
+  const clubEducatorIds = club?.educatorId ? [club.educatorId] : [];
+  const { educators, loading: educatorsLoading } = useFetchClubEducators(clubEducatorIds);
   const { bookings, loading: bookingsLoading } = useFetchClubUpcomingBookings(clubId);
   const { events, loading: eventsLoading } = useFetchClubUpcomingEvents(clubId);
 
@@ -120,6 +141,70 @@ export default function ClubDetailScreen({ navigation, route }: Props) {
     } finally {
       setJoiningLoading(false);
     }
+  };
+
+  const handleRequestAffiliation = async () => {
+    if (!user?.uid) {
+      Alert.alert('Erreur', 'Veuillez vous connecter');
+      return;
+    }
+    if (!educatorId) {
+      Alert.alert('Erreur', 'Profil educateur incomplet');
+      return;
+    }
+
+    try {
+      await requestJoinClub({ authUid: user.uid, clubId });
+      Alert.alert('Demande envoyee', "Votre demande d'affiliation a ete envoyee.");
+    } catch (err) {
+      Alert.alert('Erreur', getInviteErrorMessage(err));
+    }
+  };
+
+  const handleAcceptAffiliation = async () => {
+    if (!user?.uid) return;
+    try {
+      await acceptInviteOrRequest({ authUid: user.uid, clubId, educatorId });
+      Alert.alert('Succes', 'Affiliation acceptee.');
+    } catch (err) {
+      Alert.alert('Erreur', getInviteErrorMessage(err));
+    }
+  };
+
+  const handleRejectAffiliation = async () => {
+    if (!user?.uid) return;
+    Alert.alert('Refuser', "Refuser la demande d'affiliation ?", [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Refuser',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await rejectInviteOrRequest({ authUid: user.uid, clubId, educatorId });
+          } catch (err) {
+            Alert.alert('Erreur', getInviteErrorMessage(err));
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleCancelAffiliation = async () => {
+    if (!user?.uid) return;
+    Alert.alert('Annuler', "Annuler votre demande d'affiliation ?", [
+      { text: 'Retour', style: 'cancel' },
+      {
+        text: 'Annuler la demande',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await cancelInviteOrRequest({ authUid: user.uid, clubId, educatorId });
+          } catch (err) {
+            Alert.alert('Erreur', getInviteErrorMessage(err));
+          }
+        },
+      },
+    ]);
   };
 
   if (loading) {
@@ -248,30 +333,94 @@ export default function ClubDetailScreen({ navigation, route }: Props) {
           )}
         </View>
 
-        {/* BOUTON REJOINDRE LA COMMUNAUTÉ */}
-        <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
-          <TouchableOpacity 
-            style={[styles.joinCommunityBtn, joiningLoading && { opacity: 0.7 }]}
-            onPress={handleJoinCommunity}
-            disabled={joiningLoading}
-            activeOpacity={0.8}
-          >
-            {joiningLoading ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <>
-                <Ionicons name="people" size={20} color="#fff" />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.joinCommunityTitle}>Rejoindre la communauté</Text>
-                  <Text style={styles.joinCommunitySubtitle}>Accédez aux salons, annonces et événements</Text>
+        {/* BOUTON REJOINDRE LA COMMUNAUTE / AFFILIATION EDUCATEUR */}
+        {hasEducatorId ? (
+          <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+            <View style={styles.affiliationCard}>
+              <Text style={styles.affiliationTitle}>Affiliation educateur</Text>
+              {inviteLoading ? (
+                <View style={styles.affiliationLoading}>
+                  <ActivityIndicator color={palette.primary} size="small" />
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#fff" />
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
+              ) : invite?.status === 'pending' ? (
+                invite.createdByRole === 'educator' ? (
+                  <View style={styles.affiliationActions}>
+                    <View style={[styles.affiliationPrimary, { opacity: 0.7 }]}>
+                      <Ionicons name="time-outline" size={18} color="#fff" />
+                      <Text style={styles.affiliationPrimaryText}>Demande envoyee</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.affiliationSecondary}
+                      onPress={handleCancelAffiliation}
+                      disabled={inviteActionLoading}
+                    >
+                      <Text style={styles.affiliationSecondaryText}>Annuler</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.affiliationActions}>
+                    <TouchableOpacity
+                      style={styles.affiliationAccept}
+                      onPress={handleAcceptAffiliation}
+                      disabled={inviteActionLoading}
+                    >
+                      <Ionicons name="checkmark" size={18} color="#fff" />
+                      <Text style={styles.affiliationPrimaryText}>Accepter</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.affiliationReject}
+                      onPress={handleRejectAffiliation}
+                      disabled={inviteActionLoading}
+                    >
+                      <Ionicons name="close" size={18} color="#fff" />
+                      <Text style={styles.affiliationPrimaryText}>Refuser</Text>
+                    </TouchableOpacity>
+                  </View>
+                )
+              ) : invite?.status === 'accepted' ? (
+                <View style={styles.affiliationActions}>
+                  <View style={[styles.affiliationPrimary, { opacity: 0.7 }]}>
+                    <Ionicons name="checkmark-circle" size={18} color="#fff" />
+                    <Text style={styles.affiliationPrimaryText}>Affiliation active</Text>
+                  </View>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.affiliationPrimary}
+                  onPress={handleRequestAffiliation}
+                  disabled={inviteActionLoading}
+                >
+                  <Ionicons name="people" size={18} color="#fff" />
+                  <Text style={styles.affiliationPrimaryText}>Demander affiliation</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        ) : (
+          <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+            <TouchableOpacity
+              style={[styles.joinCommunityBtn, joiningLoading && { opacity: 0.7 }]}
+              onPress={handleJoinCommunity}
+              disabled={joiningLoading}
+              activeOpacity={0.8}
+            >
+              {joiningLoading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="people" size={20} color="#fff" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.joinCommunityTitle}>Rejoindre la communauté</Text>
+                    <Text style={styles.joinCommunitySubtitle}>Accédez aux salons, annonces et événements</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#fff" />
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
 
-        {/* SECTION TERRAINS */}
+        {/* SECTION TERRAINS */}}
         <View style={styles.section}>
           <Text style={styles.title}>Terrains & Équipements</Text>
           {fieldsLoading ? (
@@ -750,6 +899,77 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
+  affiliationCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: palette.border,
+    gap: 10,
+  },
+  affiliationTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: palette.text,
+  },
+  affiliationLoading: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  affiliationActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  affiliationPrimary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: palette.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  affiliationAccept: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#16A34A',
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  affiliationReject: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#DC2626',
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  affiliationPrimaryText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  affiliationSecondary: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 12,
+    paddingVertical: 12,
+    backgroundColor: '#F8FAFC',
+  },
+  affiliationSecondaryText: {
+    color: palette.text,
+    fontWeight: '700',
+    fontSize: 13,
+  },
   primaryBtn: {
     flex: 1,
     backgroundColor: palette.primary,
@@ -866,3 +1086,4 @@ const styles = StyleSheet.create({
     backgroundColor: palette.border,
   },
 });
+
