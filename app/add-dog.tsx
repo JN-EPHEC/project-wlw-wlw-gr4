@@ -9,6 +9,7 @@ import { Timestamp } from 'firebase/firestore';
 import { UserStackParamList } from '@/navigation/types';
 import { useDogs } from '@/hooks/useDogs';
 import { useDogDocuments, DogDocument } from '@/hooks/useDogDocuments';
+import { useAuth } from '@/context/AuthContext';
 
 const palette = {
   primary: '#41B6A6',
@@ -20,6 +21,7 @@ const palette = {
 type Props = NativeStackScreenProps<UserStackParamList, 'addDog'>;
 
 export default function AddDogScreen({ navigation }: Props) {
+  const { user } = useAuth();
   const { addDog, loading: dbLoading, error: dbError } = useDogs();
   const { uploadDocument, addDocumentToDog, loading: docLoading } = useDogDocuments();
   
@@ -124,18 +126,40 @@ export default function AddDogScreen({ navigation }: Props) {
         photoFile || undefined
       );
 
+      console.log('📝 [addDog] Dog created with ID:', dogId);
+
       // Uploader le document de vaccination si présent
       if (vaccineDocument && dogId) {
-        const uploadedDoc = await uploadDocument(
-          dogId,
-          vaccineDocument.uri,
-          vaccineDocument.name,
-          vaccineDocument.type
-        );
+        try {
+          console.log('📄 [handleSave] Uploading vaccine document:', vaccineDocument.name);
+          
+          const uploadedDoc = await uploadDocument(
+            user?.uid || '',
+            vaccineDocument.uri,
+            vaccineDocument.name,
+            vaccineDocument.type
+          );
 
-        if (uploadedDoc) {
-          // Ajouter le document au chien
-          await addDocumentToDog(dogId, uploadedDoc);
+          console.log('✅ [handleSave] Document uploaded:', uploadedDoc?.name);
+
+          if (uploadedDoc) {
+            // Ajouter le document au chien
+            console.log('💾 [handleSave] Saving document to dog...');
+            const saved = await addDocumentToDog(dogId, uploadedDoc);
+            
+            if (saved) {
+              console.log('✅ [handleSave] Document saved to Firestore');
+            } else {
+              console.error('❌ [handleSave] Failed to save document to Firestore');
+              Alert.alert('Attention', 'Le chien a été créé, mais le document n\'a pas pu être sauvegardé');
+            }
+          } else {
+            console.error('❌ [handleSave] Document upload returned null');
+            Alert.alert('Attention', 'Le chien a été créé, mais le document n\'a pas pu être uploadé');
+          }
+        } catch (docErr) {
+          console.error('❌ [handleSave] Error uploading/saving document:', docErr);
+          Alert.alert('Attention', 'Le chien a été créé, mais le document n\'a pas pu être traité');
         }
       }
 
