@@ -42,7 +42,7 @@ export const useClubImage = (clubId: string | null): UseClubImageResult => {
         }
 
         const data = clubSnap.data();
-        const url = data?.logoUrl || data?.profileImage || null;
+        const url = data?.PhotoUrl || data?.logoUrl || data?.profileImage || null;
 
         console.log('✅ [useClubImage] Found image:', url ? 'yes' : 'no');
         setImageUrl(url);
