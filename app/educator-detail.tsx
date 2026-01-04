@@ -1,11 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import {
+  Alert,
+  Image,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+} from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { doc, getDoc } from 'firebase/firestore';
 
 import { UserStackParamList } from '@/navigation/types';
 import { db } from '@/firebaseConfig';
+import { useAuth } from '@/context/AuthContext';
+import {
+  useClubEducatorInvite,
+  useClubEducatorInviteActions,
+} from '@/hooks/useClubEducatorInvites';
+import { getInviteErrorMessage } from '@/services/clubEducatorInvitations';
 
 const palette = {
   primary: '#41B6A6',
@@ -41,6 +57,22 @@ export default function EducatorDetailScreen({ navigation, route }: Props) {
   const [educator, setEducator] = useState<EducatorData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user, profile } = useAuth();
+  const userRole = (profile as any)?.role || (profile as any)?.profile?.role || 'user';
+  const clubId = (profile as any)?.clubId || user?.uid || '';
+  const isClubUser = userRole === 'club' && !!clubId;
+
+  const { invite, loading: inviteLoading } = useClubEducatorInvite(
+    isClubUser ? clubId : null,
+    isClubUser ? educatorId : null,
+  );
+  const {
+    loading: inviteActionLoading,
+    clubInviteEducator: inviteEducator,
+    acceptInviteOrRequest,
+    rejectInviteOrRequest,
+    cancelInviteOrRequest,
+  } = useClubEducatorInviteActions();
 
   useEffect(() => {
     const fetchEducator = async () => {
@@ -69,6 +101,66 @@ export default function EducatorDetailScreen({ navigation, route }: Props) {
 
     fetchEducator();
   }, [educatorId]);
+
+  const handleInviteEducator = async () => {
+    if (!user?.uid) {
+      Alert.alert('Erreur', 'Veuillez vous connecter');
+      return;
+    }
+
+    try {
+      await inviteEducator({ authUid: user.uid, educatorId });
+      Alert.alert('Invitation envoyee', "L'invitation a ete envoyee a l'educateur.");
+    } catch (err) {
+      Alert.alert('Erreur', getInviteErrorMessage(err));
+    }
+  };
+
+  const handleAcceptAffiliation = async () => {
+    if (!user?.uid) return;
+    try {
+      await acceptInviteOrRequest({ authUid: user.uid, clubId, educatorId });
+      Alert.alert('Succes', 'Affiliation acceptee.');
+    } catch (err) {
+      Alert.alert('Erreur', getInviteErrorMessage(err));
+    }
+  };
+
+  const handleRejectAffiliation = async () => {
+    if (!user?.uid) return;
+    Alert.alert('Refuser', "Refuser la demande d'affiliation ?", [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Refuser',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await rejectInviteOrRequest({ authUid: user.uid, clubId, educatorId });
+          } catch (err) {
+            Alert.alert('Erreur', getInviteErrorMessage(err));
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleCancelAffiliation = async () => {
+    if (!user?.uid) return;
+    Alert.alert('Annuler', "Annuler l'invitation envoyee ?", [
+      { text: 'Retour', style: 'cancel' },
+      {
+        text: 'Annuler',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await cancelInviteOrRequest({ authUid: user.uid, clubId, educatorId });
+          } catch (err) {
+            Alert.alert('Erreur', getInviteErrorMessage(err));
+          }
+        },
+      },
+    ]);
+  };
 
   if (loading) {
     return (
@@ -202,6 +294,68 @@ export default function EducatorDetailScreen({ navigation, route }: Props) {
           )}
         </View>
 
+        {isClubUser ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Affiliation</Text>
+            {inviteLoading ? (
+              <View style={{ alignItems: 'center', paddingVertical: 10 }}>
+                <ActivityIndicator color={palette.primary} />
+              </View>
+            ) : invite?.status === 'pending' ? (
+              invite.createdByRole === 'club' ? (
+                <View style={styles.affiliationActions}>
+                  <View style={[styles.affiliationPrimary, { opacity: 0.7 }]}>
+                    <Ionicons name="time-outline" size={18} color="#fff" />
+                    <Text style={styles.affiliationPrimaryText}>Invitation envoyee</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.affiliationSecondary}
+                    onPress={handleCancelAffiliation}
+                    disabled={inviteActionLoading}
+                  >
+                    <Text style={styles.affiliationSecondaryText}>Annuler</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.affiliationActions}>
+                  <TouchableOpacity
+                    style={styles.affiliationAccept}
+                    onPress={handleAcceptAffiliation}
+                    disabled={inviteActionLoading}
+                  >
+                    <Ionicons name="checkmark" size={18} color="#fff" />
+                    <Text style={styles.affiliationPrimaryText}>Accepter</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.affiliationReject}
+                    onPress={handleRejectAffiliation}
+                    disabled={inviteActionLoading}
+                  >
+                    <Ionicons name="close" size={18} color="#fff" />
+                    <Text style={styles.affiliationPrimaryText}>Refuser</Text>
+                  </TouchableOpacity>
+                </View>
+              )
+            ) : invite?.status === 'accepted' ? (
+              <View style={styles.affiliationActions}>
+                <View style={[styles.affiliationPrimary, { opacity: 0.7 }]}>
+                  <Ionicons name="checkmark-circle" size={18} color="#fff" />
+                  <Text style={styles.affiliationPrimaryText}>Affiliation active</Text>
+                </View>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.affiliationPrimary}
+                onPress={handleInviteEducator}
+                disabled={inviteActionLoading}
+              >
+                <Ionicons name="person-add" size={18} color="#fff" />
+                <Text style={styles.affiliationPrimaryText}>Inviter cet educateur</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : null}
+
         <View style={styles.bottomActions}>
           <TouchableOpacity style={styles.secondary} onPress={() => navigation.navigate('rating', { bookingId: 0 })}>
             <Text style={styles.secondaryText}>Demander un avis</Text>
@@ -293,4 +447,58 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  affiliationActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  affiliationPrimary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: palette.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  affiliationAccept: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#16A34A',
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  affiliationReject: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#DC2626',
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  affiliationPrimaryText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  affiliationSecondary: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 12,
+    paddingVertical: 12,
+    backgroundColor: '#F8FAFC',
+  },
+  affiliationSecondaryText: {
+    color: palette.text,
+    fontWeight: '700',
+    fontSize: 13,
+  },
 });

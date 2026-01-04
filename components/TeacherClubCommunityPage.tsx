@@ -162,7 +162,7 @@ export default function TeacherClubCommunityPage() {
                   style={styles.primaryBtn}
                   onPress={() => handleNavigate('teacher-club-members', baseClubId || '')}
                 >
-                  <Text style={styles.primaryBtnText}>Inviter membres</Text>
+                  <Text style={styles.primaryBtnText}>Inviter des membres</Text>
                 </TouchableOpacity>
               </View>
             </>
@@ -317,3 +317,4 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 });
+

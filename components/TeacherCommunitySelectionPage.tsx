@@ -23,7 +23,7 @@ const palette = {
 };
 
 const quickActions = [
-  { id: 'teacher-channel-chat', label: 'Repondre clients', icon: 'chatbubbles-outline' as const },
+  { id: 'teacher-channel-chat', label: 'Répondre aux clients', icon: 'chatbubbles-outline' as const },
   { id: 'teacher-club-community', label: 'Canaux clubs', icon: 'albums-outline' as const },
   { id: 'teacher-club-members', label: 'Membres', icon: 'people-outline' as const },
 ];
@@ -56,7 +56,7 @@ export default function TeacherCommunitySelectionPage() {
         >
           <View style={styles.header}>
             <View>
-              <Text style={styles.title}>Communaute</Text>
+              <Text style={styles.title}>Communauté</Text>
               <Text style={styles.subtitle}>Choisissez un club ou une discussion</Text>
             </View>
             <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('teacher-community')}>
@@ -90,7 +90,7 @@ export default function TeacherCommunitySelectionPage() {
             <Text style={styles.sectionTitle}>Mes clubs</Text>
           </View>
           <TouchableOpacity onPress={() => handleNavigate('teacher-clubs')}>
-            <Text style={styles.link}>Gerer</Text>
+            <Text style={styles.link}>Gérer</Text>
           </TouchableOpacity>
         </View>
 
@@ -157,7 +157,7 @@ export default function TeacherCommunitySelectionPage() {
               style={[styles.primaryBtn, { marginTop: 10 }]}
               onPress={() => navigation.navigate('teacher-channel-chat', { channelId: 'inbox', clubId: fallbackClubId })}
             >
-              <Text style={styles.primaryBtnText}>Repondre</Text>
+              <Text style={styles.primaryBtnText}>Répondre</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -292,3 +292,4 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 });
+

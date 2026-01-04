@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 
 import { ClubStackParamList } from '@/navigation/types';
+import { useAuth } from '@/context/AuthContext';
+import { usePendingClubEducatorInvitesForClub } from '@/hooks/useClubEducatorInvites';
 
 const palette = {
   primary: '#E9B782',
@@ -50,11 +52,14 @@ const seedTeachers: Teacher[] = [
 type Props = NativeStackScreenProps<ClubStackParamList, 'clubTeachers'>;
 
 export default function ClubTeachersScreen({ navigation }: Props) {
+  const { user, profile } = useAuth();
+  const clubId = (profile as any)?.clubId || user?.uid || '';
+  const { invites: pendingInvites } = usePendingClubEducatorInvitesForClub(clubId);
   const [teachers, setTeachers] = useState<Teacher[]>(seedTeachers);
   const [selectedCredentials, setSelectedCredentials] = useState<Teacher | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  const pendingRequests = 2;
+  const pendingRequests = pendingInvites.filter((invite) => invite.createdByRole === 'educator').length;
   const freeLimit = 2;
   const canAddFree = teachers.length < freeLimit;
 

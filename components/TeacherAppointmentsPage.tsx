@@ -361,8 +361,10 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     paddingVertical: 8,
+    paddingHorizontal: 6,
     borderRadius: 999,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'transparent',
   },
@@ -374,6 +376,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: palette.textSecondary,
+    textAlign: 'center',
+    flexShrink: 1,
   },
   tabTextActive: {
     color: palette.surface,

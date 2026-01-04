@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View, Modal, Image } from 'react-native';
+import Slider from '@react-native-community/slider';
 
 import TeacherBottomNav from '@/components/TeacherBottomNav';
 import { formatFirebaseAuthError, useAuth } from '@/context/AuthContext';
@@ -23,18 +24,18 @@ const palette = {
   danger: '#DC2626',
 };
 
-const skills = ['Education positive', 'Agility', 'Reactivite', 'Travail chiot'];
+const skills = ['Éducation positive', 'Agilité', 'Réactivité', 'Travail chiot'];
 const verifications = [
-  { id: 1, label: 'Identite verifiee', icon: 'checkmark-circle-outline' as const, status: 'Complete' },
+  { id: 1, label: 'Identité vérifiée', icon: 'checkmark-circle-outline' as const, status: 'Complète' },
   { id: 2, label: 'Assurance RC pro', icon: 'shield-checkmark-outline' as const, status: 'Valide' },
-  { id: 3, label: 'Compte bancaire', icon: 'card-outline' as const, status: 'IBAN FR**42' },
+  { id: 3, label: 'Compte bancaire', icon: 'card-outline' as const, status: 'IBAN BE**42' },
 ];
 
 export default function TeacherAccountPage() {
   const navigation = useNavigation<NativeStackNavigationProp<TeacherStackParamList>>();
   const { logout, deleteAccount, actionLoading, user, profile } = useAuth();
   const [available, setAvailable] = useState(true);
-  const [homeTravel, setHomeTravel] = useState(true);
+  const [homeTravelDistance, setHomeTravelDistance] = useState(8);
   const [error, setError] = useState<string | null>(null);
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
   const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
@@ -43,6 +44,7 @@ export default function TeacherAccountPage() {
   const userProfile = (profile as any)?.profile || {};
   const firstName = userProfile?.firstName || '';
   const lastName = userProfile?.lastName || '';
+  const city = userProfile?.city?.trim() || 'votre ville';
   const fullName = `${firstName} ${lastName}`.trim() || 'Éducateur';
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'ED';
   const photoUrl = userProfile?.photoUrl || '';
@@ -127,17 +129,35 @@ export default function TeacherAccountPage() {
             </View>
             <Switch value={available} onValueChange={setAvailable} trackColor={{ true: '#BFE9E1' }} thumbColor={palette.primary} />
           </View>
-          <View style={styles.toggleRow}>
-            <View>
-              <Text style={styles.toggleTitle}>Deplacements à domicile</Text>
-              <Text style={styles.toggleMeta}>Zone: 8 km autour de Paris 15</Text>
+          <View style={[styles.toggleRow, styles.sliderRow]}>
+            <View style={styles.sliderHeader}>
+              <View style={styles.sliderText}>
+                <Text style={styles.toggleTitle}>Déplacements à domicile</Text>
+                <Text style={styles.toggleMeta}>
+                  Zone autour de {city}
+                </Text>
+              </View>
+              <Text style={styles.sliderValue}>{homeTravelDistance} km</Text>
             </View>
-            <Switch value={homeTravel} onValueChange={setHomeTravel} trackColor={{ true: '#BFE9E1' }} thumbColor={palette.primary} />
+            <Slider
+              value={homeTravelDistance}
+              onValueChange={setHomeTravelDistance}
+              minimumValue={0}
+              maximumValue={40}
+              step={1}
+              minimumTrackTintColor={palette.primary}
+              maximumTrackTintColor="#E5E7EB"
+              thumbTintColor={palette.primary}
+            />
+            <View style={styles.sliderRange}>
+              <Text style={styles.sliderRangeText}>0 km</Text>
+              <Text style={styles.sliderRangeText}>40 km</Text>
+            </View>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Verifications</Text>
+          <Text style={styles.sectionTitle}>Vérifications</Text>
           <View style={{ gap: 10 }}>
             {verifications.map((v) => (
               <View key={v.id} style={styles.row}>
@@ -169,7 +189,7 @@ export default function TeacherAccountPage() {
           </View>
           <TouchableOpacity
             style={[styles.primaryBtn, { marginTop: 10 }]}
-            onPress={() => navigation.navigate('teacher-appointments')}
+            onPress={() => navigation.navigate('teacher-export-sessions')}
           >
             <Text style={styles.primaryBtnText}>Exporter mes sessions</Text>
           </TouchableOpacity>
@@ -372,6 +392,33 @@ const styles = StyleSheet.create({
   },
   toggleTitle: { fontSize: 15, fontWeight: '700', color: palette.text },
   toggleMeta: { color: palette.gray, fontSize: 13 },
+  sliderRow: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 10,
+  },
+  sliderHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  sliderText: {
+    flex: 1,
+  },
+  sliderValue: {
+    color: palette.primaryDark,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  sliderRange: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  sliderRangeText: {
+    color: palette.gray,
+    fontSize: 12,
+  },
   section: { paddingHorizontal: 16, paddingVertical: 12, gap: 10 },
   sectionHeader: {
     flexDirection: 'row',
@@ -511,5 +558,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
 
 

@@ -23,7 +23,7 @@ const palette = {
 
 const threads = [
   { id: 1, title: 'Progression de Nova sur le rappel', author: 'Marie D.', replies: 8, time: 'Il y a 2h', tag: 'Suivi client' },
-  { id: 2, title: 'Idees de jeux pour chiot reactive', author: 'Forum public', replies: 15, time: 'Il y a 4h', tag: 'Conseils' },
+  { id: 2, title: 'Idées de jeux pour chiot réactif', author: 'Forum public', replies: 15, time: 'Il y a 4h', tag: 'Conseils' },
   { id: 3, title: 'Session collective - feedback club', author: 'Club Vincennes', replies: 3, time: 'Il y a 6h', tag: 'Club' },
 ];
 
@@ -51,7 +51,7 @@ export default function TeacherCommunityPage() {
         >
           <View style={styles.header}>
             <View>
-              <Text style={styles.title}>Communaute</Text>
+              <Text style={styles.title}>Communauté</Text>
               <Text style={styles.subtitle}>Messages clients et clubs en un seul endroit</Text>
             </View>
             <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('teacher-home')}>
@@ -91,7 +91,7 @@ export default function TeacherCommunityPage() {
           >
             <Ionicons name="calendar" size={20} color={palette.primary} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.quickTitle}>Envoyer mes dispos</Text>
+              <Text style={styles.quickTitle}>Envoyer mes disponibilités</Text>
               <Text style={styles.quickMeta}>2 clients attendent une date</Text>
             </View>
           </TouchableOpacity>
@@ -122,13 +122,13 @@ export default function TeacherCommunityPage() {
               <View style={styles.cardFooter}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Ionicons name="chatbubble-ellipses-outline" size={16} color={palette.gray} />
-                  <Text style={styles.cardMeta}>{thread.replies} reponses</Text>
+                  <Text style={styles.cardMeta}>{thread.replies} réponses</Text>
                 </View>
                 <TouchableOpacity
                   style={styles.replyButton}
                   onPress={() => navigation.navigate('teacher-community')}
                 >
-                  <Text style={styles.replyText}>Repondre</Text>
+                  <Text style={styles.replyText}>Répondre</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -137,7 +137,7 @@ export default function TeacherCommunityPage() {
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>A suivre</Text>
+            <Text style={styles.sectionTitle}>À suivre</Text>
             <TouchableOpacity onPress={() => navigation.navigate('teacher-appointments')}>
               <Text style={styles.link}>Planifier</Text>
             </TouchableOpacity>
@@ -146,7 +146,7 @@ export default function TeacherCommunityPage() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <View style={styles.dot} />
               <View>
-                <Text style={styles.cardTitle}>Compte rendu a envoyer</Text>
+                <Text style={styles.cardTitle}>Compte rendu à envoyer</Text>
                 <Text style={styles.cardMeta}>3 sessions sans note</Text>
               </View>
             </View>
@@ -154,7 +154,7 @@ export default function TeacherCommunityPage() {
               style={[styles.replyButton, { marginTop: 12 }]}
               onPress={() => navigation.navigate('teacher-home')}
             >
-              <Text style={styles.replyText}>Completer</Text>
+              <Text style={styles.replyText}>Compléter</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -313,3 +313,4 @@ const styles = StyleSheet.create({
   },
   dot: { width: 10, height: 10, borderRadius: 10, backgroundColor: palette.warning },
 });
+

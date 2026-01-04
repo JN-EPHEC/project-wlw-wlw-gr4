@@ -74,8 +74,10 @@ export type TeacherRoute =
   | 'teacher-club-members'
   | 'teacher-announcements'
   | 'teacher-account'
+  | 'teacher-export-sessions'
   | 'teacher-edit-profile'
   | 'teacher-clubs'
+  | 'teacher-join-club'
   | 'teacher-training'
   | 'notifications'
   | 'teacherLeaderboard'
@@ -170,8 +172,10 @@ export type TeacherStackParamList = {
   'teacher-club-members': { clubId: string | number | null };
   'teacher-announcements': { clubId: string | number | null };
   'teacher-account': undefined;
+  'teacher-export-sessions': undefined;
   'teacher-edit-profile': undefined;
   'teacher-clubs': undefined;
+  'teacher-join-club': undefined;
   'teacher-training': undefined;
   notifications: { previousTarget?: RootRouteName } | undefined;
   teacherLeaderboard: { clubId?: number };
