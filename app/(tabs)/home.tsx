@@ -14,11 +14,13 @@ import {
 } from 'react-native';
 
 import UserBottomNav from '@/components/UserBottomNav';
+import BoostedClubCard from '@/components/BoostedClubCard';
 import { useBoostedClubs } from '@/hooks/useBoostedClubs';
 import { useUpcomingUserEvents } from '@/hooks/useUpcomingUserEvents';
 import { useUserUpcomingBookings } from '@/hooks/useUserUpcomingBookings';
 import { useActivePromotions } from '@/hooks/useActivePromotions';
 import { useClubImage } from '@/hooks/useClubImage';
+import { useClubBoostBadge } from '@/hooks/useClubBoostBadge';
 
 const { width } = Dimensions.get('window');
 
@@ -110,7 +112,7 @@ function PromoCard({ promo, navigation, width }: any) {
     <TouchableOpacity
       activeOpacity={0.9}
       onPress={() => navigation.navigate('promoDetail', { promotion: promo })}
-      style={[styles.promoCard, { width: width * 0.8 }]}
+      style={[styles.promoCard, { width: width * 0.5 }]}
     >
       {imageUrl ? (
         <Image source={{ uri: imageUrl }} style={styles.promoImage} />
@@ -215,31 +217,15 @@ export default function HomeScreen() {
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
               {displayedClubs.map((club) => (
-                <TouchableOpacity key={club.id} style={[styles.boostCard, { width: width * 0.8 }]}>
-                  <Image source={{ uri: club.image }} style={styles.boostImage} />
-                  <View style={[StyleSheet.absoluteFill, styles.boostOverlay]} />
-                  <View style={styles.boostBadge}>
-                    <MaterialCommunityIcons name="lightning-bolt" size={14} color="#fff" />
-                    <Text style={styles.boostBadgeText}>Boosté</Text>
-                  </View>
-                  <View style={styles.boostRating}>
-                    <MaterialCommunityIcons name="star" size={14} color="#E9B782" />
-                    <Text style={styles.boostRatingText}>{club.rating}</Text>
-                  </View>
-                  <View style={styles.boostContent}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Text style={styles.boostTitle}>{club.name}</Text>
-                      {club.verified ? (
-                        <MaterialCommunityIcons name="check-decagram" size={18} color="#fff" style={{ marginLeft: 6 }} />
-                      ) : null}
-                    </View>
-                    <Text style={styles.boostSub}>{club.speciality}</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Ionicons name="location-outline" size={14} color="#fff" />
-                      <Text style={styles.boostSub}>{club.distance} • {club.city}</Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
+                <BoostedClubCard
+                  key={club.id}
+                  club={club}
+                  width={width * 0.8}
+                  onPress={() => {
+                    console.log('🔗 Navigating to clubDetail with clubId:', String(club.id), 'club name:', club.name);
+                    navigation.navigate('clubDetail', { clubId: String(club.id) });
+                  }}
+                />
               ))}
             </ScrollView>
           )}

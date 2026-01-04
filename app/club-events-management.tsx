@@ -13,7 +13,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { addDoc, collection, Timestamp, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { addDoc, collection, Timestamp, doc, updateDoc, deleteDoc, getDocs, query, where } from 'firebase/firestore';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { db } from '@/firebaseConfig';
 
@@ -21,6 +21,7 @@ import { ClubStackParamList } from '@/navigation/types';
 import { useClubEvents } from '@/hooks/useClubEvents';
 import { useGetUserNames } from '@/hooks/useGetUserNames';
 import { useAuth } from '@/context/AuthContext';
+import { createNotificationFromTemplate } from '@/utils/notificationHelpers';
 
 const palette = {
   primary: '#41B6A6',
@@ -393,6 +394,37 @@ export default function EventsScreen({ navigation, route }: Props) {
       } else {
         const docRef = await addDoc(collection(db, 'events'), eventData);
         console.log('✅ Event created in Firestore:', docRef.id);
+        
+        // ✅ Créer notification event_created pour TOUS les membres du club
+        try {
+          // Récupérer tous les membres du club
+          const clubRef = doc(db, 'club', clubId);
+          const clubSnap = await getDocs(query(collection(db, 'users'), where('clubId', '==', clubId)));
+          
+          const memberIds = clubSnap.docs.map(m => m.id);
+          
+          // Créer une notif pour chaque membre
+          for (const memberId of memberIds) {
+            try {
+              await createNotificationFromTemplate('event_created', {
+                recipientId: memberId,
+                recipientType: 'user',
+                relatedId: docRef.id,
+                senderId: user?.uid,
+                senderName: (profile as any)?.displayName || 'Club',
+                actionParams: { eventId: docRef.id },
+                metadata: {
+                  eventTitle: draft.title.trim(),
+                  eventDate: eventDate.toLocaleDateString('fr-FR'),
+                },
+              });
+            } catch (notifErr) {
+              console.warn(`Erreur notif pour membre ${memberId}:`, notifErr);
+            }
+          }
+        } catch (notifErr) {
+          console.warn('Avertissement: notifications event_created non créées:', notifErr);
+        }
         
         const next: EventItem = {
           id: docRef.id,

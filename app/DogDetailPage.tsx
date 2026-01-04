@@ -17,6 +17,7 @@ import { doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/firebaseConfig';
 import { useAuth } from '@/context/AuthContext';
 import { useDogs } from '@/hooks/useDogs';
+import { useUpcomingDogAppointments } from '@/hooks/useUpcomingDogAppointments';
 
 interface Dog {
   id?: string;
@@ -58,6 +59,7 @@ export default function DogDetailPage() {
   const { user } = useAuth();
   const dogId = (route.params as any)?.dogId;
   const { deleteDog, loading: deleteLoading } = useDogs();
+  const { appointments, loading: appointmentsLoading } = useUpcomingDogAppointments(dogId || null);
 
   const [dog, setDog] = useState<Dog | null>(null);
   const [loading, setLoading] = useState(true);
@@ -351,45 +353,35 @@ export default function DogDetailPage() {
 
           {/* Upcoming Appointments */}
           <Text style={styles.sectionTitle}>Prochains rendez-vous</Text>
-          <View style={styles.appointmentsList}>
-            {[
-              {
-                type: 'Vétérinaire',
-                date: '15 Nov 2025',
-                time: '14h30',
-                location: 'Clinique Vétérinaire du Parc',
-                icon: '🏥',
-              },
-              {
-                type: 'Séance Agility',
-                date: '25 Oct 2025',
-                time: '10h00',
-                location: 'Club Canin Paris 15',
-                icon: '🏃',
-              },
-              {
-                type: 'Toilettage',
-                date: '30 Oct 2025',
-                time: '16h00',
-                location: 'Salon Pattes de Velours',
-                icon: '✂️',
-              },
-            ].map((appt, index) => (
-              <View key={index} style={styles.appointmentCard}>
-                <View style={styles.appointmentIcon}>
-                  <Text style={styles.appointmentEmoji}>{appt.icon}</Text>
-                </View>
-                <View style={styles.appointmentDetails}>
-                  <View style={styles.appointmentHeader}>
-                    <Text style={styles.appointmentType}>{appt.type}</Text>
-                    <Text style={styles.appointmentTime}>{appt.time}</Text>
+          {appointmentsLoading ? (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              <ActivityIndicator size="small" color={palette.primary} />
+            </View>
+          ) : appointments.length === 0 ? (
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+              <Text style={{ color: palette.gray, fontSize: 14, textAlign: 'center' }}>
+                Aucun cours réservé pour le moment
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.appointmentsList}>
+              {appointments.map((appt) => (
+                <View key={appt.id} style={styles.appointmentCard}>
+                  <View style={styles.appointmentIcon}>
+                    <Text style={styles.appointmentEmoji}>{appt.icon}</Text>
                   </View>
-                  <Text style={styles.appointmentDate}>{appt.date}</Text>
-                  <Text style={styles.appointmentLocation}>{appt.location}</Text>
+                  <View style={styles.appointmentDetails}>
+                    <View style={styles.appointmentHeader}>
+                      <Text style={styles.appointmentType}>{appt.title}</Text>
+                      <Text style={styles.appointmentTime}>{appt.time}</Text>
+                    </View>
+                    <Text style={styles.appointmentDate}>{appt.date}</Text>
+                    <Text style={styles.appointmentLocation}>{appt.location}</Text>
+                  </View>
                 </View>
-              </View>
-            ))}
-          </View>
+              ))}
+            </View>
+          )}
 
           {/* Certificates */}
           <Text style={styles.sectionTitle}>Documents & Certificats</Text>

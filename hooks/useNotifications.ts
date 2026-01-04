@@ -5,30 +5,35 @@ import { Notification } from '@/types/Notification';
 
 /**
  * Hook pour récupérer les notifications d'un utilisateur EN TEMPS RÉEL
+ * Supporte DEUX sources: userId (notifs personnelles) et clubIds (notifs des clubs)
  * 
  * Utilisation:
- * const { notifications, loading, error, markAsRead } = useNotifications(userId);
+ * const { notifications, loading, error, markAsRead } = useNotifications(userId, ['clubId1', 'clubId2']);
  */
-export const useNotifications = (userId: string | null) => {
+export const useNotifications = (userId: string | null, clubIds?: string[] | null) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  console.log('🎣 useNotifications - userId:', userId, 'clubIds:', clubIds);
+
   useEffect(() => {
     if (!userId) {
+      console.log('⚠️ useNotifications - userId empty, skipping');
       setNotifications([]);
       setLoading(false);
       return;
     }
 
-    const unsubscribe = onSnapshot(
+    // Listener 1: Notifications personnelles
+    const unsubscribeUser = onSnapshot(
       query(
         collection(db, 'notifications', userId, 'items'),
         orderBy('createdAt', 'desc')
       ),
       (snapshot) => {
         try {
-          const data: Notification[] = snapshot.docs.map((doc) => {
+          const userNotifs: Notification[] = snapshot.docs.map((doc) => {
             const docData = doc.data();
             return {
               id: doc.id,
@@ -37,7 +42,18 @@ export const useNotifications = (userId: string | null) => {
               readAt: docData.readAt,
             } as Notification;
           });
-          setNotifications(data);
+
+          console.log('📨 User notifications chargées:', userNotifs.length);
+
+          setNotifications((prev) => {
+            // Fusionner avec les notifs des clubs
+            const clubNotifs = prev.filter((n) => n.recipientId !== userId);
+            const merged = [...userNotifs, ...clubNotifs];
+            // Trier par date décroissante
+            const sorted = merged.sort((a, b) => b.createdAt - a.createdAt);
+            console.log('🔀 Merged notifications:', sorted.length);
+            return sorted;
+          });
           setError(null);
         } catch (err) {
           console.error('Erreur lors du chargement des notifications:', err);
@@ -53,14 +69,69 @@ export const useNotifications = (userId: string | null) => {
       }
     );
 
-    return () => unsubscribe();
-  }, [userId]);
+    // Listeners pour les clubs (un par club)
+    const unsubscribeClubs: Array<() => void> = [];
+    
+    if (clubIds && clubIds.length > 0) {
+      console.log('🏢 Listening to club notifications:', clubIds);
+      
+      clubIds.forEach((clubId) => {
+        const unsubscribeClub = onSnapshot(
+          query(
+            collection(db, 'notifications', clubId, 'items'),
+            orderBy('createdAt', 'desc')
+          ),
+          (snapshot) => {
+            try {
+              const clubNotifs: Notification[] = snapshot.docs.map((doc) => {
+                const docData = doc.data();
+                return {
+                  id: doc.id,
+                  ...docData,
+                  createdAt: docData.createdAt,
+                  readAt: docData.readAt,
+                } as Notification;
+              });
 
-  const markAsRead = async (notificationId: string) => {
-    if (!userId) return;
+              console.log(`📬 Club ${clubId} notifications chargées:`, clubNotifs.length);
+
+              setNotifications((prev) => {
+                // Garder les notifs utilisateur et des autres clubs
+                const userNotifs = prev.filter((n) => n.recipientId === userId);
+                const otherClubNotifs = prev.filter((n) => n.recipientId !== userId && n.recipientId !== clubId);
+                const merged = [...userNotifs, ...otherClubNotifs, ...clubNotifs];
+                // Trier par date décroissante
+                const sorted = merged.sort((a, b) => b.createdAt - a.createdAt);
+                console.log('🔀 Merged with clubs:', sorted.length);
+                return sorted;
+              });
+              setError(null);
+            } catch (err) {
+              console.error(`Erreur lors du chargement des notifs club ${clubId}:`, err);
+              setError('Erreur lors du chargement');
+            }
+          },
+          (err) => {
+            console.error(`Erreur snapshot notifications club ${clubId}:`, err);
+          }
+        );
+        
+        unsubscribeClubs.push(unsubscribeClub);
+      });
+    }
+
+    return () => {
+      unsubscribeUser();
+      unsubscribeClubs.forEach(unsub => unsub());
+    };
+  }, [userId, clubIds?.join(',')]); // Join clubIds pour dépendance stable
+
+  const markAsRead = async (notificationId: string, recipientId?: string) => {
+    const targetId = recipientId || userId;
+    if (!targetId) return;
 
     try {
-      const notifRef = doc(db, 'notifications', userId, 'items', notificationId);
+      const notifRef = doc(db, 'notifications', targetId, 'items', notificationId);
       await updateDoc(notifRef, {
         isRead: true,
         readAt: Timestamp.now(),
@@ -77,7 +148,7 @@ export const useNotifications = (userId: string | null) => {
     try {
       const promises = notifications
         .filter((n) => !n.isRead)
-        .map((n) => markAsRead(n.id));
+        .map((n) => markAsRead(n.id, n.recipientId));
 
       await Promise.all(promises);
       console.log(`✅ Toutes les notifications marquées comme lues`);
@@ -324,6 +395,16 @@ export const useNotificationIcon = (type: string) => {
       icon: 'star',
       color: '#E9B782',
       bg: '#FEF3C7',
+    },
+    comment_on_post: {
+      icon: 'chatbubbles',
+      color: '#06B6D4',
+      bg: '#ECFDF5',
+    },
+    announcement: {
+      icon: 'megaphone',
+      color: '#EC4899',
+      bg: '#FDF2F8',
     },
   };
 

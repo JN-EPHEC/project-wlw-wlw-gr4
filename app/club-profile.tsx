@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Modal,
   SafeAreaView,
@@ -21,12 +21,14 @@ import { useFocusEffect } from '@react-navigation/native';
 import { getDoc, doc, collection, query, where, getDocs, Timestamp, updateDoc } from 'firebase/firestore';
 
 import ClubBottomNav from '@/components/ClubBottomNav';
+import ClubBoostPlansModal from '@/components/ClubBoostPlansModal';
 import { formatFirebaseAuthError, useAuth } from '@/context/AuthContext';
 import { resetToHome } from '@/navigation/navigationRef';
 import { ClubStackParamList } from '@/navigation/types';
 import { useClubData } from '@/hooks/useClubData';
 import { useClubFields, Field } from '@/hooks/useClubFields';
 import { useClubGallery } from '@/hooks/useClubGallery';
+import { useClubActiveBoost } from '@/hooks/useClubActiveBoost';
 import { db } from '@/firebaseConfig';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -114,10 +116,12 @@ export default function ClubProfileScreen({ navigation }: Props) {
   const [photoDescription, setPhotoDescription] = useState('');
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [clubCreatedAt, setClubCreatedAt] = useState<Timestamp | null>(null);
+  const [isBoostModalVisible, setBoostModalVisible] = useState(false);
 
   // Récupère les données du club depuis le profile (Firebase)
   const clubProfile = (profile as any)?.profile || {};
   const clubId = (profile as any)?.clubId || user?.uid;
+  const { activeBoost, loading: boostLoading, formatDate, refetch: refetchBoost } = useClubActiveBoost(user?.uid);
   const { fields: clubFields } = useClubFields(clubId || null);
   const { images: galleryPhotos, loading: galleryLoading, addImage, updateImage, deleteImage, totalPhotos, canAddMorePhotos } = useClubGallery(clubId || null);
   const clubName = clubProfile?.clubName || 'Mon Club';
@@ -431,6 +435,19 @@ export default function ClubProfileScreen({ navigation }: Props) {
     }
   };
 
+  const goTo = <T extends keyof ClubStackParamList>(screen: T, params?: ClubStackParamList[T]) => {
+    if (params === undefined) {
+      navigation.navigate(screen as any);
+    } else {
+      navigation.navigate(screen as any, params);
+    }
+  };
+
+  const handleBoostSuccess = () => {
+    setBoostModalVisible(false);
+    refetchBoost();
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView
@@ -706,93 +723,71 @@ export default function ClubProfileScreen({ navigation }: Props) {
             )}
           </View>
 
-          {/* Compte bancaire */}
-          <View>
-            <Text style={styles.sectionTitle}>Compte bancaire</Text>
-            <View style={[styles.infoCard, styles.bankCardStyle]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <View style={styles.bankIconContainer}>
-                  <Ionicons name="checkmark-circle" size={20} color={palette.green} />
-                </View>
-                <View>
-                  <Text style={styles.infoLabel}>Connectez votre compte bancaire</Text>
-                  <Text style={styles.infoValue}>
-                    Les paiements seront versés directement sur votre compte sous 2-3 jours ouvrés.
-                  </Text>
-                </View>
-              </View>
-
-              <View style={{ gap: 12, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: palette.border }}>
-                <View>
-                  <Text style={styles.infoLabel}>Titulaire du compte</Text>
-                  <Text style={styles.infoValue}>Nom du titulaire</Text>
-                </View>
-                <View>
-                  <Text style={styles.infoLabel}>IBAN</Text>
-                  <Text style={styles.infoValue}>FR78 XXXX XXXX XXXX XXXX XXXX XX</Text>
-                </View>
-                <View>
-                  <Text style={styles.infoLabel}>BIC/SWIFT</Text>
-                  <Text style={styles.infoValue}>XXXXXXXX</Text>
-                </View>
-                <View>
-                  <Text style={styles.infoLabel}>Nom de la banque</Text>
-                  <Text style={styles.infoValue}>Ex: Crédit Agricole</Text>
-                </View>
-              </View>
-
-              <TouchableOpacity style={styles.bankButton}>
-                <MaterialCommunityIcons name="credit-card-check" size={18} color="#fff" />
-                <Text style={styles.bankButtonText}>Connecter mon compte bancaire</Text>
-              </TouchableOpacity>
-
-              <Text style={styles.securityNote}>
-                Les informations bancaires sont cryptées et sécurisées. Nous ne stockons jamais vos données bancaires complètes.
-              </Text>
-              <Text style={styles.friendNote}>
-                🎁 Breviot: Dogs prélève 5% de commission sur chaque transaction.
-              </Text>
-            </View>
-          </View>
-
           {/* Booster mon club */}
-          <View style={[styles.infoCard, styles.boosterCard]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-              <MaterialCommunityIcons name="lightning-bolt" size={24} color={palette.orange} />
-              <View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={styles.sectionTitle}>Booster mon club</Text>
-                  <View style={styles.premiumBadge}>
-                    <Text style={styles.premiumBadgeText}>Premium</Text>
+          {activeBoost ? (
+            <View style={[styles.infoCard, styles.activeboostCard]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <View style={styles.activeboostBadge}>
+                  <Ionicons name="flash" size={16} color="#fff" />
+                  <Text style={styles.activeboostBadgeText}>{activeBoost.planName}</Text>
+                </View>
+              </View>
+              <Text style={styles.activeboostTitle}>Boost actif</Text>
+              <Text style={styles.infoValue}>
+                Votre club bénéficie déjà du <Text style={{ fontWeight: '700' }}>{activeBoost.planName}</Text> jusqu'au <Text style={{ fontWeight: '700' }}>{formatDate(activeBoost.endDate)}</Text>
+              </Text>
+              <TouchableOpacity style={styles.activeboostButton} onPress={() => setBoostModalVisible(true)}>
+                <Ionicons name="swap-horizontal" size={16} color="#fff" />
+                <Text style={styles.activeboostButtonText}>Changer de plan</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={[styles.infoCard, styles.boosterCard]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <MaterialCommunityIcons name="lightning-bolt" size={24} color={palette.orange} />
+                <View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.sectionTitle}>Booster mon club</Text>
+                    <View style={styles.premiumBadge}>
+                      <Text style={styles.premiumBadgeText}>Premium</Text>
+                    </View>
                   </View>
                 </View>
               </View>
+
+              <Text style={styles.infoValue}>
+                Augmentez votre visibilité et attirez plus de clients en mettant votre annonce en avant !
+              </Text>
+
+              <View style={{ gap: 10, marginTop: 12, marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <MaterialCommunityIcons name="trending-up" size={18} color={palette.orange} />
+                  <Text style={styles.infoValue}>Appraissez en tête des résultats</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Ionicons name="star" size={18} color={palette.orange} />
+                  <Text style={styles.infoValue}>Badge 'Club mis en avant'</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Ionicons name="people" size={18} color={palette.orange} />
+                  <Text style={styles.infoValue}>+300% de visibilité en moyenne</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity style={styles.boosterButton} onPress={() => setBoostModalVisible(true)}>
+                <MaterialCommunityIcons name="lightning-bolt" size={18} color="#fff" />
+                <Text style={styles.boosterButtonText}>Booster mon annonce</Text>
+              </TouchableOpacity>
             </View>
+          )}
 
-            <Text style={styles.infoValue}>
-              Augmentez votre visibilité et attirez plus de clients en mettant votre annonce en avant !
-            </Text>
-
-            <View style={{ gap: 10, marginTop: 12, marginBottom: 12 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <MaterialCommunityIcons name="trending-up" size={18} color={palette.orange} />
-                <Text style={styles.infoValue}>Appraissez en tête des résultats</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Ionicons name="star" size={18} color={palette.orange} />
-                <Text style={styles.infoValue}>Badge 'Club mis en avant'</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Ionicons name="people" size={18} color={palette.orange} />
-                <Text style={styles.infoValue}>+300% de visibilité en moyenne</Text>
-              </View>
-            </View>
-
-            <TouchableOpacity style={styles.boosterButton}>
-              <MaterialCommunityIcons name="lightning-bolt" size={18} color="#fff" />
-              <Text style={styles.boosterButtonText}>Booster mon annonce</Text>
-            </TouchableOpacity>
-          </View>
+          <ClubBoostPlansModal
+            visible={isBoostModalVisible}
+            onClose={() => setBoostModalVisible(false)}
+            clubId={user?.uid || ''}
+            activeBoostId={activeBoost?.id}
+            onSuccess={handleBoostSuccess}
+          />
 
           {/* Galerie photos */}
           <View>
@@ -1701,6 +1696,45 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   boosterButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  activeboostCard: {
+    backgroundColor: '#DCFCE7',
+    borderColor: '#86EFAC',
+  },
+  activeboostBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: palette.green,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  activeboostBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  activeboostTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: palette.green,
+    marginBottom: 8,
+  },
+  activeboostButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: palette.green,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  activeboostButtonText: {
     color: '#fff',
     fontSize: 13,
     fontWeight: '600',

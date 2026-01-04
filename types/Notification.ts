@@ -14,7 +14,9 @@ export type NotificationType =
   | 'event_created'                // Nouvel événement créé
   | 'event_reminder'               // Rappel avant un événement
   | 'review_requested'             // Demande d'avis
-  | 'review_received';             // Avis reçu
+  | 'review_received'              // Avis reçu
+  | 'comment_on_post'              // Quelqu'un a commenté
+  | 'announcement';                // Nouvelle annonce
 
 /**
  * Type de destinataire de la notification
@@ -30,7 +32,9 @@ export type RelatedType =
   | 'club' 
   | 'message' 
   | 'member_request'
-  | 'review';
+  | 'review'
+  | 'post'
+  | 'channel';
 
 /**
  * Interface principale pour une notification
@@ -215,5 +219,23 @@ export const notificationTemplates: Record<NotificationType, Omit<CreateNotifica
     recipientType: 'club',
     relatedType: 'review',
     actionUrl: 'club-reviews',
+  },
+  
+  comment_on_post: {
+    type: 'comment_on_post',
+    title: 'Nouveau commentaire',
+    message: '{senderName} a commenté votre publication',
+    recipientType: 'user',
+    relatedType: 'post',
+    actionUrl: 'post-detail',
+  },
+  
+  announcement: {
+    type: 'announcement',
+    title: 'Nouvelle annonce',
+    message: '{messagePreview}',
+    recipientType: 'user',
+    relatedType: 'channel',
+    actionUrl: 'club-announcements',
   },
 };
