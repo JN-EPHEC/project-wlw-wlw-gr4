@@ -18,13 +18,6 @@ import {
 } from '@/hooks/useClubEducatorInvites';
 import { useAuth } from '@/context/AuthContext';
 import { getInviteErrorMessage } from '@/services/clubEducatorInvitations';
-import { useFetchClubEducators } from '@/hooks/useFetchClubEducators';
-import { useFetchClubFields } from '@/hooks/useFetchClubFields';
-import { useFetchClubUpcomingBookings } from '@/hooks/useFetchClubUpcomingBookings';
-import { useFetchClubUpcomingEvents } from '@/hooks/useFetchClubUpcomingEvents';
-import { useFetchEducatorById } from '@/hooks/useFetchEducatorById';
-import { useJoinClub } from '@/hooks/useJoinClub';
-import { useAuth } from '@/context/AuthContext';
 import { createNotificationFromTemplate } from '@/utils/notificationHelpers';
 import { useClubBoostBadge } from '@/hooks/useClubBoostBadge';
 
@@ -88,9 +81,6 @@ export default function ClubDetailScreen({ navigation, route }: Props) {
     rejectInviteOrRequest,
     cancelInviteOrRequest,
   } = useClubEducatorInviteActions();
-  // Auth et join club hook
-  const { user, profile } = useAuth();
-  const { joinClub } = useJoinClub();
   const boostBadge = useClubBoostBadge(clubId);
   
   // Récupérer les terrains et éducateurs du club
