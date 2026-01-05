@@ -177,7 +177,7 @@ export default function HomeTrainingBookingScreen({ navigation, route }: Props) 
         {/* Ville */}
         <View>
           <Text style={styles.title}>Ville</Text>
-          <Input label="Ville" value={form.city} onChangeText={(t) => setForm({ ...form, city: t })} placeholder="Paris" />
+          <Input label="Ville" value={form.city} onChangeText={(t) => setForm({ ...form, city: t })} placeholder="Bruxelles" />
         </View>
 
         {/* Téléphone */}

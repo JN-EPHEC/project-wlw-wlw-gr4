@@ -33,6 +33,14 @@ export default function TeacherChannelChatPage() {
   const route = useRoute<RouteProp<TeacherStackParamList, 'teacher-channel-chat'>>();
   const { clubId, channelId } = route.params;
 
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.navigate('teacher-community', { clubId });
+  };
+
   const handleNavigate = (target: TeacherRoute | RootRouteName) => {
     if (target === 'notifications') {
       navigation.navigate('notifications', { previousTarget: 'teacher-home' });
@@ -51,7 +59,7 @@ export default function TeacherChannelChatPage() {
       >
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => navigation.navigate('teacher-club-community', { clubId, channelId })}
+            onPress={handleBack}
             style={styles.backBtn}
           >
             <Ionicons name="arrow-back" size={18} color={palette.surface} />

@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View, Modal, Image } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View, Modal, Image, TextInput } from 'react-native';
 import Slider from '@react-native-community/slider';
 
 import TeacherBottomNav from '@/components/TeacherBottomNav';
@@ -25,11 +25,6 @@ const palette = {
 };
 
 const skills = ['Éducation positive', 'Agilité', 'Réactivité', 'Travail chiot'];
-const verifications = [
-  { id: 1, label: 'Identité vérifiée', icon: 'checkmark-circle-outline' as const, status: 'Complète' },
-  { id: 2, label: 'Assurance RC pro', icon: 'shield-checkmark-outline' as const, status: 'Valide' },
-  { id: 3, label: 'Compte bancaire', icon: 'card-outline' as const, status: 'IBAN BE**42' },
-];
 
 export default function TeacherAccountPage() {
   const navigation = useNavigation<NativeStackNavigationProp<TeacherStackParamList>>();
@@ -39,6 +34,11 @@ export default function TeacherAccountPage() {
   const [error, setError] = useState<string | null>(null);
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
   const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [isBankModalVisible, setBankModalVisible] = useState(false);
+  const [bankIban, setBankIban] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [bankIbanInput, setBankIbanInput] = useState('');
+  const [bankNameInput, setBankNameInput] = useState('');
 
   // Extract profile data
   const userProfile = (profile as any)?.profile || {};
@@ -48,6 +48,37 @@ export default function TeacherAccountPage() {
   const fullName = `${firstName} ${lastName}`.trim() || 'Éducateur';
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'ED';
   const photoUrl = userProfile?.photoUrl || '';
+  const ibanTail = bankIban.replace(/\s+/g, '').toUpperCase();
+  const ibanLastTwo = ibanTail.slice(-2);
+  const bankStatus = bankIban ? `IBAN BE**${ibanLastTwo}` : 'IBAN BE**42';
+
+  const verifications = [
+    { id: 1, label: 'Identite verifiee', icon: 'checkmark-circle-outline' as const, status: 'Complete' },
+    { id: 2, label: 'Assurance RC pro', icon: 'shield-checkmark-outline' as const, status: 'Valide' },
+    { id: 3, label: 'Compte bancaire', icon: 'card-outline' as const, status: bankStatus },
+  ];
+
+  const handleOpenBankModal = () => {
+    setBankIbanInput(bankIban);
+    setBankNameInput(bankName);
+    setBankModalVisible(true);
+  };
+
+  const handleSaveBankInfo = () => {
+    const trimmedIban = bankIbanInput.replace(/\s+/g, '').toUpperCase();
+    if (!trimmedIban || trimmedIban.length < 2) {
+      setError('Veuillez renseigner un IBAN valide.');
+      return;
+    }
+    if (!bankNameInput.trim()) {
+      setError('Veuillez renseigner le nom sur la carte.');
+      return;
+    }
+    setError(null);
+    setBankIban(trimmedIban);
+    setBankName(bankNameInput.trim());
+    setBankModalVisible(false);
+  };
 
   const handleLogout = async () => {
     setError(null);
@@ -160,14 +191,25 @@ export default function TeacherAccountPage() {
           <Text style={styles.sectionTitle}>Vérifications</Text>
           <View style={{ gap: 10 }}>
             {verifications.map((v) => (
-              <View key={v.id} style={styles.row}>
-                <Ionicons name={v.icon} size={18} color={palette.primary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.rowTitle}>{v.label}</Text>
-                  <Text style={styles.rowMeta}>{v.status}</Text>
+              v.id === 3 ? (
+                <TouchableOpacity key={v.id} style={styles.row} onPress={handleOpenBankModal}>
+                  <Ionicons name={v.icon} size={18} color={palette.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.rowTitle}>{v.label}</Text>
+                    <Text style={styles.rowMeta}>{v.status}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={palette.gray} />
+                </TouchableOpacity>
+              ) : (
+                <View key={v.id} style={styles.row}>
+                  <Ionicons name={v.icon} size={18} color={palette.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.rowTitle}>{v.label}</Text>
+                    <Text style={styles.rowMeta}>{v.status}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={palette.gray} />
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={palette.gray} />
-              </View>
+              )
             ))}
           </View>
         </View>
@@ -294,6 +336,48 @@ export default function TeacherAccountPage() {
                 onPress={handleDeleteAccount}
               >
                 <Text style={styles.deleteConfirmButtonText}>Supprimer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isBankModalVisible}
+        onRequestClose={() => setBankModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.bankModalView}>
+            <Text style={styles.modalTitle}>Compte bancaire</Text>
+            <Text style={styles.modalText}>Renseignez votre IBAN et le nom sur la carte.</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="IBAN (ex: BE12 3456 7890 1234)"
+              placeholderTextColor={palette.gray}
+              value={bankIbanInput}
+              onChangeText={setBankIbanInput}
+              autoCapitalize="characters"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Nom sur la carte"
+              placeholderTextColor={palette.gray}
+              value={bankNameInput}
+              onChangeText={setBankNameInput}
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.logoutConfirmButton]}
+                onPress={() => setBankModalVisible(false)}
+              >
+                <Text style={styles.logoutConfirmButtonText}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.logoutCancelButton]}
+                onPress={handleSaveBankInfo}
+              >
+                <Text style={styles.logoutCancelButtonText}>Enregistrer</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -501,12 +585,43 @@ const styles = StyleSheet.create({
     elevation: 5,
     width: '90%',
   },
+  bankModalView: {
+    margin: 20,
+    backgroundColor: palette.surface,
+    borderRadius: 18,
+    padding: 24,
+    alignItems: 'stretch',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 5,
+    width: '90%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: palette.text,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
   modalText: {
     marginBottom: 25,
     textAlign: 'center',
     fontSize: 16,
     color: '#4B5563',
     lineHeight: 24,
+  },
+  input: {
+    backgroundColor: palette.surface,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: palette.border,
+    color: palette.text,
+    fontSize: 14,
+    marginBottom: 12,
   },
   modalActions: {
     flexDirection: 'row',

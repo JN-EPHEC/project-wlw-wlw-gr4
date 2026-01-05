@@ -434,7 +434,7 @@ function SignupUserScreen({ onBack, onSuccess }: SignupUserProps) {
             label="Ville"
             value={formData.city}
             onChangeText={(text) => setFormData((prev) => ({ ...prev, city: text }))}
-            placeholder="Paris"
+            placeholder="Bruxelles"
             icon={<Ionicons name="location-outline" size={18} color={palette.gray} />}
           />
         </View>
@@ -640,7 +640,7 @@ function SignupTeacherScreen({ onBack, onSuccess }: SignupTeacherProps) {
             label="Ville d'exercice *"
             value={formData.city}
             onChangeText={(text) => setFormData((prev) => ({ ...prev, city: text }))}
-            placeholder="Lyon"
+            placeholder="Anvers"
             icon={<Ionicons name="location-outline" size={18} color={palette.gray} />}
           />
         </View>
@@ -867,16 +867,16 @@ function SignupClubScreen({ onBack, onSuccess }: SignupClubProps) {
             label="Nom du club *"
             value={formData.clubName}
             onChangeText={(text) => setFormData((prev) => ({ ...prev, clubName: text }))}
-            placeholder="Club Canin Paris 15"
+            placeholder="Club Canin Bruxelles 15"
           />
           <LabeledInput
             label="Raison sociale"
             value={formData.legalName}
             onChangeText={(text) => setFormData((prev) => ({ ...prev, legalName: text }))}
-            placeholder="Association Club Canin Paris 15"
+            placeholder="Association Club Canin Bruxelles 15"
           />
           <LabeledInput
-            label="SIRET / RNA *"
+            label="Numero d'entreprise / TVA *"
             value={formData.siret}
             onChangeText={(text) => setFormData((prev) => ({ ...prev, siret: text }))}
             placeholder="123 456 789 00010"
@@ -950,7 +950,7 @@ function SignupClubScreen({ onBack, onSuccess }: SignupClubProps) {
                 label="Ville"
                 value={formData.city}
                 onChangeText={(text) => setFormData((prev) => ({ ...prev, city: text }))}
-                placeholder="Paris"
+                placeholder="Bruxelles"
               />
             </View>
           </View>

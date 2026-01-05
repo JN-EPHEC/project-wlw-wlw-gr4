@@ -49,6 +49,7 @@ export default function TeacherAppointmentsPage() {
   const [selectedBooking, setSelectedBooking] = useState<BookingDisplay | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [addCourseModalVisible, setAddCourseModalVisible] = useState(false);
+  const [editingBooking, setEditingBooking] = useState<BookingDisplay | null>(null);
   
   const { profile } = useAuth();
   const educatorProfile = (profile as any)?.profile || {};
@@ -165,7 +166,10 @@ export default function TeacherAppointmentsPage() {
           <Text style={styles.headerTitle}>Mon Planning</Text>
           <TouchableOpacity 
             style={styles.addButton}
-            onPress={() => setAddCourseModalVisible(true)}
+            onPress={() => {
+              setEditingBooking(null);
+              setAddCourseModalVisible(true);
+            }}
           >
             <Ionicons name="add" size={22} color={palette.surface} />
           </TouchableOpacity>
@@ -254,16 +258,21 @@ export default function TeacherAppointmentsPage() {
           setSelectedBooking(null);
         }}
         onModify={(booking) => {
-          // TODO: Implement booking modification
-          console.log('Modify booking:', booking);
+          setEditingBooking(booking);
+          setModalVisible(false);
+          setAddCourseModalVisible(true);
         }}
       />
 
       <AddCourseModal
         visible={addCourseModalVisible}
-        onClose={() => setAddCourseModalVisible(false)}
+        onClose={() => {
+          setAddCourseModalVisible(false);
+          setEditingBooking(null);
+        }}
         educatorId={educatorId}
         clubId={educatorProfile?.clubId}
+        booking={editingBooking}
       />
     </SafeAreaView>
   );

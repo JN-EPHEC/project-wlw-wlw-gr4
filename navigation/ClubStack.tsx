@@ -36,7 +36,7 @@ const Stack = createNativeStackNavigator<ClubStackParamList>();
 
 export default function ClubStack() {
   return (
-    <Stack.Navigator initialRouteName="clubHome" screenOptions={{ headerShown: false }}>
+    <Stack.Navigator initialRouteName="clubHome" screenOptions={{ headerShown: false, animation: 'none' }}>
       <Stack.Screen name="clubHome" component={ClubHomeScreen} />
       <Stack.Screen name="clubProfile" component={ClubProfileScreen} />
       <Stack.Screen name="editClubProfile" component={EditClubProfileScreen} />

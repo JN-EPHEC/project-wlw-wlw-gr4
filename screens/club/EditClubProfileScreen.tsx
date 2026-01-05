@@ -279,7 +279,7 @@ export default function EditClubProfileScreen({ navigation }: Props) {
                 <Text style={styles.label}>Nom du club *</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Ex: Club Canin de Paris"
+                  placeholder="Ex: Club Canin de Bruxelles"
                   value={clubName}
                   onChangeText={setClubName}
                   placeholderTextColor={palette.gray}
@@ -341,7 +341,7 @@ export default function EditClubProfileScreen({ navigation }: Props) {
                 <Text style={styles.label}>Adresse</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Ex: 123 rue de Paris"
+                  placeholder="Ex: 123 rue de Bruxelles"
                   value={address}
                   onChangeText={setAddress}
                   placeholderTextColor={palette.gray}
@@ -353,7 +353,7 @@ export default function EditClubProfileScreen({ navigation }: Props) {
                 <Text style={styles.label}>Ville</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Ex: Paris"
+                  placeholder="Ex: Bruxelles"
                   value={city}
                   onChangeText={setCity}
                   placeholderTextColor={palette.gray}
@@ -365,7 +365,7 @@ export default function EditClubProfileScreen({ navigation }: Props) {
                 <Text style={styles.label}>Code postal</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Ex: 75001"
+                  placeholder="Ex: 1000"
                   value={postalCode}
                   onChangeText={setPostalCode}
                   placeholderTextColor={palette.gray}

@@ -46,7 +46,7 @@ const Stack = createNativeStackNavigator<UserStackParamList>();
 
 export default function UserStack() {
   return (
-    <Stack.Navigator initialRouteName="home" screenOptions={{ headerShown: false }}>
+    <Stack.Navigator initialRouteName="home" screenOptions={{ headerShown: false, animation: 'none' }}>
       <Stack.Screen name="home" component={HomeScreen} />
       <Stack.Screen name="clubs" component={ClubsScreen} />
       <Stack.Screen name="community" component={CommunityScreen} />

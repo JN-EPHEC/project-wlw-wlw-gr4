@@ -4,14 +4,16 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useMemo, useState, useEffect } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp, collection, getDocs, query, where } from 'firebase/firestore';
 
 import TeacherBottomNav from '@/components/TeacherBottomNav';
 import { useAuth } from '@/context/AuthContext';
 import { useUnreadNotificationCount } from '@/hooks/useNotifications';
 import { useEnrichedEducatorBookings } from '@/hooks/useEnrichedEducatorBookings';
+import { usePendingClubEducatorInvitesForEducator } from '@/hooks/useClubEducatorInvites';
 import { TeacherStackParamList } from '@/navigation/types';
 import { BookingDisplay } from '@/types/Booking';
+import { db } from '@/firebaseConfig';
 
 const palette = {
   primary: '#2F9C8D',
@@ -32,12 +34,6 @@ const nextSessions = [
   { id: 3, time: '15:00', title: 'A la maison', dog: 'Luna', location: 'Boulogne', type: 'Domicile' },
 ];
 
-const followUps = [
-  { id: 1, label: 'Notes a completer', count: 3, icon: 'document-text-outline' as const },
-  { id: 2, label: 'Messages non lus', count: 6, icon: 'chatbubble-ellipses-outline' as const },
-  { id: 3, label: 'Demandes en attente', count: 2, icon: 'alert-circle-outline' as const },
-];
-
 const shortcuts = [
   { id: 'teacher-appointments', label: 'Mon planning', icon: 'calendar-outline' as const },
   { id: 'teacher-community', label: 'Ma communauté', icon: 'people-outline' as const },
@@ -50,6 +46,7 @@ export default function TeacherHomePage() {
   const { user, profile } = useAuth();
   const userId = (user as any)?.uid || '';
   const unreadCount = useUnreadNotificationCount(userId);
+  const [communityMessageCount, setCommunityMessageCount] = useState(0);
 
   // Get educator ID from profile
   const educatorProfile = (profile as any)?.profile || {};
@@ -60,6 +57,103 @@ export default function TeacherHomePage() {
   
   // Fetch bookings from Firebase
   const { bookings, loading } = useEnrichedEducatorBookings(educatorId);
+  const { invites: pendingClubInvites } = usePendingClubEducatorInvitesForEducator(educatorId);
+
+  useEffect(() => {
+    if (!educatorId) {
+      setCommunityMessageCount(0);
+      return;
+    }
+
+    let isActive = true;
+
+    const fetchCommunityMessagesCount = async () => {
+      try {
+        const clubEducatorsRef = collection(db, 'clubEducators');
+        const clubEducatorsQuery = query(
+          clubEducatorsRef,
+          where('educatorId', '==', educatorId),
+          where('isActive', '==', true)
+        );
+        const clubSnapshot = await getDocs(clubEducatorsQuery);
+        const clubIds = clubSnapshot.docs
+          .map((docSnap) => docSnap.data()?.clubId)
+          .filter((clubId) => typeof clubId === 'string' && clubId.trim().length > 0);
+
+        if (!clubIds.length) {
+          if (isActive) setCommunityMessageCount(0);
+          return;
+        }
+
+        const chunkedClubIds: string[][] = [];
+        for (let i = 0; i < clubIds.length; i += 10) {
+          chunkedClubIds.push(clubIds.slice(i, i + 10));
+        }
+
+        let totalMessages = 0;
+        for (const chunk of chunkedClubIds) {
+          const channelsQuery = query(
+            collection(db, 'channels'),
+            where('clubId', 'in', chunk)
+          );
+          const channelsSnapshot = await getDocs(channelsQuery);
+
+          for (const channelDoc of channelsSnapshot.docs) {
+            const messagesSnapshot = await getDocs(
+              collection(db, 'channels', channelDoc.id, 'messages')
+            );
+            messagesSnapshot.docs.forEach((messageDoc) => {
+              const createdBy = messageDoc.data()?.createdBy;
+              if (!userId || createdBy !== userId) {
+                totalMessages += 1;
+              }
+            });
+          }
+        }
+
+        if (isActive) {
+          setCommunityMessageCount(totalMessages);
+        }
+      } catch (error) {
+        console.error('❌ [TeacherHomePage] Failed to count community messages:', error);
+        if (isActive) setCommunityMessageCount(0);
+      }
+    };
+
+    fetchCommunityMessagesCount();
+
+    return () => {
+      isActive = false;
+    };
+  }, [educatorId, userId]);
+
+  const notesToCompleteCount = useMemo(() => {
+    return bookings.filter((booking) => {
+      const hasReviews = Array.isArray(booking.reviewIds) && booking.reviewIds.length > 0;
+      return booking.status === 'completed' && !hasReviews;
+    }).length;
+  }, [bookings]);
+
+  const pendingCourseRequestsCount = useMemo(
+    () => bookings.filter((booking) => booking.status === 'pending').length,
+    [bookings]
+  );
+
+  const pendingClubInvitesCount = useMemo(
+    () => pendingClubInvites.filter((invite) => invite.createdByRole === 'club').length,
+    [pendingClubInvites]
+  );
+
+  const pendingRequestsCount = pendingCourseRequestsCount + pendingClubInvitesCount;
+
+  const followUps = useMemo(
+    () => [
+      { id: 1, label: 'Notes a completer', count: notesToCompleteCount, icon: 'document-text-outline' as const },
+      { id: 2, label: 'Messages non lus', count: communityMessageCount, icon: 'chatbubble-ellipses-outline' as const },
+      { id: 3, label: 'Demandes en attente', count: pendingRequestsCount, icon: 'alert-circle-outline' as const },
+    ],
+    [notesToCompleteCount, communityMessageCount, pendingRequestsCount]
+  );
 
   // Calculate next appointment (first one not started, regardless of date)
   const nextAppointment = useMemo(() => {

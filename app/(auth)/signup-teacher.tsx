@@ -206,7 +206,7 @@ export default function SignupTeacherScreen() {
                 label="Code postal"
                 value={form.postalCode}
                 onChangeText={(v) => setForm((p) => ({ ...p, postalCode: v }))}
-                placeholder="75015"
+                placeholder="1000"
                 keyboardType="numeric"
               />
             </View>
@@ -215,7 +215,7 @@ export default function SignupTeacherScreen() {
                 label="Ville"
                 value={form.city}
                 onChangeText={(v) => setForm((p) => ({ ...p, city: v }))}
-                placeholder="Paris"
+                placeholder="Bruxelles"
               />
             </View>
           </View>

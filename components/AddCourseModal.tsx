@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal,
   SafeAreaView,
@@ -14,14 +14,16 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Timestamp, collection, addDoc } from 'firebase/firestore';
+import { Timestamp, collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/firebase';
+import { BookingDisplay } from '@/types/Booking';
 
 interface AddCourseModalProps {
   visible: boolean;
   onClose: () => void;
   educatorId: string;
   clubId?: string;
+  booking?: BookingDisplay | null;
 }
 
 const palette = {
@@ -39,7 +41,7 @@ const palette = {
 
 const DURATIONS = [30, 45, 60, 75, 90, 120];
 
-export default function AddCourseModal({ visible, onClose, educatorId, clubId }: AddCourseModalProps) {
+export default function AddCourseModal({ visible, onClose, educatorId, clubId, booking }: AddCourseModalProps) {
   const [courseType, setCourseType] = useState('');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -55,6 +57,34 @@ export default function AddCourseModal({ visible, onClose, educatorId, clubId }:
   const [dogBreed, setDogBreed] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const isEditing = Boolean(booking);
+
+  useEffect(() => {
+    if (!visible) return;
+    if (!booking) {
+      resetForm();
+      return;
+    }
+
+    const sessionDate = booking.sessionDate instanceof Timestamp
+      ? booking.sessionDate.toDate()
+      : new Date(booking.sessionDate);
+    const participant = booking.participantInfo?.[0];
+    const dogInfo = (booking as any)?.dogInfo;
+
+    setCourseType(booking.title || '');
+    setDate(sessionDate);
+    setTime(sessionDate);
+    setDuration(booking.duration || 60);
+    setPrice(String(booking.price ?? ''));
+    setTerrainAddress(booking.fieldAddress || '');
+    setClientName(participant?.name || '');
+    setClientPhone(participant?.phone || '');
+    setClientEmail(participant?.email || '');
+    setDogName(dogInfo?.name || '');
+    setDogBreed(dogInfo?.breed || '');
+    setNotes(booking.description || '');
+  }, [booking, visible]);
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     if (selectedDate) {
@@ -105,7 +135,7 @@ export default function AddCourseModal({ visible, onClose, educatorId, clubId }:
       // Create booking document
       const bookingData = {
         educatorId,
-        clubId: clubId || 'independent',
+        clubId: booking?.clubId || clubId || 'independent',
         fieldAddress: terrainAddress.trim(),
         title: courseType,
         trainingType: courseType.toLowerCase(),
@@ -114,15 +144,15 @@ export default function AddCourseModal({ visible, onClose, educatorId, clubId }:
         price: parseFloat(price),
         currency: 'EUR',
         sessionDate: Timestamp.fromDate(sessionDate),
-        status: 'confirmed',
-        type: clubId ? 'club-based' : 'home-based',
+        status: booking?.status || 'confirmed',
+        type: booking?.type || (clubId ? 'club-based' : 'home-based'),
         isGroupCourse: false,
         maxParticipants: 1,
         userIds: [],
         dogIds: [],
         paymentIds: [],
         paid: false,
-        createdAt: Timestamp.now(),
+        createdAt: booking?.createdAt || Timestamp.now(),
         updatedAt: Timestamp.now(),
         // Store client info
         participantInfo: [
@@ -140,14 +170,21 @@ export default function AddCourseModal({ visible, onClose, educatorId, clubId }:
         },
       };
 
-      await addDoc(collection(db, 'Bookings'), bookingData);
-
-      Alert.alert('Succès', 'Cours créé avec succès');
+      if (booking) {
+        await updateDoc(doc(db, 'Bookings', booking.id), {
+          ...bookingData,
+          updatedAt: Timestamp.now(),
+        });
+        Alert.alert('Succes', 'Cours mis a jour');
+      } else {
+        await addDoc(collection(db, 'Bookings'), bookingData);
+        Alert.alert('Succes', 'Cours cree avec succes');
+      }
       onClose();
       resetForm();
     } catch (error) {
       console.error('Error adding course:', error);
-      Alert.alert('Erreur', 'Une erreur est survenue lors de la création du cours');
+      Alert.alert('Erreur', 'Une erreur est survenue lors de la sauvegarde du cours');
     } finally {
       setLoading(false);
     }
@@ -173,7 +210,7 @@ export default function AddCourseModal({ visible, onClose, educatorId, clubId }:
   };
 
   const formatTime = (d: Date) => {
-    return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', hour12: false });
   };
 
   return (
@@ -185,8 +222,10 @@ export default function AddCourseModal({ visible, onClose, educatorId, clubId }:
           end={{ x: 1, y: 1 }}
           style={styles.header}
         >
-          <Text style={styles.headerTitle}>Ajouter un cours</Text>
-          <Text style={styles.headerSubtitle}>Planifiez une nouvelle séance d'éducation canine</Text>
+          <Text style={styles.headerTitle}>{isEditing ? 'Modifier le cours' : 'Ajouter un cours'}</Text>
+          <Text style={styles.headerSubtitle}>
+            {isEditing ? 'Mettez a jour les informations du cours' : "Planifiez une nouvelle seance d'education canine"}
+          </Text>
           <TouchableOpacity
             style={styles.closeButton}
             onPress={onClose}
@@ -244,6 +283,8 @@ export default function AddCourseModal({ visible, onClose, educatorId, clubId }:
                 value={time}
                 mode="time"
                 display="spinner"
+                is24Hour
+                minuteInterval={15}
                 onChange={handleTimeChange}
               />
             )}
@@ -399,7 +440,7 @@ export default function AddCourseModal({ visible, onClose, educatorId, clubId }:
             {loading ? (
               <ActivityIndicator color={palette.surface} />
             ) : (
-              <Text style={styles.submitButtonText}>Ajouter le cours</Text>
+              <Text style={styles.submitButtonText}>{isEditing ? 'Mettre a jour' : 'Ajouter le cours'}</Text>
             )}
           </TouchableOpacity>
         </View>

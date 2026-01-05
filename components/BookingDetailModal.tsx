@@ -45,6 +45,7 @@ export default function BookingDetailModal({
   onDelete,
 }: BookingDetailModalProps) {
   const [deleting, setDeleting] = useState(false);
+  const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
 
   // IMPORTANT: Call hooks BEFORE any conditional returns
   // Get dog info from first participant (call hook always, even if booking is null)
@@ -109,6 +110,24 @@ export default function BookingDetailModal({
     );
   };
 
+  const performDelete = async () => {
+    try {
+      setDeleting(true);
+      await deleteDoc(doc(db, 'Bookings', booking.id));
+      Alert.alert('Succes', 'Le rendez-vous a ete supprime');
+      onClose();
+      if (onDelete) {
+        onDelete();
+      }
+    } catch (err) {
+      console.error('Erreur lors de la suppression:', err);
+      Alert.alert('Erreur', 'Une erreur est survenue lors de la suppression');
+    } finally {
+      setDeleting(false);
+      setConfirmDeleteVisible(false);
+    }
+  };
+
   const handleCall = (phone: string) => {
     if (phone) {
       Linking.openURL(`tel:${phone}`);
@@ -168,7 +187,7 @@ export default function BookingDetailModal({
                 <Ionicons name="location-outline" size={20} color={palette.textSecondary} />
                 <View style={styles.locationContent}>
                   <Text style={styles.locationLabel}>Lieu</Text>
-                  <Text style={styles.locationValue}>{booking.fieldName || 'N/A'}</Text>
+                  <Text style={styles.locationValue}>{booking.fieldName || booking.fieldAddress || 'N/A'}</Text>
                 </View>
               </View>
             </View>
@@ -247,7 +266,7 @@ export default function BookingDetailModal({
           <View style={styles.footer}>
             <TouchableOpacity
               style={[styles.button, styles.deleteButton]}
-              onPress={handleDelete}
+              onPress={() => setConfirmDeleteVisible(true)}
               disabled={deleting}
             >
               <Ionicons name="trash-outline" size={18} color={palette.danger} />
@@ -273,6 +292,32 @@ export default function BookingDetailModal({
               <Text style={styles.closeButtonText}>Fermer</Text>
             </TouchableOpacity>
           </View>
+          {confirmDeleteVisible && (
+            <View style={styles.confirmOverlay}>
+              <View style={styles.confirmCard}>
+                <Text style={styles.confirmTitle}>Supprimer le rendez-vous</Text>
+                <Text style={styles.confirmText}>Etes-vous sur de vouloir supprimer ce rendez-vous ?</Text>
+                <View style={styles.confirmActions}>
+                  <TouchableOpacity
+                    style={[styles.confirmButton, styles.confirmCancelButton]}
+                    onPress={() => setConfirmDeleteVisible(false)}
+                    disabled={deleting}
+                  >
+                    <Text style={styles.confirmCancelText}>Annuler</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.confirmButton, styles.confirmDeleteButton]}
+                    onPress={performDelete}
+                    disabled={deleting}
+                  >
+                    <Text style={styles.confirmDeleteText}>
+                      {deleting ? 'Suppression...' : 'Supprimer'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          )}
         </View>
       </View>
     </Modal>
@@ -509,6 +554,63 @@ const styles = StyleSheet.create({
     flex: 1.2,
   },
   closeButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: palette.surface,
+  },
+  confirmOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  confirmCard: {
+    backgroundColor: palette.surface,
+    borderRadius: 18,
+    padding: 18,
+    width: '100%',
+    maxWidth: 320,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  confirmTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: palette.text,
+    marginBottom: 8,
+  },
+  confirmText: {
+    fontSize: 13,
+    color: palette.textSecondary,
+    marginBottom: 16,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  confirmButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  confirmCancelButton: {
+    backgroundColor: palette.surface,
+    borderColor: palette.border,
+  },
+  confirmCancelText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: palette.text,
+  },
+  confirmDeleteButton: {
+    backgroundColor: palette.danger,
+    borderColor: palette.danger,
+  },
+  confirmDeleteText: {
     fontSize: 13,
     fontWeight: '600',
     color: palette.surface,

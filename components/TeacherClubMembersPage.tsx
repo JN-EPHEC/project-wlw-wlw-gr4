@@ -41,6 +41,14 @@ export default function TeacherClubMembersPage() {
   const { clubId } = route.params;
   const [active, setActive] = useState('all');
 
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.navigate('teacher-community', { clubId });
+  };
+
   const badgeColor = (tag: string) => {
     switch (tag) {
       case 'Collectif':
@@ -74,7 +82,7 @@ export default function TeacherClubMembersPage() {
             <View style={styles.headerRow}>
               <TouchableOpacity
                 style={styles.backBtn}
-                onPress={() => navigation.navigate('teacher-club-community', { clubId })}
+                onPress={handleBack}
               >
                 <Ionicons name="arrow-back" size={18} color={palette.surface} />
               </TouchableOpacity>
