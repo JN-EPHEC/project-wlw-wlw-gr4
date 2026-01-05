@@ -145,7 +145,7 @@ export default function EditTerrainScreen({ navigation, route }: Props) {
                 <Text style={styles.label}>Adresse *</Text>
                 <TextInput
                   style={[styles.input, styles.textArea]}
-                  placeholder="Ex: 123 Rue du Chien, 75000 Paris"
+                  placeholder="Ex: 123 Rue du Chien, 1000 Bruxelles"
                   value={address}
                   onChangeText={setAddress}
                   placeholderTextColor={palette.gray}

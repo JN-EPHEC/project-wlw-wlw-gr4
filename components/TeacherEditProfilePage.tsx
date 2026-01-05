@@ -292,7 +292,7 @@ export default function TeacherEditProfilePage() {
               <Text style={styles.label}>Ville</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Paris"
+                placeholder="Bruxelles"
                 value={form.city}
                 onChangeText={(v) => handleInputChange('city', v)}
                 editable={!updating}
@@ -303,7 +303,7 @@ export default function TeacherEditProfilePage() {
               <Text style={styles.label}>Code postal</Text>
               <TextInput
                 style={styles.input}
-                placeholder="75000"
+                placeholder="1000"
                 value={form.postalCode}
                 onChangeText={(v) => handleInputChange('postalCode', v)}
                 keyboardType="numeric"

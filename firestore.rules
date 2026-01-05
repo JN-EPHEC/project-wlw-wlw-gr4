@@ -257,15 +257,19 @@ service cloud.firestore {
     
     match /Bookings/{bookingId} {
       allow read: if request.auth.uid == resource.data.userId || 
-                     request.auth.uid == resource.data.clubId || 
+                     request.auth.uid == resource.data.clubId ||
+                     request.auth.uid == resource.data.educatorId ||
                      request.auth.token.firebase.sign_in_provider == 'custom';
-      allow create: if request.auth.uid == request.resource.data.userId || 
+      allow create: if request.auth.uid == request.resource.data.userId ||
+                       request.auth.uid == request.resource.data.educatorId ||
                        request.auth.token.firebase.sign_in_provider == 'custom';
       allow update: if request.auth.uid == resource.data.userId || 
-                       request.auth.uid == resource.data.clubId || 
+                       request.auth.uid == resource.data.clubId ||
+                       request.auth.uid == resource.data.educatorId ||
                        request.auth.token.firebase.sign_in_provider == 'custom';
       allow delete: if request.auth.uid == resource.data.userId || 
-                       request.auth.uid == resource.data.clubId || 
+                       request.auth.uid == resource.data.clubId ||
+                       request.auth.uid == resource.data.educatorId ||
                        request.auth.token.firebase.sign_in_provider == 'custom';
     }
     

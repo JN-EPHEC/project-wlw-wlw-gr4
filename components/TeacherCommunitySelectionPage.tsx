@@ -40,9 +40,8 @@ export default function TeacherCommunitySelectionPage() {
   const targetPage: TeacherRoute = route.params?.page ?? 'teacher-club-community';
   const fallbackClubId = route.params?.clubId ?? null;
 
-  const handleNavigate = (page: TeacherRoute, clubId: string) => {
-    const nextParams = { clubId } as any;
-    navigation.navigate(page as any, nextParams);
+  const handleNavigate = <T extends TeacherRoute,>(page: T, params?: TeacherStackParamList[T]) => {
+    navigation.navigate(page as any, params as any);
   };
 
   return (
@@ -115,7 +114,7 @@ export default function TeacherCommunitySelectionPage() {
                 key={club.clubId}
                 style={styles.card}
                 activeOpacity={0.9}
-                onPress={() => handleNavigate(targetPage, club.clubId)}
+                onPress={() => handleNavigate(targetPage, { clubId: club.clubId })}
               >
                 <View style={styles.iconBadge}>
                   <MaterialCommunityIcons name="shield-check-outline" size={18} color={palette.primary} />

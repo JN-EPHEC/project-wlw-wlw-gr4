@@ -27,7 +27,7 @@ const Stack = createNativeStackNavigator<TeacherStackParamList>();
 
 export default function TeacherStack() {
   return (
-    <Stack.Navigator initialRouteName="teacher-home" screenOptions={{ headerShown: false }}>
+    <Stack.Navigator initialRouteName="teacher-home" screenOptions={{ headerShown: false, animation: 'none' }}>
       <Stack.Screen name="teacher-home" component={TeacherHomePage} />
       <Stack.Screen name="teacher-appointments" component={TeacherAppointmentsPage} />
       <Stack.Screen name="teacher-appointment-detail" component={TeacherAppointmentDetailScreen} />

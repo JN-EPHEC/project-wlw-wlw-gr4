@@ -153,7 +153,7 @@ export default function SignupUserScreen() {
             label="Ville"
             value={form.city}
             onChangeText={(v) => setForm((p) => ({ ...p, city: v }))}
-            placeholder="Paris"
+            placeholder="Bruxelles"
             icon={<Ionicons name="location-outline" size={18} color={palette.gray} />}
           />
         </View>
