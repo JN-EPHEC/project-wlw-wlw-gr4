@@ -19,6 +19,7 @@ import { ClubStackParamList } from '@/navigation/types';
 import { useCommunityMembers } from '@/hooks/useCommunityMembers';
 import { useFetchPendingMembers } from '@/hooks/useFetchPendingMembers';
 import { useApproveOrRejectMember } from '@/hooks/useApproveOrRejectMember';
+import { useRemoveMember } from '@/hooks/useRemoveMember';
 import { useAuth } from '@/context/AuthContext';
 import { notifyUserMembershipApproved, notifyUserMembershipRejected } from '@/utils/notificationHelpers';
 
@@ -39,6 +40,7 @@ export default function ClubMembersScreen({ navigation, route }: Props) {
   const { members, loading } = useCommunityMembers(clubId);
   const { pendingMembers, loading: pendingLoading } = useFetchPendingMembers(clubId);
   const { approveOrRejectMember, loading: actionLoading } = useApproveOrRejectMember();
+  const { removeMember, loading: removeLoading } = useRemoveMember();
   const [search, setSearch] = useState('');
   const [clubData, setClubData] = useState<any>(null);
 
@@ -133,6 +135,43 @@ export default function ClubMembersScreen({ navigation, route }: Props) {
               }
               
               Alert.alert('Succès', `La demande de ${pendingMember.name} a été refusée`);
+            } catch (err) {
+              const errorMsg = err instanceof Error ? err.message : 'Erreur';
+              Alert.alert('Erreur', errorMsg);
+            }
+          },
+          style: 'destructive',
+        },
+      ]
+    );
+  };
+
+  const handleRemoveMember = async (member: any) => {
+    Alert.alert(
+      'Supprimer le membre',
+      `Êtes-vous sûr de vouloir supprimer ${member.name || member.displayName} de la communauté?`,
+      [
+        { text: 'Annuler', onPress: () => {} },
+        {
+          text: 'Supprimer',
+          onPress: async () => {
+            try {
+              await removeMember({
+                clubId,
+                userId: member.userId || member.id,
+              });
+
+              // Créer une notification pour l'utilisateur supprimé
+              try {
+                const clubData = await getDoc(doc(db, 'club', clubId));
+                const clubName = clubData.data()?.name || 'le club';
+                // TODO: Créer un nouveau type de notification 'member_removed' si besoin
+                console.log('✅ [club-members] Membre supprimé avec succès');
+              } catch (notifErr) {
+                console.warn('⚠️ Erreur création notification:', notifErr);
+              }
+
+              Alert.alert('Succès', `${member.name || member.displayName} a été retiré de la communauté`);
             } catch (err) {
               const errorMsg = err instanceof Error ? err.message : 'Erreur';
               Alert.alert('Erreur', errorMsg);
@@ -252,7 +291,17 @@ export default function ClubMembersScreen({ navigation, route }: Props) {
                         </Text>
                       )}
                     </View>
-                    <Ionicons name="chevron-forward" size={18} color={palette.gray} />
+                    {isOwner ? (
+                      <TouchableOpacity
+                        style={styles.btnRemove}
+                        onPress={() => handleRemoveMember(member)}
+                        disabled={removeLoading}
+                      >
+                        <Ionicons name="trash" size={18} color="#EF4444" />
+                      </TouchableOpacity>
+                    ) : (
+                      <Ionicons name="chevron-forward" size={18} color={palette.gray} />
+                    )}
                   </View>
                 ))}
               </View>
@@ -402,6 +451,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  btnRemove: {
+    padding: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
