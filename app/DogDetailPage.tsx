@@ -10,6 +10,7 @@ import {
   Alert,
   SafeAreaView,
   Linking,
+  Modal,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -65,6 +66,7 @@ export default function DogDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Charger les données du chien depuis Firestore
   useEffect(() => {
@@ -177,15 +179,35 @@ export default function DogDetailPage() {
   const handleDeleteDog = async () => {
     if (!dog?.id) return;
     
+    setIsDeleting(true);
     try {
+      console.log('Début suppression du chien:', dog.id);
       await deleteDog(dog.id, dog.photoUrl);
-      Alert.alert('Succès', 'Profil du chien supprimé avec succès');
-      navigation.goBack();
-    } catch (err) {
-      Alert.alert('Erreur', 'Impossible de supprimer le profil du chien');
-      console.error('Erreur suppression chien:', err);
-    } finally {
+      console.log('Chien supprimé avec succès');
+      
       setShowDeleteConfirm(false);
+      
+      // Afficher un message de succès
+      Alert.alert(
+        'Succès',
+        `${dog.name} a été supprimé de la base de données`,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Naviguer vers la page dogs avec rechargement
+              console.log('Navigation vers dogs');
+              (navigation as any).navigate('mydog');
+            },
+          },
+        ]
+      );
+    } catch (err) {
+      console.error('Erreur suppression chien:', err);
+      Alert.alert('Erreur', 'Impossible de supprimer le profil du chien: ' + (err instanceof Error ? err.message : 'Erreur inconnue'));
+      setShowDeleteConfirm(false);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -550,46 +572,53 @@ export default function DogDetailPage() {
             />
           </TouchableOpacity>
 
-          {/* Delete Confirmation */}
-          {showDeleteConfirm && (
-            <View style={styles.confirmationCard}>
-              <View style={styles.confirmationContent}>
-                <View style={styles.confirmationIcon}>
-                  <MaterialCommunityIcons name="trash-can" size={24} color="white" />
+          {/* Delete Confirmation Modal */}
+          <Modal
+            visible={showDeleteConfirm}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setShowDeleteConfirm(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.confirmationCard}>
+                <View style={styles.confirmationContent}>
+                  <View style={styles.confirmationIcon}>
+                    <MaterialCommunityIcons name="trash-can" size={24} color="white" />
+                  </View>
+                  <Text style={styles.confirmationTitle}>
+                    Confirmer la suppression
+                  </Text>
+                  <Text style={styles.confirmationMessage}>
+                    Êtes-vous sûr de vouloir supprimer définitivement le profil de{' '}
+                    {dog.name} ? Cette action est irréversible.
+                  </Text>
                 </View>
-                <Text style={styles.confirmationTitle}>
-                  Confirmer la suppression
-                </Text>
-                <Text style={styles.confirmationMessage}>
-                  Êtes-vous sûr de vouloir supprimer définitivement le profil de{' '}
-                  {dog.name} ? Cette action est irréversible.
-                </Text>
-              </View>
 
-              <View style={styles.confirmationButtons}>
-                <TouchableOpacity
-                  style={[styles.button, styles.cancelButton]}
-                  onPress={() => setShowDeleteConfirm(false)}
-                >
-                  <Text style={styles.cancelButtonText}>Annuler</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.button, styles.deleteButton]}
-                  onPress={handleDeleteDog}
-                  disabled={deleteLoading}
-                >
-                  {deleteLoading ? (
-                    <ActivityIndicator color="white" />
-                  ) : (
-                    <>
-                      <MaterialCommunityIcons name="trash-can" size={16} color="white" />
-                      <Text style={styles.buttonText}>Supprimer</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
+                <View style={styles.confirmationButtons}>
+                  <TouchableOpacity
+                    style={[styles.button, styles.cancelButton]}
+                    onPress={() => setShowDeleteConfirm(false)}
+                  >
+                    <Text style={styles.cancelButtonText}>Annuler</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.button, styles.deleteButton]}
+                    onPress={handleDeleteDog}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? (
+                      <ActivityIndicator color="white" />
+                    ) : (
+                      <>
+                        <MaterialCommunityIcons name="trash-can" size={16} color="white" />
+                        <Text style={styles.buttonText}>Supprimer</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          )}
+          </Modal>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -962,6 +991,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: palette.gray,
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
   confirmationCard: {
     backgroundColor: '#FEF2F2',
     borderRadius: 12,
@@ -970,7 +1006,7 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#EF4444',
     padding: 16,
-    marginBottom: 20,
+    width: '100%',
   },
   confirmationContent: {
     alignItems: 'center',
