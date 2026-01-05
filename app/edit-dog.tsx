@@ -464,16 +464,6 @@ export default function EditDogScreen() {
 
       <View style={styles.bottomBar}>
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          <TouchableOpacity style={[styles.outlineDanger, (saving || deleting) && { opacity: 0.5 }]} onPress={handleDelete} disabled={saving || deleting}>
-            {deleting ? (
-              <ActivityIndicator color="#DC2626" size={18} />
-            ) : (
-              <>
-                <Ionicons name="trash-outline" size={18} color="#DC2626" />
-                <Text style={styles.outlineDangerText}>Supprimer</Text>
-              </>
-            )}
-          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.primary, { flex: 1 }, !canSave && { opacity: 0.5 }]}
             disabled={!canSave}
