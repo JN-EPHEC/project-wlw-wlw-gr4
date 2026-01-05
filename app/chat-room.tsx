@@ -34,6 +34,8 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
   const { user, profile } = useAuth();
   const [newMessage, setNewMessage] = useState('');
 
+  console.log('🚀 [ChatRoom] Component MOUNTED with channelId:', channelId);
+
   // Get messages and send functionality
   const {
     messages,
@@ -43,8 +45,14 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
     isSending,
   } = useCommunityMessages(channelId, user?.uid || '', 30);
 
+  console.log('💬 [ChatRoom] Raw messages from hook:', messages.length, 'messages');
+  console.log('💬 [ChatRoom] Messages content:', messages);
+
   // Enrichir les messages avec les infos utilisateur
   const { messagesWithInfo } = useMessagesWithUserInfo(messages);
+
+  console.log('💬 [ChatRoom] Enriched messages:', messagesWithInfo.length, 'messages');
+  console.log('💬 [ChatRoom] MessagesWithInfo content:', messagesWithInfo);
 
   // Get community members
   const { members, loading: membersLoading } = useCommunityMembers(clubId);
@@ -144,8 +152,19 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
             </View>
           ) : (
             messagesWithInfo.map((msg) => {
+              console.log('🔍 [ChatRoom] Message createdBy:', msg.createdBy);
+              console.log('🔍 [ChatRoom] Available members:', members.map(m => ({ id: m.id, name: m.displayName })));
+              
               const member = members.find((m) => m.id === msg.createdBy);
+              console.log('🔍 [ChatRoom] Found member:', member);
+              
               const role = member?.role || 'member';
+              
+              // Utiliser les données du membre si disponibles, sinon utiliser les données enrichies du message
+              const displayName = member?.displayName || member?.name || msg.userName || 'Utilisateur';
+              const firstLetter = (member?.displayName || member?.name || msg.createdBy)?.charAt(0).toUpperCase() || 'U';
+              
+              console.log('🔍 [ChatRoom] Final displayName:', displayName);
               
               // Déterminer le label du rôle
               let roleBadge = '';
@@ -162,11 +181,11 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
               return (
                 <View key={msg.id} style={[styles.message]}>
                   <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{msg.userFirstName?.substring(0, 1).toUpperCase() || msg.createdBy.substring(0, 1).toUpperCase()}</Text>
+                    <Text style={styles.avatarText}>{firstLetter}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={styles.author}>{msg.userName}</Text>
+                      <Text style={styles.author}>{displayName}</Text>
                       {shouldShowBadge ? (
                         <View style={styles.badge}>
                           <Text style={styles.badgeText}>{roleBadge}</Text>

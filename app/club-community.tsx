@@ -43,7 +43,7 @@ export default function ClubCommunityScreen({ navigation, route }: Props) {
   const { events, loading: eventsLoading } = useClubEvents(clubIdStr);
 
   const handleChannelClick = (channelId: string, channelName: string) => {
-    navigation.navigate('chatRoom' as any, {
+    navigation.navigate('clubChannelChat' as any, {
       clubId: clubIdStr,
       channelId,
       channelName,
@@ -51,7 +51,7 @@ export default function ClubCommunityScreen({ navigation, route }: Props) {
   };
 
   const handleAnnouncementsClick = () => {
-    navigation.navigate('clubAnnouncements' as any);
+    navigation.navigate('clubAnnouncements' as any, { clubId: clubIdStr });
   };
 
   const handleEventsClick = () => {

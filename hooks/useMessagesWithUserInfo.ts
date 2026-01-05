@@ -42,10 +42,13 @@ export const useMessagesWithUserInfo = (messages: Array<{
 
   useEffect(() => {
     if (!messages || messages.length === 0) {
+      console.log('⚠️ [useMessagesWithUserInfo] No messages provided');
       setMessagesWithInfo([]);
       setLoading(false);
       return;
     }
+
+    console.log('📨 [useMessagesWithUserInfo] Processing', messages.length, 'messages');
 
     const enrichMessages = async () => {
       try {
@@ -55,7 +58,10 @@ export const useMessagesWithUserInfo = (messages: Array<{
         // Récupérer les IDs utilisateurs uniques et valides
         const userIds = [...new Set(messages.map(msg => msg.createdBy).filter(id => id && id.trim()))];
         
+        console.log('👥 [useMessagesWithUserInfo] Found userIds:', userIds);
+        
         if (userIds.length === 0) {
+          console.log('⚠️ [useMessagesWithUserInfo] No valid user IDs found');
           setMessagesWithInfo(messages.map(msg => ({
             ...msg,
             userName: msg.createdBy,
@@ -83,12 +89,42 @@ export const useMessagesWithUserInfo = (messages: Array<{
               
               if (userSnap.exists()) {
                 const userData = userSnap.data();
-                userCache[userId] = {
-                  firstName: userData.profile?.firstName || userData.firstName || '',
-                  lastName: userData.profile?.lastName || userData.lastName || '',
-                };
+                
+                // Essayer de récupérer firstName et lastName depuis plusieurs chemins possibles
+                let firstName = '';
+                let lastName = '';
+                
+                // Chemin 1: userData.profile.firstName et userData.profile.lastName
+                if (userData.profile?.firstName) {
+                  firstName = userData.profile.firstName;
+                }
+                if (userData.profile?.lastName) {
+                  lastName = userData.profile.lastName;
+                }
+                
+                // Chemin 2: userData.firstName et userData.lastName (root level)
+                if (!firstName && userData.firstName) {
+                  firstName = userData.firstName;
+                }
+                if (!lastName && userData.lastName) {
+                  lastName = userData.lastName;
+                }
+                
+                // Chemin 3: displayName ou name
+                if (!firstName && !lastName) {
+                  const displayName = userData.displayName || userData.profile?.name || userData.name;
+                  if (displayName) {
+                    const parts = displayName.split(' ');
+                    firstName = parts[0] || '';
+                    lastName = parts.slice(1).join(' ') || '';
+                  }
+                }
+                
+                userCache[userId] = { firstName, lastName };
+                console.log(`✅ [useMessagesWithUserInfo] User ${userId} loaded:`, { firstName, lastName });
               } else {
                 userCache[userId] = { firstName: '', lastName: '' };
+                console.warn(`⚠️ [useMessagesWithUserInfo] User ${userId} not found in Firestore`);
               }
             } catch (err) {
               console.error(`❌ Error fetching user ${userId}:`, err);
@@ -100,16 +136,32 @@ export const useMessagesWithUserInfo = (messages: Array<{
         // Enrichir les messages avec les infos utilisateur
         const enriched = messages.map(msg => {
           const userInfo = userCache[msg.createdBy] || {};
-          const userName = `${userInfo.firstName || ''} ${userInfo.lastName || ''}`.trim() || msg.createdBy;
+          const firstName = userInfo.firstName?.trim() || '';
+          const lastName = userInfo.lastName?.trim() || '';
+          
+          // Construire le nom complet
+          let userName = '';
+          if (firstName && lastName) {
+            userName = `${firstName} ${lastName}`;
+          } else if (firstName) {
+            userName = firstName;
+          } else if (lastName) {
+            userName = lastName;
+          } else {
+            userName = 'Utilisateur'; // Fallback si aucune info disponible
+          }
+          
+          console.log(`📝 [useMessagesWithUserInfo] Message from ${msg.createdBy} => ${userName}`);
           
           return {
             ...msg,
             userName,
-            userFirstName: userInfo.firstName || '',
-            userLastName: userInfo.lastName || '',
+            userFirstName: firstName,
+            userLastName: lastName,
           };
         });
 
+        console.log('✅ [useMessagesWithUserInfo] All messages enriched, count:', enriched.length);
         setMessagesWithInfo(enriched);
         setError(null);
       } catch (err) {

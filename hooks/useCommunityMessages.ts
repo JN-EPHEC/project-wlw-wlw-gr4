@@ -5,6 +5,8 @@ import {
   orderBy,
   onSnapshot,
   addDoc,
+  deleteDoc,
+  doc,
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/firebaseConfig';
@@ -26,6 +28,7 @@ interface UseCommunityMessagesResult {
   loading: boolean;
   error: string | null;
   sendMessage: (text: string) => Promise<void>;
+  deleteMessage: (messageId: string) => Promise<void>;
   isSending: boolean;
 }
 
@@ -121,5 +124,19 @@ export const useCommunityMessages = (
     }
   };
 
-  return { messages, loading, error, sendMessage, isSending };
+  const deleteMessage = async (messageId: string) => {
+    if (!channelId || !messageId) return;
+
+    try {
+      console.log('🗑️ [useCommunityMessages] Deleting message:', messageId);
+      const messageRef = doc(db, 'channels', channelId, 'messages', messageId);
+      await deleteDoc(messageRef);
+      console.log('✅ [useCommunityMessages] Message deleted successfully');
+    } catch (err) {
+      console.error('❌ [useCommunityMessages] Error deleting message:', err);
+      setError('Erreur lors de la suppression du message');
+    }
+  };
+
+  return { messages, loading, error, sendMessage, deleteMessage, isSending };
 };

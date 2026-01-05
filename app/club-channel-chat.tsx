@@ -16,6 +16,7 @@ import { ClubStackParamList } from '@/navigation/types';
 import { useAuth } from '@/context/AuthContext';
 import { useCommunityMessages } from '@/hooks/useCommunityMessages';
 import { useCommunityMembers } from '@/hooks/useCommunityMembers';
+import { useMessagesWithUserInfo } from '@/hooks/useMessagesWithUserInfo';
 import { useClubPermissions } from '@/hooks/useClubPermissions';
 import { notifyNewMessage } from '@/utils/notificationHelpers';
 
@@ -43,6 +44,9 @@ export default function ClubChannelChatScreen({ navigation, route }: Props) {
   const { user, profile } = useAuth();
   const [value, setValue] = useState('');
 
+  console.log('🚀 [ClubChannelChat] Component MOUNTED - channelId:', channelId, 'channelName:', channelName);
+  console.log('🚀 [ClubChannelChat] clubId RECEIVED:', clubId, 'Type:', typeof clubId);
+
   // Get messages and send functionality
   const {
     messages,
@@ -52,12 +56,19 @@ export default function ClubChannelChatScreen({ navigation, route }: Props) {
     isSending,
   } = useCommunityMessages(channelId, user?.uid || '', 30);
 
-  // Get community members to check permissions
-  const { members, loading: membersLoading } = useCommunityMembers(clubId);
+  console.log('💬 [ClubChannelChat] Received', messages.length, 'messages from hook');
+
+  // Enrichir les messages avec les infos utilisateur depuis Firestore
+  const { messagesWithInfo } = useMessagesWithUserInfo(messages);
+
+  console.log('✅ [ClubChannelChat] Enriched messages:', messagesWithInfo.length, 'with user info');
+
+  // Get community members to check permissions (clubId peut être undefined, utiliser || '')
+  const { members, loading: membersLoading } = useCommunityMembers(clubId || '');
 
   // Get club permissions for current user
   const { permissions, loading: permissionsLoading } = useClubPermissions(
-    clubId,
+    clubId || '',
     user?.uid || '',
     (profile as any)?.role || 'user',
     []
@@ -68,15 +79,23 @@ export default function ClubChannelChatScreen({ navigation, route }: Props) {
     [channelName]
   );
 
-  // Format Firestore messages to display format
-  const displayMessages: ChatMessage[] = messages.map((msg) => ({
-    id: msg.id,
-    createdBy: msg.createdBy,
-    text: msg.text,
-    createdAt: msg.createdAt,
-    isClubStaff: members.some((m) => m.id === msg.createdBy),
-    userName: msg.createdBy.substring(0, 1).toUpperCase(),
-  }));
+  // Format messages pour l'affichage - utiliser messagesWithInfo qui a déjà les noms
+  const displayMessages: ChatMessage[] = messagesWithInfo.map((msg) => {
+    const fullName = msg.userFirstName || msg.userLastName 
+      ? `${msg.userFirstName || ''} ${msg.userLastName || ''}`.trim()
+      : msg.userName || 'Utilisateur';
+    
+    console.log('📝 [ClubChannelChat] Message from userId:', msg.createdBy, '=> Name:', fullName);
+    
+    return {
+      id: msg.id,
+      createdBy: msg.createdBy,
+      text: msg.text,
+      createdAt: msg.createdAt,
+      isClubStaff: members.some((m) => m.id === msg.createdBy),
+      userName: fullName,
+    };
+  });
 
   const handleSend = async () => {
     if (!value.trim()) return;
@@ -186,27 +205,38 @@ export default function ClubChannelChatScreen({ navigation, route }: Props) {
               </Text>
             </View>
           ) : (
-            displayMessages.map((msg) => (
-              <View key={msg.id} style={styles.messageRow}>
-                <View style={[styles.avatar, msg.isClubStaff && styles.avatarStaff]}>
-                  <Text style={styles.avatarText}>{msg.userName}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                    <Text style={styles.user}>{msg.createdBy}</Text>
-                    {msg.isClubStaff ? (
-                      <View style={styles.roleBadge}>
-                        <Text style={styles.roleText}>Équipe</Text>
-                      </View>
-                    ) : null}
-                    <Text style={styles.time}>{formatTime(msg.createdAt)}</Text>
+            displayMessages.map((msg) => {
+              const userInitials = msg.userName
+                ? msg.userName
+                    .split(' ')
+                    .map((n) => n[0])
+                    .join('')
+                    .substring(0, 2)
+                    .toUpperCase()
+                : 'U';
+              
+              return (
+                <View key={msg.id} style={styles.messageRow}>
+                  <View style={[styles.avatar, msg.isClubStaff && styles.avatarStaff]}>
+                    <Text style={styles.avatarText}>{userInitials}</Text>
                   </View>
-                  <View style={styles.bubble}>
-                    <Text style={styles.bubbleText}>{msg.text}</Text>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                      <Text style={styles.user}>{msg.userName}</Text>
+                      {msg.isClubStaff ? (
+                        <View style={styles.roleBadge}>
+                          <Text style={styles.roleText}>Équipe</Text>
+                        </View>
+                      ) : null}
+                      <Text style={styles.time}>{formatTime(msg.createdAt)}</Text>
+                    </View>
+                    <View style={styles.bubble}>
+                      <Text style={styles.bubbleText}>{msg.text}</Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-            ))
+              );
+            })
           )}
         </ScrollView>
       )}
