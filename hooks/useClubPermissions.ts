@@ -77,10 +77,10 @@ export const useClubPermissions = (
 
         const clubData = clubSnap.data();
         const clubEducatorIds = clubData?.educatorIds || [];
-        const clubOwnerId = clubData?.ownerUserId;
+        const clubOwnerId = clubData?.ownerUserId || clubData?.ownerId || clubData?.createdBy || clubData?.owner;
 
-        // Determine if user is club owner
-        const isClubOwner = clubOwnerId === userId || userRole === 'club';
+        // Determine if user is club owner (check multiple possible owner fields)
+        const isClubOwner = userRole === 'club' || userRole === 'owner' || clubOwnerId === userId;
 
         // Determine if user is educator in this club
         const isEducator = userRole === 'educator' && (educatorIds.includes(userId) || clubEducatorIds.includes(userId));
@@ -89,15 +89,32 @@ export const useClubPermissions = (
         // For now, assume all users who access this are members
         const isMember = true;
 
+        console.log('📊 [useClubPermissions] Detailed check:', { 
+          clubId, 
+          userId, 
+          userRole,
+          clubOwnerId,
+          isClubOwner,
+          isEducator,
+          clubEducatorIds,
+          allClubData: clubData
+        });
+
+        // Les utilisateurs avec le rôle "club" doivent avoir toutes les permissions
+        // car ils sont les propriétaires du club
+        const isClubAdmin = userRole === 'club' || isClubOwner;
+
         const newPermissions: ClubPermissions = {
-          canPostInAnnouncements: isClubOwner || isEducator,
-          canCreateChannels: isClubOwner || isEducator,
-          canKickMembers: isClubOwner,
-          canManageEducators: isClubOwner,
-          canDeleteMessages: isClubOwner || isEducator,
+          canPostInAnnouncements: isClubAdmin || isEducator,
+          canCreateChannels: isClubAdmin || isEducator,
+          canKickMembers: isClubAdmin,
+          canManageEducators: isClubAdmin,
+          canDeleteMessages: isClubAdmin || isEducator,
           canEditMessages: true, // Everyone can edit their own
           isCommunityMember: isMember,
         };
+
+        console.log('✅ [useClubPermissions] Final permissions:', newPermissions);
 
         setPermissions(newPermissions);
         setError(null);

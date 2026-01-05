@@ -536,7 +536,7 @@ export default function ClubProfileScreen({ navigation }: Props) {
               
               {siret && (
                 <>
-                  <Text style={styles.infoLabel}>SIRET</Text>
+                  <Text style={styles.infoLabel}>TVA</Text>
                   <Text style={styles.infoValue}>{siret}</Text>
                 </>
               )}
@@ -915,7 +915,7 @@ export default function ClubProfileScreen({ navigation }: Props) {
               Ajoutez et gérez les professeurs de votre club. Chaque professeur reçoit ses propres identifiants de connexion.
             </Text>
 
-            <TouchableOpacity style={styles.managerButton}>
+            <TouchableOpacity style={styles.managerButton} onPress={() => navigation.navigate('clubTeachers')}>
               <MaterialCommunityIcons name="school-outline" size={18} color={palette.primary} />
               <Text style={styles.managerButtonText}>Gérer mes professeurs</Text>
             </TouchableOpacity>

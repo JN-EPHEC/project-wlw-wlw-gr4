@@ -24,6 +24,7 @@ import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { auth, db, storage } from '@/firebase';
 import { resetToHome } from '@/navigation/navigationRef';
 import { UploadableFile } from '@/types/uploads';
+import { createDefaultChannels } from '@/hooks/useCreateChannel';
 
 type OwnerSignupData = {
   firstName: string;
@@ -315,6 +316,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         distanceKm: 0,
         createdAt: new Date(),
       });
+      // ✅ Créer les channels par défaut (Général et Annonces) UNE SEULE FOIS
+      console.log('📱 [registerClub] Création des channels par défaut...');
+      await createDefaultChannels(clubId, credential.user.uid);
       await loadProfile(credential.user.uid);
     } finally {
       setActionLoading(false);

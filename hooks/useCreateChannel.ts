@@ -39,16 +39,13 @@ export const createCommunityChannel = async (params: CreateChannelParams) => {
 };
 
 /**
- * DÉSACTIVÉ - Ne crée plus les salons par défaut
- * Les salons ne sont créés que manuellement par le propriétaire du club
+ * Crée les salons par défaut si aucun salon n'existe
+ * Les salons sont créés automatiquement au premier accès à la communauté
  */
 export const createDefaultChannels = async (clubId: string, createdBy: string) => {
-  console.log('⚠️ [createDefaultChannels] Cette fonction est désactivée. Les salons doivent être créés manuellement.');
-  return;
-  
-  // Code précédent - conservé pour historique
-  /*
   try {
+    console.log('📱 [createDefaultChannels] Creating default channels for club:', clubId);
+    
     // Créer le canal "Général"
     await createCommunityChannel({
       clubId,
@@ -62,15 +59,14 @@ export const createDefaultChannels = async (clubId: string, createdBy: string) =
     await createCommunityChannel({
       clubId,
       name: 'Annonces',
-      description: 'Seuls les éducateurs peuvent publier',
+      description: 'Seuls les propriétaires et éducateurs peuvent publier',
       type: 'announcements',
       createdBy,
     });
 
-    console.log('✅ Default channels created for club:', clubId);
+    console.log('✅ [createDefaultChannels] Default channels created for club:', clubId);
   } catch (error) {
-    console.error('❌ Error creating default channels:', error);
+    console.error('❌ [createDefaultChannels] Error creating default channels:', error);
     throw error;
   }
-  */
 };

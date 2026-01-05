@@ -75,7 +75,7 @@ export default function ClubCommunityManagementScreen({ navigation, route }: Pro
           <TouchableOpacity
             style={[styles.card, styles.cardTerracotta]}
             activeOpacity={0.9}
-            onPress={() => handleNavigate('clubAnnouncements')}
+            onPress={() => handleNavigate('clubAnnouncements', { clubId })}
           > 
             <View style={[styles.cardIconGray, { backgroundColor: '#F28B6F' }]}>
               <MaterialCommunityIcons name="bell-outline" size={28} color="#fff" />

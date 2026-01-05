@@ -145,7 +145,7 @@ export type ClubStackParamList = {
   clubAnnouncements: undefined;
   clubEventsManagement: undefined;
   clubChannels: undefined;
-  clubChannelChat: { channelId: string; channelName: string };
+  clubChannelChat: { clubId: string; channelId: string; channelName: string };
   clubMembers: undefined;
   clubAppointments: undefined;
   clubHomeTrainingRequests: undefined;

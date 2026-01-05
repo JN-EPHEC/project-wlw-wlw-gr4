@@ -3,7 +3,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useMemo, useState, useEffect } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, Image, Dimensions } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, doc, getDoc } from 'firebase/firestore';
 
 import ClubBottomNav from '@/components/ClubBottomNav';
 import ClubBoostPlansModal from '@/components/ClubBoostPlansModal';
@@ -159,10 +159,85 @@ export default function ClubHomeScreen({ navigation }: Props) {
   useFocusEffect(
     React.useCallback(() => {
       loadAppointments();
+      loadMembers();
+      loadWeeklyAppointments();
       loadActivity();
       refreshProfile?.();
     }, [user?.uid])
   );
+
+  const loadMembers = async () => {
+    if (!clubId) {
+      console.log('❌ [loadMembers] No clubId');
+      return;
+    }
+    try {
+      console.log('🔍 [loadMembers] Fetching members for clubId:', clubId);
+      const clubRef = doc(db, 'club', clubId);
+      const clubSnapshot = await getDoc(clubRef);
+
+      if (clubSnapshot.exists()) {
+        const clubData = clubSnapshot.data();
+        const membersArray = clubData.members || [];
+        console.log('✅ [loadMembers] Found', membersArray.length, 'members:', membersArray);
+
+        setStats((prev) => ({
+          ...prev,
+          members: membersArray.length,
+        }));
+      } else {
+        console.warn('⚠️ [loadMembers] Club document not found for clubId:', clubId);
+      }
+    } catch (error) {
+      console.error('❌ [loadMembers] Error:', error);
+    }
+  };
+
+  const loadWeeklyAppointments = async () => {
+    if (!clubId) {
+      console.log('❌ [loadWeeklyAppointments] No clubId');
+      return;
+    }
+    try {
+      console.log('🔍 [loadWeeklyAppointments] Fetching bookings for clubId:', clubId);
+      const bookingsRef = collection(db, 'Bookings');
+      const q = query(
+        bookingsRef,
+        where('clubId', '==', clubId)
+      );
+
+      const snapshot = await getDocs(q);
+      console.log('📦 [loadWeeklyAppointments] Found', snapshot.size, 'total bookings');
+      
+      const now = new Date();
+      const nextWeek = new Date(now);
+      nextWeek.setDate(nextWeek.getDate() + 7);
+
+      let weeklyCount = 0;
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        const docDate = data.sessionDate instanceof Timestamp 
+          ? data.sessionDate.toDate() 
+          : new Date(data.sessionDate);
+        
+        console.log('📅 [loadWeeklyAppointments] Booking date:', docDate, 'Now:', now, 'NextWeek:', nextWeek);
+        
+        // Filtrer en code : seulement les 7 prochains jours
+        if (docDate >= now && docDate < nextWeek) {
+          weeklyCount++;
+        }
+      });
+
+      console.log('✅ [loadWeeklyAppointments] Week count:', weeklyCount);
+
+      setStats((prev) => ({
+        ...prev,
+        week: weeklyCount,
+      }));
+    } catch (error) {
+      console.error('❌ [loadWeeklyAppointments] Error:', error);
+    }
+  };
 
   const loadAppointments = async () => {
     if (!user?.uid) return;
