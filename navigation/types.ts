@@ -101,6 +101,7 @@ export type UserStackParamList = {
   reviews: { clubId?: string };
   teacherDetail: { teacherId: number; clubId?: number; previousTarget?: RootRouteName };
   clubCommunity: { clubId: string };
+  clubChannelChat: { clubId: string; channelId: string; channelName: string };
   events: { clubId: string };
   chatRoom: { clubId: string; channelId: string; channelName: string };
   forum: { clubId: string; channelId?: string; channelName?: string };

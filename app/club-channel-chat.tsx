@@ -170,7 +170,7 @@ export default function ClubChannelChatScreen({ navigation, route }: Props) {
       >
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => navigation.navigate('clubChannels' as any)}
+          onPress={() => navigation.goBack()}
         >
           <Ionicons name="arrow-back" size={20} color="#fff" />
         </TouchableOpacity>
