@@ -9,6 +9,7 @@ import HomeScreen from '@/app/(tabs)/home';
 import BookingScreen from '@/app/booking';
 import ChatRoomScreen from '@/app/chat-room';
 import ClubCommunityScreen from '@/app/club-community';
+import ClubChannelChatScreen from '@/app/club-channel-chat';
 import ClubDetailScreen from '@/app/club-detail';
 import EducatorDetailScreen from '@/app/educator-detail';
 import EventBookingScreen from '@/app/event-booking';
@@ -59,6 +60,7 @@ export default function UserStack() {
       <Stack.Screen name="reviews" component={ReviewsScreen} />
       <Stack.Screen name="teacherDetail" component={TeacherDetailScreen} />
       <Stack.Screen name="clubCommunity" component={ClubCommunityScreen} />
+      <Stack.Screen name="clubChannelChat" component={ClubChannelChatScreen} />
       <Stack.Screen name="events" component={EventsListScreen} />
       <Stack.Screen name="chatRoom" component={ChatRoomScreen} />
       <Stack.Screen name="forum" component={ForumScreen} />
